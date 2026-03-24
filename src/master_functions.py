@@ -32,7 +32,7 @@ def latest_ipo_entry():
         if not ex.exists(type1, name1) and data_available:
             ex.append(ipo,row)
             url2 = ipo['url']
-            print(url2)
+            # print(url2)
             extractor = ChittorgarhIPOExtractor()
             data1 = extractor.extract(url2)
             data2 = clean_ipo_data(data1)
