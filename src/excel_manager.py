@@ -204,9 +204,9 @@ class ExcelManager:
         time.sleep(.2)
         try:
             W = review
-            X = sub[0]
-            Y = sub[1]
-            Z = sub[2]
+            X = parse_float(sub[0])
+            Y = parse_float(sub[1])
+            Z = parse_float(sub[2])
             #TS=sub[3]
             AB = gmp
         except Exception as e:
