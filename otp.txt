@@ -1,0 +1,42 @@
+def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7):
+    for i in range(retries):
+        print(f"Attempt {i + 1}: Searching for Kotak OTP...")
+        try:
+            mail = imaplib.IMAP4_SSL("imap.gmail.com")
+            mail.login(EMAIL_USER, EMAIL_PASS)
+            mail.select("inbox")
+
+            # Search for the specific subject and ensure it's unread
+            status, messages = mail.search(None, search_query)
+
+            if status == "OK" and messages[0]:
+                latest_id = messages[0].split()[-1]
+                _, msg_data = mail.fetch(latest_id, "(RFC822)")
+                msg = message_from_bytes(msg_data[0][1])
+
+                body = ""
+                # Loop through email parts to find HTML or Plain Text
+                for part in msg.walk():
+                    content_type = part.get_content_type()
+                    if content_type in ["text/html", "text/plain"]:
+                        payload = part.get_payload(decode=True).decode(errors='ignore')
+                        body += payload
+
+                # CLEANING & MATCHING:
+                # 1. Remove HTML tags like <br /> so they don't block the regex
+                clean_body = re.sub(r'<[^>]+>', ' ', body)
+                # 2. Match 6 digits following 'is' (handling extra spaces/newlines)
+                otp_match = re.search(r'is\s+(\d{6})', clean_body, re.IGNORECASE)
+
+                if otp_match:
+                    # Optional: Mark as read so it's not picked up again
+                    mail.store(latest_id, '+FLAGS', '\\Seen')
+                    mail.logout()
+                    return otp_match.group(1)
+
+            mail.logout()
+        except Exception as e:
+            print(f"Error: {str(e)}")
+
+        time.sleep(delay)
+    return None
