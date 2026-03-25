@@ -1,6 +1,8 @@
 import asyncio
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 from Base import *
+import difflib
+
 
 # ────────────────────────────────────────────────
 #  CONFIG - CHANGE THESE
@@ -9,12 +11,12 @@ USER_ID     = "961633451"                  # Your Client Code
 PASSWORD    = "RamRate#26"
 
 HEADLESS    = False                      # Set True later; False = see browser for debugging
-DESIRED_IPO_NAME = "Acetech E-Commerce"
+DESIRED_IPO_NAME = "Highness Microelectronics"
 
 
 
 async def apply_to_ipo(
-    ipo_name="Acetech E-Commerce",
+    ipo_name="Highness Microelectronics",
     bank_user="jhkh",
     bank_pwd="hkhk",
     type="MB",
@@ -47,13 +49,13 @@ async def apply_to_ipo(
                 'input[id*="user" i]'
             ).first
 
-            await user_locator.wait_for(state="visible", timeout=20000)
+            await user_locator.wait_for(state="visible", timeout=10000)
             await user_locator.fill(USER_ID)
-
+            time.sleep(1)
             await page.keyboard.press('Tab')
             # ─── PASSWORD ────────────────────────────────────────────
             print("Filling Password...")
-            await page.keyboard.type("RamRate#26", delay=100)
+            await page.keyboard.type("RamRate#26", delay=200)
 
 
 
@@ -109,13 +111,14 @@ async def apply_to_ipo(
                     "frame[name=\"contentmenu\"]").content_frame.locator("#selBeneficiary").select_option("0")
                 time.sleep(1)
                 print(f"Trying to select IPO: {DESIRED_IPO_NAME}")
-
+                
+                #Selecting company
                 company_select = page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.locator("#selCompany")
 
 
                 desired_lower = DESIRED_IPO_NAME.lower()
-                desired_lower = desired_lower.lower()[:15]
+                desired_lower = desired_lower.lower()[:25]
 
                 for i in range(25):
                     await company_select.select_option(value=str(i))
@@ -125,12 +128,13 @@ async def apply_to_ipo(
                         "sel => sel.options[sel.selectedIndex].textContent.trim()",
                         arg=company_select
                     )
-                    selected_text = selected_text.lower()[:15]
+                    selected_text = selected_text.lower()[:25]
 
                     print("\nVerification:")
                     print(f"Selected value = {selected_value}")
                     print(f"Selected text  = {selected_text}")
-
+                    print(f"Desired text  = {desired_lower}")
+                    
                     similarity = sum(a == b for a, b in zip(desired_lower, selected_text)) / max(len(desired_lower), len(selected_text))
                     print(f"Similarity = {similarity}")
                     if similarity > 0.75:
@@ -138,9 +142,41 @@ async def apply_to_ipo(
                         print(f"   Matched text: {selected_text}")
                         found = True
                         break
+                    
+                #Selecting Investor Category
+                category_select = page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
+                    "frame[name=\"contentmenu\"]").content_frame.locator("#invCat")
 
-                await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
-                    "frame[name=\"contentmenu\"]").content_frame.locator("#invCat").select_option("0")
+
+                category = "high networth individual"
+                desired_category = cat[:25]
+
+                for i in range(7):
+                    await category_select.select_option(value=str(i))
+
+                    selected_value = await category_select.input_value()
+                    selected_text = await category_select.evaluate(
+                        "sel => sel.options[sel.selectedIndex].textContent.trim()",
+                        arg=category_select
+                    )
+                    selected_text = selected_text.lower()[:25]
+
+                    print("\nVerification:")
+                    print(f"Selected value = {selected_value}")
+                    print(f"Selected text  = {selected_text}")
+                    print(f"Desired text  = {desired_category}")
+                    
+                    
+                    similarity = sum(a == b for a, b in zip(desired_category, selected_text)) / max(len(desired_lower), len(selected_text))
+                    print(f"Similarity = {similarity}")
+                    if similarity > 0.75:
+                        print("✅ Successfully selected the correct category!")
+                        print(f"   Matched text: {selected_text}")
+                        found = True
+                        break
+
+               # await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
+                    #"frame[name=\"contentmenu\"]").content_frame.locator("#invCat")
                 time.sleep(1)
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.get_by_role("link", name="Next").click()

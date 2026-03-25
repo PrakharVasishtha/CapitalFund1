@@ -4,7 +4,7 @@ import openpyxl
 from datetime import date
 import time
 
-from src.zerodha_withdraw import withdraw_from_zerodha
+from zerodha_withdraw import withdraw_from_zerodha
 from trading_base import *
 
 CREDENTIALS_FILE = "credentials.json"
@@ -33,72 +33,57 @@ def ipo_required_fund():
     main_ws = wb['IPOMB']
     sme_fund = 0
     mb_fund = 0
-    buy=strategy_status_10days()
+    buy=int(strategy_status_10days())
+    print(type(buy))
     for i in range(0, 9):
         rw = row_sme - i
-        #print(i, "Row:", rw)
         apply = sme_ws.cell(rw, 42).value
-        sub = sme_ws.cell(rw, 26).value
-        #print("sub",sub)
         #print(apply)
-        if apply == 1 or apply == 2:
-            close_date = sme_ws.cell(rw, 40).value
-            today = date.today().day
-            if sub > 4:
-                if today == close_date:
-                    #print("today is IPO at row:", rw)
-                    if buy == 0 or buy == 1 or buy == 2:
-                        #print("if buy == 0 or buy == 1 or buy == 2")
-                        sme_fund = sme_fund + 280000
-                    elif buy == 3 or buy == 4:
-                        sme_fund = sme_fund
-                    else:
-                        sme_fund = sme_fund + 280000
-                    total_sme_1 = total_sme_1 + 1
-            if sub < 5:
-                close_date = sme_ws.cell(rw, 40).value
-                today = date.today().day
-                if today == close_date:
-                    #print("today is IPO at row:", rw)
+        close_date = sme_ws.cell(rw, 40).value
+        today = date.today().day
+        if apply == 2 or apply == 3:
+            
+            if today == close_date:
+                #print("today is IPO at row:", rw)
+                sme_fund = sme_fund + 280000
+                total_sme_1 = total_sme_1 + 1
+                
+        elif apply == 1:
+            if today == close_date:
+                if buy == 3 or buy == 4:
+                    sme_fund = sme_fund
+                elif buy == 0 or buy == 1 or buy == 2:
                     sme_fund = sme_fund + 280000
                     total_sme_2 = total_sme_2 + 1
-    #print("sme fund",sme_fund)
-    #print("total_sme_1:", total_sme_1)
-    #print("total_sme_2:", total_sme_2)
+                
+                
+    print("sme fund",sme_fund)
+    print("total_sme_1:", total_sme_1)
+    print("total_sme_2:", total_sme_2)
 
     for i in range(0, 9):
         rw = row_mb - i
-        #print(i, "Row:", rw)
         apply = main_ws.cell(rw, 42).value
-        sub = main_ws.cell(rw, 25).value
-        #print("sub", sub)
-        # print(apply)
-        if apply == 1 or apply == 2:
-            close_date = main_ws.cell(rw, 40).value
-            today = date.today().day
-            if sub > 5:
-                if today == close_date:
-                    #print("today is IPO at row:", rw)
-                    if buy == 0 or buy == 1 or buy == 2:
-                        #print("if buy == 0 or buy == 1 or buy == 2")
-                        mb_fund = mb_fund + 210000
-                    elif buy == 3 or buy == 4:
-                        mb_fund = mb_fund
-                    else:
-                        mb_fund = mb_fund + 210000
-                    total_mb_1 = total_mb_1 + 1
-            if sub < 6:
-                close_date = main_ws.cell(rw, 40).value
-                today = date.today().day
-                if today == close_date:
-                    #print("today is IPO at row:", rw)
-                    mb_fund = mb_fund + 210000
+        #print(apply)
+        close_date = main_ws.cell(rw, 40).value
+        today = date.today().day
+        if apply == 2 or apply == 3:
+            if today == close_date:
+                mb_fund = mb_fund + 209000
+                total_mb_1 = total_mb_1 + 1
+                
+        elif apply == 1:
+            if today == close_date:
+                if buy == 3 or buy == 4:
+                    mb_fund = mb_fund
+                elif buy == 0 or buy == 1 or buy == 2:
+                    mb_fund = mb_fund + 209000
                     total_mb_2 = total_mb_2 + 1
 
 
-    #print("mb fund", mb_fund)
-    #print("total_mb_1:", total_mb_1)
-    #print("total_mb_2:", total_mb_2)
+    print("mb fund", mb_fund)
+    print("total_mb_1:", total_mb_1)
+    print("total_mb_2:", total_mb_2)
     total_fund=sme_fund + mb_fund
     print("Total Fund Required Today:",total_fund)
     return total_fund
@@ -129,4 +114,4 @@ def daily_money_withdraw():
 
 #print(strategy_status_10days())
 #print("ipo_required_fund",ipo_required_fund())
-print(daily_money_withdraw())
+#print(daily_money_withdraw())

@@ -81,27 +81,31 @@ def withdraw_from_zerodha(
             print("Type", type(amount))
             amount_float = float(amount)
             print("amount_float", amount_float)
-            final_amount = 0.0
+            final_amount = 1.0
             if clean_wihtdrawable < amount_float:
                 final_amount = clean_wihtdrawable
             else:
                 final_amount = amount_float
-            print(final_amount)
+            print("final_amount",final_amount)
             time.sleep(1)
             # ── Enter amount & confirm ──────────────────────────────
-            eq_input = withdraw_page.locator("#eq_input")
-            eq_input.wait_for(state="visible", timeout=15000)
-            eq_input.click()
-            amount_str = str(int(float(final_amount)))
-            eq_input.fill(amount_str)
+            if final_amount >= 1:
+                eq_input = withdraw_page.locator("#eq_input")
+                eq_input.wait_for(state="visible", timeout=15000)
+                eq_input.click()
+                amount_str = str(int(float(final_amount)))
+                print("amount_str",amount_str)
+                eq_input.fill(amount_str)
 
-            withdraw_page.get_by_role("button", name="Continue").click()
-            withdraw_page.get_by_role("button", name="Confirm").click()
+                withdraw_page.get_by_role("button", name="Continue").click()
+                withdraw_page.get_by_role("button", name="Confirm").click()
 
-            # Give some time for confirmation (you can improve this)
-            withdraw_page.wait_for_timeout(4000)
+                # Give some time for confirmation (you can improve this)
+                withdraw_page.wait_for_timeout(4000)
+            else:
+                print("less than 1 amount, so no withdrawal")
 
-            return True, f"Withdrawal of ₹{amount_str} initiated successfully"
+            return True, f"Withdrawal initiated successfully"
 
         except Exception as e:
             import traceback
@@ -124,7 +128,7 @@ if __name__ == "__main__":
         user_id="MFB802",
         password="RamRate$1",
         totp_secret="N6337C7PWQT2B3FHYPIPIRXEPRRGDOY2",
-        amount=5,
+        amount=.08,
         headless=False,  # change to True on server
     )
     print("Success:", success)
