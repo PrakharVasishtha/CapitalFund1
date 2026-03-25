@@ -108,7 +108,7 @@ if __name__ == "__main__":
     success, msg = withdraw_from_zerodha(
         user_id="MFB802",
         password="RamRate$1",
-        totp_secret="DOIIMB2PTIIOCKDQ4ILOCPVF44YJ7QBU",
+        totp_secret="N6337C7PWQT2B3FHYPIPIRXEPRRGDOY2",
         amount=5,
         headless=False,  # change to True on server
     )

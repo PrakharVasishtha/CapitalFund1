@@ -4,7 +4,7 @@ import openpyxl
 from datetime import date
 import time
 
-from src.withdraw_mstock import withdraw_from_mstock
+from src.zerodha_withdraw import withdraw_from_zerodha
 from trading_base import *
 
 CREDENTIALS_FILE = "credentials.json"
@@ -112,16 +112,15 @@ def daily_money_withdraw():
         for user in users:
             client_id = user.get("broker_client_id")
             password_user = user.get("password")
-            email_user = user.get("email_user")
-            email_password = user.get("email_password")
+            topt_broker = user.get("topt_broker")
 
 
-            success, message = withdraw_from_mstock(
+            success, message = withdraw_from_zerodha(
                 user_id=client_id,
                 password=password_user,
-                email_user=email_user,
-                email_password=email_password,
+                totp_secret=topt_broker,
                 amount=required_fund,
+                headless=False,
             )
 
             print(success, message)
