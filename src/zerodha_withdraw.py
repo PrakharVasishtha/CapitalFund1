@@ -1,7 +1,7 @@
 # zerodha_withdraw.py
 import re
 import time
-
+import Base
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 from typing import Optional
@@ -48,6 +48,8 @@ def withdraw_from_zerodha(
             # ── Login ───────────────────────────────────────────────
             page.goto("https://kite.zerodha.com/", wait_until="domcontentloaded")
             time.sleep(1)
+
+
             page.get_by_role("textbox", name="Phone number or User ID").fill(user_id)
             page.get_by_role("textbox", name="Password").fill(password)
             page.get_by_role("button", name="Login").click()
@@ -71,13 +73,26 @@ def withdraw_from_zerodha(
             if "console.zerodha.com" not in withdraw_page.url:
                 withdraw_page.goto("https://console.zerodha.com/funds/overview?src=kiteweb")
             wihtdrawable = withdraw_page.get_by_text("₹").nth(4).inner_text()
+            print(wihtdrawable)
             clean_wihtdrawable = wihtdrawable.replace("₹", "").split(".")[0]
-            print(clean_wihtdrawable)
+            clean_wihtdrawable = Base.parse_float(clean_wihtdrawable)
+            print("clean",clean_wihtdrawable)
+            print("amount", amount)
+            print("Type", type(amount))
+            amount_float = float(amount)
+            print("amount_float", amount_float)
+            final_amount = 0.0
+            if clean_wihtdrawable < amount_float:
+                final_amount = clean_wihtdrawable
+            else:
+                final_amount = amount_float
+            print(final_amount)
             time.sleep(1)
             # ── Enter amount & confirm ──────────────────────────────
             eq_input = withdraw_page.locator("#eq_input")
             eq_input.wait_for(state="visible", timeout=15000)
             eq_input.click()
+            amount_str = str(int(float(final_amount)))
             eq_input.fill(amount_str)
 
             withdraw_page.get_by_role("button", name="Continue").click()

@@ -9,7 +9,18 @@ import time
 import datetime
 from email import message_from_bytes
 from email.utils import parsedate_to_datetime
+from typing import Dict, Any
 
+def parse_float(val: Any) -> float:
+    if isinstance(val, (int, float)):
+        return float(val)
+    if not isinstance(val, str):
+        return 0.0
+    val = val.replace('%', '').replace('x', '').replace(',', '').replace('₹', '').replace('Cr', '').strip()
+    try:
+        return float(val)
+    except ValueError:
+        return 0.0
 
 def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=5):
     for i in range(retries):
