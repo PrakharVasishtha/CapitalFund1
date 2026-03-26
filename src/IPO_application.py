@@ -3,7 +3,7 @@ from datetime import date
 import openpyxl
 
 from Base import *
-from kotak_base import apply_to_ipo
+from kotak_ipo_apply import apply_to_ipo, apply_to_ipo_all_users
 
 
 def IPO_to_apply():
@@ -69,8 +69,7 @@ def IPO_to_apply():
             today = date.today().day
             if today == close_date:
                 IPO_mb_3.append(name)
-
-    return IPO_mb_3,IPO_sme_3,IPO_mb_2, IPO_sme_2, IPO_mb_1, IPO_sme_1,  
+    return IPO_mb_3,IPO_sme_3,IPO_mb_2, IPO_sme_2, IPO_mb_1, IPO_sme_1,
 
 def apply_ipo_sme(ipo):
     print("Appling IPO:", ipo)
@@ -82,43 +81,57 @@ def apply_ipo_mb(ipo):
 def ipo_application():
     print("--------IPO Application-------")
     all=IPO_to_apply()
+    #print(all)
     IPO_mb_3 = all[0]
     IPO_sme_3 = all[1]
     IPO_mb_2 = all[2]
     IPO_sme_2 = all[3]
     IPO_sme_1 = all[4]
     IPO_mb_1 = all[5]
-    
-    
+
+    print("applying for ipos:",all)
     for ipo in IPO_mb_3:
         print(ipo)
-        apply_to_ipo(
-            ipo_name=ipo,
-            bank_user="jhkh",
-            bank_pwd = "hkhk",
-            type = "MB",
-            headless = False
-        )
-        
+        try:
+            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "mb")
+        except Exception as e:
+            print(e)
+
+
     for ipo in IPO_sme_3:
         print(ipo)
-        apply_ipo_sme(ipo)
+        try:
+            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "sme")
+        except Exception as e:
+            print(e)
     
     for ipo in IPO_mb_2:
         print(ipo)
-        apply_ipo_mb(ipo)
+        try:
+            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "mb")
+        except Exception as e:
+            print(e)
         
     for ipo in IPO_sme_2:
         print(ipo)
-        apply_ipo_sme(ipo)
+        try:
+            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "sme")
+        except Exception as e:
+            print(e)
 
     for ipo in IPO_mb_1:
         print(ipo)
-        apply_ipo_mb(ipo)
+        try:
+            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "mb")
+        except Exception as e:
+            print(e)
 
     for ipo in IPO_sme_1:
         print(ipo)
-        apply_ipo_sme(ipo)
+        try:
+            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "sme")
+        except Exception as e:
+            print(e)
 
-print(IPO_to_apply())
-#ipo_application()
+#print(IPO_to_apply())
+ipo_application()

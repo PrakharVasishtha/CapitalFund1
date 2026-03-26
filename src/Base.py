@@ -22,7 +22,7 @@ def parse_float(val: Any) -> float:
     except ValueError:
         return 0.0
 
-def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=5):
+def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=4):
     for i in range(retries):
         print(f"Attempt {i + 1}: Searching for OTP...")
         try:

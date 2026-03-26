@@ -5,6 +5,36 @@ from trading_base import *
 import difflib
 
 
+def calculate_lot_minimum(min_shares_str: str, higher_price_str: str):
+    try:
+        min_shares = int(min_shares_str.replace(',', '').strip())
+        higher_price = float(higher_price_str.replace('₹', '').replace(',', '').strip())
+
+        lot_value = min_shares * higher_price
+
+        # Smallest number of lots where total > 200000
+        import math
+        lots_needed = math.ceil(200001 / lot_value)
+
+        total_shares = lots_needed * min_shares
+        total_amount = total_shares * higher_price
+
+        print("\n" + "=" * 50)
+        print("HNI CATEGORY CALCULATION")
+        print("=" * 50)
+        print(f"Min Shares per Lot       : {min_shares}")
+        print(f"Higher Price Band        : ₹{higher_price}")
+        print(f"Value of 1 Lot           : ₹{lot_value:,.2f}")
+        print(f"Lots Required for HNI    : {lots_needed}")
+        print(f"Total Shares to Bid      : {total_shares}")
+        print(f"Minimum Total Amount     : ₹{total_amount:,.2f}")
+        print("=" * 50)
+
+        return total_shares, total_amount, lots_needed
+
+    except Exception as e:
+        print(f"Error calculating HNI amount: {e}")
+        return None, None, None
 
 async def apply_to_ipo(
     ipo_name="Highness Microelectronics fsafewqgdfvdf",
@@ -12,6 +42,7 @@ async def apply_to_ipo(
     PASSWORD="hkhk",
     EMAIL_USR="prakhar@gmail.com",
     EMAIL_PSS= "fds",
+    type_ipo="nn"
 ):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False, slow_mo=300)  # slow_mo helps see actions
@@ -61,7 +92,7 @@ async def apply_to_ipo(
             ).first
 
             await login_button.click()
-            time.sleep(9)
+            time.sleep(6)
             #EMAIL_USR = "prakharvasishtha9@gmail.com"
             #EMAIL_PSS = "qmtm daun rljp wjrx"
             sub1 = '(SUBJECT "Net Banking login" UNSEEN)'
@@ -101,45 +132,81 @@ async def apply_to_ipo(
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.locator("#selBeneficiary").select_option("0")
                 time.sleep(1)
-                print(f"Trying to select IPO: {ipo_name}")
-                
+
                 #Selecting company
-                company_select = page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
-                    "frame[name=\"contentmenu\"]").content_frame.locator("#selCompany")
+                print(f"Trying to select IPO: {ipo_name}")
 
+                # Get the company dropdown
+                company_select = page.locator("iframe[name=\"knb2ContainerFrame\"]") \
+                    .content_frame.locator("frame[name=\"contentmenu\"]") \
+                    .content_frame.locator("#selCompany")
 
-                desired_lower = ipo_name.lower()
-                desired_lower = desired_lower.lower()[:25]
+                await company_select.wait_for(state="visible", timeout=10000)
 
-                for i in range(25):
-                    await company_select.select_option(value=str(i))
+                desired_lower = ipo_name.lower().strip()
 
-                    selected_value = await company_select.input_value()
+                best_match = None
+                best_score = -1
+                best_index = -1
+                best_text = ""
+
+                # Get all options
+                options = await company_select.evaluate("""select => {
+                    return Array.from(select.options).map((opt, idx) => ({
+                        index: idx,
+                        value: opt.value,
+                        text: opt.textContent.trim()
+                    }));
+                }""")
+
+                print(f"\nFound {len(options)} IPO options in dropdown.")
+
+                for opt in options:
+                    if not opt['text']:
+                        continue
+
+                    option_text_lower = opt['text'].lower().strip()
+
+                    # Calculate similarity (better method)
+                    similarity = difflib.SequenceMatcher(None, desired_lower, option_text_lower).ratio()
+
+                    print(f"Option {opt['index']:2d}: {opt['text'][:60]:60} | Score: {similarity:.4f}")
+
+                    if similarity > best_score:
+                        best_score = similarity
+                        best_index = opt['index']
+                        best_text = opt['text']
+                        best_match = opt
+
+                # Select the best match
+                if best_match and best_score > 0.55:  # adjustable threshold
+                    print(f"\n✅ Best match found: '{best_text}'")
+                    print(f"   Similarity Score: {best_score:.4f}")
+
+                    await company_select.select_option(value=str(best_index-1))
+                    await page.keyboard.press('ArrowDown')
+                    await page.keyboard.press('ArrowUp')
+                    print(f"   Selected option index: {best_index}")
+
+                    # Verify selection
                     selected_text = await company_select.evaluate(
-                        "sel => sel.options[sel.selectedIndex].textContent.trim()",
-                        arg=company_select
+                        "sel => sel.options[sel.selectedIndex].textContent.trim()"
                     )
-                    selected_text = selected_text.lower()[:25]
-
-                    print("\nVerification:")
-                    print(f"Selected value = {selected_value}")
-                    print(f"Selected text  = {selected_text}")
-                    print(f"Desired text  = {desired_lower}")
-                    
-                    similarity = sum(a == b for a, b in zip(desired_lower, selected_text)) / max(len(desired_lower), len(selected_text))
-                    print(f"Similarity = {similarity}")
-                    if similarity > 0.75:
-                        print("✅ Successfully selected the correct IPO!")
-                        print(f"   Matched text: {selected_text}")
-                        found = True
-                        break
+                    print(f"   Verified selected text: {selected_text}")
+                else:
+                    print(f"\n❌ No good match found. Best score was only {best_score:.4f}")
+                    # You can add fallback logic here if needed
+                    return "IPO selection failed - no good match"
                     
                 #Selecting Investor Category
                 category_select = page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.locator("#invCat")
+                print(type_ipo)
+                if type_ipo == "mb":
+                    category = "individual hni more than rs 2 lakh"
+                elif type_ipo == "sme":
+                    category = "retail investor"
 
-
-                category = "individual hni more than rs 2 lakh"
                 desired_category = category[:25]
 
                 for i in range(7):
@@ -155,12 +222,12 @@ async def apply_to_ipo(
                     print("\nVerification:")
                     print(f"Selected value = {selected_value}")
                     print(f"Selected text  = {selected_text}")
-                    print(f"Desired text  = {desired_category}")
+                    print(f"desired_category  = {desired_category}")
                     
                     
                     similarity = sum(a == b for a, b in zip(desired_category, selected_text)) / max(len(desired_lower), len(selected_text))
                     print(f"Similarity = {similarity}")
-                    if similarity > 0.75:
+                    if similarity > 0.6:
                         print("✅ Successfully selected the correct category!")
                         print(f"   Matched text: {selected_text}")
                         found = True
@@ -172,45 +239,71 @@ async def apply_to_ipo(
                 time.sleep(1)
 
 
+
+
+                # === IMPROVED: Extract Min. No. of Shares and Higher Price Band ===
+
+                content_frame = (page.locator("iframe[name=\"knb2ContainerFrame\"]")
+                                 .content_frame.locator("frame[name=\"contentmenu\"]")
+                                 .content_frame)
+
+                print("\n🔍 Extracting IPO details...")
+
+                min_shares = "Not found"
+                higher_price = "Not found"
+
                 try:
-                    b1 = await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_text("Min. No. of Shares").inner_text()
-                    print("b1",b1.strip())
-                except:
+                    all_cells = await content_frame.locator("td").all_inner_texts()
+                    for i, text in enumerate(all_cells):
+                        if "min. no. of shares" in text.lower():
+                            if i + 1 < len(all_cells):
+                                min_shares = all_cells[i + 1].strip()
+                                print(f"✅ Min. No. of Shares (fallback): {min_shares}")
+                            break
+
+                except Exception as e1:
+                    print(f"Method 1 for Min Shares failed: {e1}")
                     pass
 
                 try:
-                    b1 = await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_role("cell", name="Min. No. of Shares").inner_text()
-                    print("b1",b1.strip())
-                except:
+                    # Higher Price Band
+                    all_cells = await content_frame.locator("td").all_inner_texts()
+                    for i, text in enumerate(all_cells):
+                        if "higher price band" in text.lower() or "upper price" in text.lower():
+                            if i + 1 < len(all_cells):
+                                higher_price = all_cells[i + 1].strip()
+                                print(f"✅ Higher Price Band (fallback): {higher_price}")
+                            break
+
+                except Exception as e2:
+                    print(f"Method 2 for Price Band failed: {e2}")
                     pass
 
 
+                print(f"\nFinal Extracted → Min Shares: {min_shares} | Higher Price: {higher_price}")
+
+                total_shares, total_amount, lots = calculate_lot_minimum(min_shares, higher_price)
+
+                if total_shares:
+                    # Now fill in your IPO form
+                    await content_frame.locator("input[name=\"txtSharesIPO0\"]").fill(str(total_shares))
+                    await content_frame.locator("input[name=\"txtPriceIPO0\"]").fill(str(int(higher_price)))
+
                 '''
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_role("link", name="Next").click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_role("cell", name="Bid Size").click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_text("Bid Size", exact=True).click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_role("cell", name="Min. No. of Shares").click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_text("Min. No. of Shares").click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_text("37").nth(1).click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_role("cell", name="Higher Price Band").click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_text("Higher Price Band").click()
-                page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator("frame[name=\"contentmenu\"]").content_frame.get_by_text("395").click()
-                '''
-
-
-
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.locator("input[name=\"txtSharesIPO0\"]").click()
                 time.sleep(1)
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
-                    "frame[name=\"contentmenu\"]").content_frame.locator("input[name=\"txtSharesIPO0\"]").fill("2400")
+                    "frame[name=\"contentmenu\"]").content_frame.locator("input[name=\"txtSharesIPO0\"]").fill(min_shares)
                 time.sleep(1)
+                '''
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.locator("input[name=\"txtSharesIPO0\"]").press("Tab")
                 time.sleep(1)
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
-                    "frame[name=\"contentmenu\"]").content_frame.locator("input[name=\"txtPriceIPO0\"]").fill("117")
+                    "frame[name=\"contentmenu\"]").content_frame.locator("input[name=\"txtPriceIPO0\"]").fill(higher_price)
                 time.sleep(1)
+
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.locator("input[name=\"txtPriceIPO0\"]").press("Tab")
                 time.sleep(1)
@@ -220,6 +313,9 @@ async def apply_to_ipo(
                 await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                     "frame[name=\"contentmenu\"]").content_frame.get_by_role("link", name="Next").click()
                 time.sleep(1)
+
+                #await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
+                #    "frame[name=\"contentmenu\"]").content_frame.get_by_role("link", name="Confirm & Submit").click()
 
                 return "Applied"
 
@@ -243,13 +339,13 @@ async def apply_to_ipo(
             await page.screenshot(path="error-screenshot.png")
             print("Error screenshot saved.")
             return "Error in Applying"
-        time.sleep(25)
+        time.sleep(5)
 
         await context.close()
         await browser.close()
 
 
-def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg"):
+def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
     credentials_file = "credentials.json"
     users = load_credentials(credentials_file)
     # Users
@@ -259,7 +355,7 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg"):
         email_user = user.get("email_user")
         email_password = user.get("email_password")
 
-        result = asyncio.run(apply_to_ipo(ipo_name=ipo_name,USER_ID=bank_user,PASSWORD=bank_password,EMAIL_USR=email_user,EMAIL_PSS= email_password))
+        result = asyncio.run(apply_to_ipo(ipo_name=ipo_name,USER_ID=bank_user,PASSWORD=bank_password,EMAIL_USR=email_user,EMAIL_PSS= email_password,type_ipo=type_ipo))
         print("IPO",ipo_name,"result:",result)
 
 
@@ -268,4 +364,4 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg"):
 
 # Run the async function
 #asyncio.run(apply_to_ipo())
-apply_to_ipo_all_users(ipo_name="Amir Chand Jagdish Kumar")
+#apply_to_ipo_all_users(ipo_name="Highness Microelectr", type_ipo="sme")

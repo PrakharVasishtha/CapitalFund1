@@ -15,20 +15,7 @@ def withdraw_from_zerodha(
         headless: bool = True,
         timeout: int = 45000,
 ) -> tuple[bool, str]:
-    """
-    Automates withdrawal of funds from Zerodha Kite → Console.
 
-    Args:
-        user_id:      Zerodha client code (e.g. "MFB802")
-        password:     Zerodha login password
-        totp_secret:  Base32 TOTP secret (Google Authenticator / Authy key)
-        amount:       Amount to withdraw (will be converted to str)
-        headless:     Run browser without UI (recommended: True in production)
-        timeout:      Playwright action timeout in milliseconds
-
-    Returns:
-        tuple[bool, str]: (success, message)
-    """
     amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
 
     def run(playwright: Playwright) -> tuple[bool, str]:
@@ -76,9 +63,9 @@ def withdraw_from_zerodha(
             print(wihtdrawable)
             clean_wihtdrawable = wihtdrawable.replace("₹", "").split(".")[0]
             clean_wihtdrawable = Base.parse_float(clean_wihtdrawable)
-            print("clean",clean_wihtdrawable)
-            print("amount", amount)
-            print("Type", type(amount))
+            print("clean_wihtdrawable",clean_wihtdrawable)
+            print("required amount", amount)
+            #print("Type", type(amount))
             amount_float = float(amount)
             print("amount_float", amount_float)
             final_amount = 1.0
@@ -120,16 +107,3 @@ def withdraw_from_zerodha(
     # ── Execute ─────────────────────────────────────────────────────
     with sync_playwright() as playwright:
         return run(playwright)
-
-
-# ── Example usage (when running this file directly) ────────────────
-if __name__ == "__main__":
-    success, msg = withdraw_from_zerodha(
-        user_id="MFB802",
-        password="RamRate$1",
-        totp_secret="N6337C7PWQT2B3FHYPIPIRXEPRRGDOY2",
-        amount=.08,
-        headless=False,  # change to True on server
-    )
-    print("Success:", success)
-    print(msg)
