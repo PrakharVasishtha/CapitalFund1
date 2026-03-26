@@ -1,0 +1,125 @@
+import asyncio
+from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+from Base import *
+import difflib
+
+# ────────────────────────────────────────────────
+#  CONFIG - CHANGE THESE
+# ────────────────────────────────────────────────
+USER_ID = "961633451"  # Your Client Code
+PASSWORD = "gfdgser"
+
+HEADLESS = False  # Set True later; False = see browser for debugging
+DESIRED_IPO_NAME = "Highness Microelectronics"
+
+
+async def apply_to_ipo(
+        ipo_name="Highness Microelectronics",
+        bank_user="jhkh",
+        bank_pwd="hkhk",
+        type="MB",
+        headless=False
+):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=HEADLESS, slow_mo=300)  # slow_mo helps see actions
+        context = await browser.new_context(
+            viewport={'width': 1280, 'height': 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            bypass_csp=True,
+        )
+        page = await context.new_page()
+
+        try:
+            print("Navigating to Kotak...")
+            await page.goto("https://netbanking.kotak.bank.in/knb2/", wait_until="networkidle", timeout=45000)
+
+            # Wait for form to appear (page is JS-heavy)
+            await page.wait_for_load_state("domcontentloaded")
+
+            # ─── USER ID ─────────────────────────────────────────────
+            print("Filling User ID...")
+            user_locator = page.locator(
+                'input[placeholder*="User"][type="text"], '
+                'input[placeholder*="Client"], '
+                'input[placeholder*="ID"], '
+                '[aria-label*="user" i], '
+                'input[name*="user" i], '
+                'input[id*="user" i]'
+            ).first
+
+            await user_locator.wait_for(state="visible", timeout=10000)
+            await user_locator.fill(USER_ID)
+            time.sleep(1)
+            await page.keyboard.press('Tab')
+            # ─── PASSWORD ────────────────────────────────────────────
+            print("Filling Password...")
+            await page.keyboard.type("RamRate#26", delay=200)
+
+            # ─── LOGIN BUTTON ────────────────────────────────────────
+            print("Clicking Login...")
+            login_button = page.locator(
+                'button:has-text("Login"), '
+                'button:has-text("Sign In"), '
+                'button[type="submit"], '
+                'button[class*="login" i], '
+                '[role="button"]:has-text("Login")'
+            ).first
+
+            await login_button.click()
+            time.sleep(9)
+            EMAIL_USR = "prakharvasishtha9@gmail.com"
+            EMAIL_PSS = "qmtm daun rljp wjrx"
+            sub1 = '(SUBJECT "Net Banking login" UNSEEN)'
+            otp1 = get_netbanking_otp(EMAIL_USR, EMAIL_PSS, sub1)
+            print("OTP 1:", otp1)
+            time.sleep(1)
+            await page.keyboard.type(otp1, delay=100)
+
+            # ─── LOGIN BUTTON ────────────────────────────────────────
+            print("Clicking Login...")
+            login_button = page.locator(
+                'button:has-text("Login"), '
+                'button:has-text("Sign In"), '
+                'button[type="submit"], '
+                'button[class*="login" i], '
+                '[role="button"]:has-text("Login")'
+            ).first
+
+            await login_button.click()
+
+            try:
+                await page.locator(".icon-Show").first.click()
+                b1 =page.get_by_text("₹").first.inner_text()
+                b2 =page.locator("#summaryacconuntIdScroll").get_by_text("₹").inner_text()
+                await page.get_by_text("Accounts/Deposits").click()
+                await page.locator("app-account-overview-top h2").click()
+                b3 =page.get_by_text("Combined available balance").inner_text()
+                print(b1, b2, b3)
+            except Exception as e:
+                print(f"\nERROR: {str(e)}")
+                await page.screenshot(path="kotak-ipo-error.png")
+                print("Screenshot saved: kotak-ipo-error.png")
+                time.sleep(1)
+
+
+
+
+            except Exception as e:
+                print(f"Error: {e}")
+
+        except Exception as e:
+            print(f"Error: {e}")
+            await page.screenshot(path="error-screenshot.png")
+            print("Error screenshot saved.")
+
+        finally:
+            if not HEADLESS:
+                # Keep open for inspection
+                print("Browser will stay open for 60 seconds...")
+                await asyncio.sleep(60)
+            # await context.close()
+            # await browser.close()
+
+
+# Run the async function
+asyncio.run(apply_to_ipo())
