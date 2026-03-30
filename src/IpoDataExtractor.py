@@ -88,7 +88,8 @@ class ChittorgarhIPOExtractor:
         # Company name
         m = re.search(r'<title>([^|]+)', html, re.I)
         data.company_name = self._clean_text(m.group(1).replace(" IPO", "")) if m else "Unknown"
-        data.company_name=data.company_name[:20]
+        data.company_name = data.company_name.replace("Date,", "")
+        data.company_name=data.company_name[:21]
         # Issue price (cleaned)
         m = re.search(r'(?:Final )?Issue Price.*?([₹\d,.\s]+(?: to [₹\d,.\s]+)? per share)', html, re.I)
         if m:

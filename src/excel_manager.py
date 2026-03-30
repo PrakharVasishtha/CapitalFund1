@@ -98,7 +98,7 @@ class ExcelManager:
         type_ = ipo['category']
         ws = self.sme_ws if type_ == "SME" else self.main_ws
         ws.cell(row, 2, ipo['name'])
-        ws.cell(row, 3, int(ipo['year']))  # Adjust if column 3 is different
+        ws.cell(row, 3, ipo['year'])  # Adjust if column 3 is different
         self.wb.save(self.path)
         print("Appended new IPO")
         return row

@@ -87,7 +87,7 @@ def effect_pe_mb(url):
     if po_pe > pela_limit:
         e = -.9
     else:
-        e = .45
+        e = .7
     return e
 
 
