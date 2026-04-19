@@ -5,7 +5,6 @@
 from trading_base import *
 import pprint
 import pandas as pd
-from dhanhq import DhanContext, dhanhq
 
 # Path to your secure JSON file (add to .gitignore!)
 CREDENTIALS_FILE = "credentials.json"

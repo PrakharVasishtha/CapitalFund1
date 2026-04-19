@@ -16,10 +16,17 @@ def strategy_status_10days():
     row_sme = Base.get_last_row_sme() - 1
 
     url_csv= "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
+    df0 = pd.read_csv(url_csv)
+    time.sleep(1)
     df = pd.read_csv(url_csv)
-    buy = df.iloc[23, 2]
-    print("buy:", buy)
-    return buy
+    buynifty = df.iloc[23, 3]
+    #print("buynifty:", buynifty)
+    goldetfbuy = df.iloc[26, 3]
+    #print("goldetfbuy:", goldetfbuy)
+    silveretfbuy = df.iloc[29, 3]
+    #print("silveretfbuy:", silveretfbuy)
+
+    return int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
 
 def ipo_required_fund(d = 0):
     row_sme = Base.get_last_row_sme() - 1
@@ -36,10 +43,10 @@ def ipo_required_fund(d = 0):
     sme_fund = 0
     mb_fund = 0
     buy=int(strategy_status_10days())
-    print(buy)
+    print("buy:",buy)
     target_date = date.today() + timedelta(days=d)
     target_day = target_date.day
-    print(target_day)
+    print("date:",target_day)
     for i in range(0, 9):
         rw = row_sme - i
         apply = sme_ws.cell(rw, 42).value
@@ -55,16 +62,16 @@ def ipo_required_fund(d = 0):
                 
         elif apply == 1:
             if target_day == close_date:
-                if buy == 3 or buy == 4:
+                if buy > 0:
                     sme_fund = sme_fund
-                elif buy == 0 or buy == 1 or buy == 2:
+                elif buy == 0:
                     sme_fund = sme_fund + 280000
                     total_sme_2 = total_sme_2 + 1
                 
                 
     print("sme fund",sme_fund)
-    print("total_sme_1:", total_sme_1)
-    print("total_sme_2:", total_sme_2)
+    #print("total_sme_1:", total_sme_1)
+    #print("total_sme_2:", total_sme_2)
 
     for i in range(0, 9):
         rw = row_mb - i
@@ -78,16 +85,16 @@ def ipo_required_fund(d = 0):
                 
         elif apply == 1:
             if target_day == close_date:
-                if buy == 3 or buy == 4:
+                if buy > 0:
                     mb_fund = mb_fund
-                elif buy == 0 or buy == 1 or buy == 2:
+                elif buy == 0:
                     mb_fund = mb_fund + 209000
                     total_mb_2 = total_mb_2 + 1
 
 
     print("mb fund", mb_fund)
-    print("total_mb_1:", total_mb_1)
-    print("total_mb_2:", total_mb_2)
+    #print("total_mb_1:", total_mb_1)
+    #print("total_mb_2:", total_mb_2)
     total_fund=sme_fund + mb_fund
     print("Total Fund Required on:",target_day,"is:",total_fund)
     return total_fund
@@ -120,7 +127,7 @@ def daily_money_withdraw():
                 password=password_user,
                 totp_secret=topt_broker,
                 amount=final_amount,
-                headless=False,
+                headless=True,
             )
 
             print(success, message)
@@ -128,5 +135,5 @@ def daily_money_withdraw():
         print("No withdrawal required.")
 
 #print(strategy_status_10days())
-#print("ipo_required_fund",ipo_required_fund(10))
+#print("ipo_required_fund",ipo_required_fund(0))
 #print(daily_money_withdraw())

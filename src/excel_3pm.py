@@ -2,6 +2,8 @@ import openpyxl
 import difflib
 from typing import Dict, Any
 import time
+
+from src.Base import get_vix
 from write_formula import write_formula_sme,write_formula_mb
 from formula import Formula
 from ExtractGMP import get_ipo_gmp
@@ -15,18 +17,19 @@ def update_row_3pm(row: int, type1: str):
         wb = openpyxl.load_workbook(path)
         sme_ws = wb['IPOSME']
         main_ws = wb['IPOMB']
-        print(f"---------update_row_3pm---------Row: {row}")
+        #print(f"---------update_row_3pm---------Row: {row}")
         ws = sme_ws if type1 == "SME" else main_ws
         time.sleep(.2)
         
         
         today = date.today().day
-        close_day = ws.cell(row, 38).value
+        close_day = ws.cell(row, 40).value
         if today == close_day or today + 1 == close_day:
             url2 = ws.cell(row, 1).value
             name1 = ws.cell(row, 2).value
             print(name1)
             if name1 != None:
+                #
                 url1 = ws.cell(row, 3).value
 
                 gmp = get_ipo_gmp(name1)
@@ -34,11 +37,13 @@ def update_row_3pm(row: int, type1: str):
                 sub = get_ipo_subscription_live(url2)
                 print(sub)
                 review = has_dicey_word(url2)
+                AI = get_vix()
                 ws.cell(row, 28, gmp)
                 ws.cell(row, 23, review)
                 ws.cell(row, 24, sub[0])
                 ws.cell(row, 25, sub[1])
                 ws.cell(row, 26, sub[2])
+                ws.cell(row, 35, AI)
             else:
                 print("name is empty in sheet at:",row)
             try:
@@ -49,7 +54,8 @@ def update_row_3pm(row: int, type1: str):
             except Exception as e:
                 print(f"update_3pm An error occurred while saving the file: {e}")
         else:
-            print("Closing not today")
+            #print("Closing not today")
+            x=0
         wb.close()
 #update_row_3pm(114,'SME')
 #update_row_3pm(68,'MB')

@@ -1,12 +1,12 @@
 import openpyxl
-import difflib
+#import difflib
 import time
-from typing import Dict, Any
-from formula import Formula
+#from typing import Dict, Any
+#from formula import Formula
 from excel_manager import parse_float
-from ExtractGMP import get_ipo_gmp
-from ExtractReview import has_dicey_word
-from ExtractSubscription import get_ipo_subscription_dict
+#from ExtractGMP import get_ipo_gmp
+#from ExtractReview import has_dicey_word
+#from ExtractSubscription import get_ipo_subscription_dict
 
 def write_formula_sme(row: int, type1: str):
     path = '../General.xlsx'
@@ -131,4 +131,6 @@ def write_formula_mb(row: int, type1: str):
         print(f"write_formula MB Error: Permission denied. Please ensure '{path}' is closed.")
     except Exception as e:
         print(f"write_formula MB An error occurred while saving the file: {e}")
+
+
 #write_formula_mb(68, 'MB')

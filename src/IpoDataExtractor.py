@@ -24,7 +24,8 @@ class IPOData:
     anchor_allocation: str = "No"
 
     def to_dict(self) -> Dict[str, Any]:
-        return {k: v for k, v in self.__dict__.items() if v not in (None, {}, [], "N/A", "Not Available") or k in ["gmp", "issue_price_per_share", "unit"]}
+        return {k: v for k, v in self.__dict__.items() if
+                v not in (None, {}, [], "N/A", "Not Available") or k in ["gmp", "issue_price_per_share", "unit"]}
 
 
 class ChittorgarhIPOExtractor:
@@ -43,9 +44,8 @@ class ChittorgarhIPOExtractor:
             return float(s)
         except ValueError:
             return None
-    
+
     @staticmethod
-    
     def _extract_amount(text: str) -> str:
         """Extract the first numeric amount like 69.68 from '₹69.68 crores' or '81.01 Cr'."""
         if not text:
@@ -57,7 +57,7 @@ class ChittorgarhIPOExtractor:
             num = re.sub(r',', '', num_match.group(0))
             return num
         return ""
-    
+
     @staticmethod
     def _clean_amount_text(text: str) -> str:
         if not text:
@@ -89,7 +89,7 @@ class ChittorgarhIPOExtractor:
         m = re.search(r'<title>([^|]+)', html, re.I)
         data.company_name = self._clean_text(m.group(1).replace(" IPO", "")) if m else "Unknown"
         data.company_name = data.company_name.replace("Date,", "")
-        data.company_name=data.company_name[:21]
+        data.company_name = data.company_name[:21]
         # Issue price (cleaned)
         m = re.search(r'(?:Final )?Issue Price.*?([₹\d,.\s]+(?: to [₹\d,.\s]+)? per share)', html, re.I)
         if m:
@@ -117,7 +117,7 @@ class ChittorgarhIPOExtractor:
             m = re.search(pat, html, re.I)
             if m:
                 data.ipo_timeline[k] = self._clean_text(m.group(1))
-        
+
         # IPO Details (improved regexes to target precise values from intro paragraph where available)
         details = {
             "issue_size": r'(?:Total )?Issue Size.*?([₹\d,.\s]+ (?:Cr|crores?))',
@@ -137,21 +137,19 @@ class ChittorgarhIPOExtractor:
             if m:
                 data.ipo_details["issue_size"] = self._extract_amount(m.group(1))
 
-        #print(data.ipo_details)
+        # print(data.ipo_details)
         try:
-            data.ipo_details["offer_for_sale"] = float(data.ipo_details["issue_size"]) - float(data.ipo_details["fresh_issue"])
+            data.ipo_details["offer_for_sale"] = float(data.ipo_details["issue_size"]) - float(
+                data.ipo_details["fresh_issue"])
         except Exception as e:
-            #print(e)
+            # print(e)
             data.ipo_details["offer_for_sale"] = "0"
             try:
                 data.ipo_details["fresh_issue"] = float(data.ipo_details["issue_size"])
             except:
                 data.ipo_details["fresh_issue"] = "0"
-        
-        #print(data.ipo_details)
-        
-        
-        
+
+        # print(data.ipo_details)
 
         # Anchor Allocation
         m = re.search(r'Anchor Investor Shares Offered.*?(\d+)', html, re.I)
@@ -203,12 +201,15 @@ class ChittorgarhIPOExtractor:
         data.financials = {k: v for k, v in fin.items() if v}
 
         # Ratios (enhanced for KPI extraction)
-        ratios = {"eps": {}, "pe_ratio": "N/A", "ronw_percent": {}, "roe": {}, "roce": {}, "debt_equity": {}, "pat_margin": {}, "ebitda_margin": {}}
+        ratios = {"eps": {}, "pe_ratio": "N/A", "ronw_percent": {}, "roe": {}, "roce": {}, "debt_equity": {},
+                  "pat_margin": {}, "ebitda_margin": {}}
         for df in tables:
             if df.empty or df.shape[1] < 2:
                 continue
             txt = df.to_string().lower()
-            if any(term in txt for term in ["pre", "post", "eps", "p/e", "kpi", "key performance", "ronw", "roe", "roce", "debt", "pat margin", "ebitda margin"]):
+            if any(term in txt for term in
+                   ["pre", "post", "eps", "p/e", "kpi", "key performance", "ronw", "roe", "roce", "debt", "pat margin",
+                    "ebitda margin"]):
                 for _, row in df.iterrows():
                     desc = str(row.iloc[0]).lower()
                     if df.shape[1] > 2 and ("pre" in txt or "post" in txt):
@@ -271,24 +272,9 @@ class ChittorgarhIPOExtractor:
         if "million" in page:
             data.unit = "Millions"
         elif "lakh" in page:
-                                                                                                                                                                                                                                                                                                                                                                                                           data.unit = "Lakhs"
+            data.unit = "Lakhs"
         else:
             data.unit = "Crores"
 
         return data
 
-
-# ====================== USAGE ======================
-if __name__ == "__main__":
-    extractor = ChittorgarhIPOExtractor()
-
-    urls = [
-        #"https://www.chittorgarh.com/ipo/digilogic-systems-ipo/2617/",
-        "https://www.chittorgarh.com/ipo/dsm-fresh-foods-ipo/2441/",
-    ]
-
-    for url in urls:
-        print("\n" + "="*90)
-        ipo = extractor.extract(url)
-        for k, v in ipo.to_dict().items():
-            print(f"{k:25}: {v}")

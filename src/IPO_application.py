@@ -134,4 +134,4 @@ def ipo_application():
             print(e)
 
 #print(IPO_to_apply())
-ipo_application()
+#ipo_application()

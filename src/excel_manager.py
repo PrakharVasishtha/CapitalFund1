@@ -8,6 +8,8 @@ from formula import Formula
 from ExtractGMP import get_ipo_gmp
 from ExtractReview import has_dicey_word
 from ExtractSubscription import get_ipo_subscription_dict
+from src.Base import get_vix
+
 
 def safe_get(d: Any, *keys: str, default: Any = None) -> Any:
     for key in keys:
@@ -70,8 +72,6 @@ def find_listing(closing):
     if listing > 30:
         listing = 1
     return listing
-    
-print(find_listing("08012026"))
 
 class ExcelManager:
     def __init__(self):
@@ -204,7 +204,7 @@ class ExcelManager:
         except Exception as e:
             print(f"write_details An error occurred while saving the file: {e}")
             
-    def write_details_GSR(self, row: int,gmp: float, sub: list, review: int, type1: str):
+    def write_details_GSR(self, row: int,gmp: float, sub: list, review: int, type1: str,industry_score: float):
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         time.sleep(.2)
         try:
@@ -214,6 +214,8 @@ class ExcelManager:
             Z = parse_float(sub[2])
             #TS=sub[3]
             AB = gmp
+            AQ = industry_score
+            AI = get_vix()
         except Exception as e:
             print(f"write_details_GSR An error occurred while assigning data for row {row}: {e}")
             return  # Skip save on error
@@ -223,7 +225,9 @@ class ExcelManager:
         ws.cell(row, 24, X)   # B
         ws.cell(row, 25, Y)     #C
         ws.cell(row, 26, Z)     #C
-        ws.cell(row, 28, AB)     #C
+        ws.cell(row, 28, AB)
+        ws.cell(row, 35, AI)
+        ws.cell(row, 43, AQ)
 
         try:
             self.wb.save(self.path)

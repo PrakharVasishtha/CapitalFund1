@@ -10,6 +10,16 @@ import datetime
 from email import message_from_bytes
 from email.utils import parsedate_to_datetime
 from typing import Dict, Any
+import yfinance as yf
+
+def get_vix():
+    try:
+        vix_value = yf.Ticker("^INDIAVIX").info.get('regularMarketPrice')
+        #print("Current India VIX:", round(vix_value, 2) if vix_value else "N/A")
+    except:
+        vix_value = 13.5
+    return vix_value
+
 
 def parse_float(val: Any) -> float:
     if isinstance(val, (int, float)):
@@ -132,15 +142,20 @@ def otp_shoonya(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7):
     return None
 
 def is_data_available(url):
-    extractor = ChittorgarhIPOExtractor()
-    data1 = extractor.extract(url)
-    #print(data1)
-    data2 = clean_ipo_data(data1)
-    #print(data2)
-    if "N/A" in data2.get('issue_price_per_share','o'):
+    try:
+        extractor = ChittorgarhIPOExtractor()
+        data1 = extractor.extract(url)
+        #print(data1)
+        data2 = clean_ipo_data(data1)
+        #print(data2)
+        if "N/A" in data2.get('issue_price_per_share','o'):
+            return False
+        elif "N/A" in data2.get("ratios",'o').get("pe_ratio",'o'):
+            return False
+        else:
+            return True
+    except Exception as e:
         return False
-    else:
-        return True
     
 def get_last_row(file,sheet):
     path = file
@@ -178,7 +193,7 @@ def get_last_row_mb():
             break
     return last_row+1
 
-#is_data_available("https://www.chittorgarh.com/ipo/nfp-sampoorna-foods-ipo/2397/")
+#print(is_data_available("https://www.chittorgarh.com/ipo/emiac-technologies-ipo/2766/"))
 #print(get_last_row_sme())
 #print(get_last_row('../General.xlsx','IPOSME'))0
 
@@ -189,3 +204,4 @@ sub = '(SUBJECT "OTP")'
 search_query = '(SUBJECT "OTP Generated" UNSEEN)'
 #print(get_netbanking_otp(EMAIL_USER, EMAIL_PASS, sub))
 #print(otp_shoonya(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7))
+#print(get_vix())

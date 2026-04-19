@@ -8,12 +8,12 @@ import pyotp
 USER_ID     = "MFB802"                  # Your Client Code
 PASSWORD    = "RamRate$1"
 secret = "DOIIMB2PTIIOCKDQ4ILOCPVF44YJ7QBU"
-HEADLESS    = False                      # Set True later; False = see browser for debugging
+HEADLESS    = True                      # Set True later; False = see browser for debugging
 
 
 
 def run(playwright: Playwright) -> None:
-    browser = playwright.chromium.launch(headless=False)
+    browser = playwright.chromium.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
     page.goto("https://kite.zerodha.com/")
