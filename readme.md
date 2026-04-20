@@ -1,3 +1,14 @@
+Setup:
+
+
+
+
+
+New Account Add:
+
+for gmail app password go directly to :
+https://myaccount.google.com/apppasswords
+
 
 ipo_automation/
 ├── src/

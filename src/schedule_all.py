@@ -38,6 +38,7 @@ def run_now():
         fund_manager.daily_money_withdraw()
         master_functions.update_3pm()
         IPO_application.ipo_application()
+        print("Finished")
 
     except Exception as Argument:
         print("Problem in run_now")
