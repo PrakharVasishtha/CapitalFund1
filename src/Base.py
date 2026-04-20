@@ -12,6 +12,13 @@ from email.utils import parsedate_to_datetime
 from typing import Dict, Any
 import yfinance as yf
 
+def Logger(file,StringText="OK",FunctionName="In Function"):
+    s = FunctionName+str(StringText)+" at time :"+str(datetime.datetime.now()) 
+    f = open(file, "a")
+    f.write(s)
+    f.write("\n")
+    f.close()
+    
 def get_vix():
     try:
         vix_value = yf.Ticker("^INDIAVIX").info.get('regularMarketPrice')
