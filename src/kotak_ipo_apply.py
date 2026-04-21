@@ -58,7 +58,8 @@ async def apply_to_ipo(
             bypass_csp=True,
         )
         page = await context.new_page()
-
+        #for logger purposes
+        filename = USER_ID + "ipoapplied.txt"
         try:
             print("Navigating to Kotak...")
             await page.goto("https://netbanking.kotak.bank.in/knb2/", wait_until="networkidle", timeout=45000)
@@ -490,19 +491,33 @@ async def apply_to_ipo(
                         await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
                             "frame[name=\"contentmenu\"]").content_frame.get_by_role("link",
                                                                                      name="Confirm & Submit").click()
+                        st1 = await  page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
+                            "frame[name=\"contentmenu\"]").content_frame.get_by_role("heading",
+                                                                             name="Error in IPO Apply").all_inner_texts()
+                        st2 = await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
+                            "frame[name=\"contentmenu\"]").content_frame.get_by_role("heading", name="ERROR",
+                                                                             exact=True).all_inner_texts()
+                        st3 = await page.locator("iframe[name=\"knb2ContainerFrame\"]").content_frame.locator(
+                            "frame[name=\"contentmenu\"]").content_frame.get_by_text("Error Message").all_inner_texts()
+                        
+                        if "error" in t1[0].lower() or "error" in t2[0].lower() or "error" in t3[0].lower():
+                            print("Error in 2nd round")
+                            return None
+
+                        logger(filename,"applied in retail",ipo_name)
+                            
                         time.sleep(1)
                         return None
 
                     except Exception as e:
                         print(f"\nERROR: {str(e)}")
-                        await page.screenshot(path="kotak-ipo-error.png")
-                        print("Screenshot saved: kotak-ipo-error.png")
                         time.sleep(1)
                         return "Not Applied"
 
                 else:
-                    print("No error text so ,Applied")
-                    return "Applied"
+                    print("No error text")
+                    logger(filename,"applied in SNI",ipo_name)
+                    return None
 
             except Exception as e:
                 print(f"\nERROR: {str(e)}")

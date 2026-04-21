@@ -27,6 +27,13 @@ def load_credentials(file_path: str) -> list:
         print(f"Error: Invalid JSON in {file_path}.")
         return []
 
+def Logger(file,StringText="OK",FunctionName="In Function"):
+    s = FunctionName+str(StringText)+" at time :"+str(datetime.datetime.now()) 
+    f = open(file, "a")
+    f.write(s)
+    f.write("\n")
+    f.close()
+    
 def get_vix():
     try:
         vix_value = yf.Ticker("^INDIAVIX").info.get('regularMarketPrice')
