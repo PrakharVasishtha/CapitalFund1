@@ -1,5 +1,4 @@
 import pandas as pd
-import Base
 import openpyxl
 from datetime import date,timedelta
 import kotak_get_balance
@@ -7,13 +6,13 @@ import time
 import asyncio
 
 from zerodha_withdraw import withdraw_from_zerodha
-from trading_base import *
+from Base import *
 
 CREDENTIALS_FILE = "credentials.json"
 
 
 def strategy_status_10days():
-    row_sme = Base.get_last_row_sme() - 1
+    row_sme = get_last_row_sme() - 1
 
     url_csv= "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
     df0 = pd.read_csv(url_csv)
@@ -29,8 +28,8 @@ def strategy_status_10days():
     return int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
 
 def ipo_required_fund(d = 0):
-    row_sme = Base.get_last_row_sme() - 1
-    row_mb = Base.get_last_row_mb() - 1
+    row_sme = get_last_row_sme() - 1
+    row_mb = get_last_row_mb() - 1
     total_sme_1 = 0
     total_sme_2 = 0
     total_mb_1 = 0

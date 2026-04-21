@@ -11,6 +11,21 @@ from email import message_from_bytes
 from email.utils import parsedate_to_datetime
 from typing import Dict, Any
 import yfinance as yf
+import json
+
+
+def load_credentials(file_path: str) -> list:
+    """Load user credentials from JSON file."""
+    try:
+        with open(file_path, "r") as f:
+            data = json.load(f)
+            return data.get("users", [])
+    except FileNotFoundError:
+        print(f"Error: {file_path} not found. Create it with the correct structure.")
+        return []
+    except json.JSONDecodeError:
+        print(f"Error: Invalid JSON in {file_path}.")
+        return []
 
 def get_vix():
     try:

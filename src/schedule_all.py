@@ -35,9 +35,9 @@ def run_now():
     try:
         print("running now")
         master_functions.latest_ipo_entry()
-        fund_manager.daily_money_withdraw()
+        #fund_manager.daily_money_withdraw()
         master_functions.update_3pm()
-        IPO_application.ipo_application()
+        #IPO_application.ipo_application()
         print("Finished")
 
     except Exception as Argument:
@@ -50,9 +50,9 @@ def run_now():
 
 schedule.every().day.at("08:45").do(ipo_entry)
 schedule.every().day.at("10:05").do(update_before_close)
-schedule.every().day.at("10:10").do(money_withdraw)
+#schedule.every().day.at("10:10").do(money_withdraw)
 schedule.every().day.at("14:50").do(update_before_close)
-schedule.every().day.at("14:55").do(ipo_application)
+#schedule.every().day.at("14:55").do(ipo_application)
 
 
 while True:

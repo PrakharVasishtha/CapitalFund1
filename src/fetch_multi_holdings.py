@@ -2,7 +2,7 @@
 # Uses dhanhq official SDK: pip install dhanhq
 # Optional: pandas for tabular output (pip install pandas openpyxl)
 
-from trading_base import *
+from Base import *
 import pprint
 import pandas as pd
 
