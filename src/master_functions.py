@@ -93,5 +93,5 @@ def master_saler():
     print("------------saler end-------------")
 
 #latest_ipo_entry()
-update_3pm()
+#update_3pm()
 #master_saler()
