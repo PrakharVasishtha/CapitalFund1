@@ -11,9 +11,9 @@ def zerodha_buy(
         user_id: str,
         password: str,
         totp_secret: str,
-        amount: float | int,
-
-        headless: bool = True,
+        amount: int,
+        security_symbol: str,
+        headless: bool = False,
         timeout: int = 45000,
 ) -> tuple[bool, str]:
 
@@ -30,6 +30,8 @@ def zerodha_buy(
                     "Chrome/128.0.0.0 Safari/537.36"
                 )
             )
+
+
             page: Page = context.new_page()
             page.set_default_timeout(timeout)
 
@@ -46,19 +48,32 @@ def zerodha_buy(
             totp = pyotp.TOTP(totp_secret)
             current_otp = totp.now()
             page.get_by_role("spinbutton", name="External TOTP").fill(current_otp)
+            time.sleep(2)
+            page.mouse.click(100, 200);
+            time.sleep(.5)
 
             # Buy
+            page.keyboard.press('PageDown')
+            time.sleep(1)
+            page.keyboard.press('B')
+            page.get_by_text("Regular").click()
             page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").click()
             page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").fill("1")
             page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").press("Tab")
-            page.get_by_role("spinbutton", name="Price", exact=True).press("ControlOrMeta+c")
-            page.get_by_role("spinbutton", name="Price", exact=True).fill("275")
+            price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
+            print(type(price))
+            p = Base.parse_float(price)
+            p1 = Base.parse_float(p * .995)
+            p2 = Base.parse_float(p * .990)
+            p3 = Base.parse_float(p * .985)
+            p4 = Base.parse_float(p * .980)
+            p5 = Base.parse_float(p * .975)
+            print(p, p1, p2, p3, p4, p5)
+            target_prices = [p1, p2, p3, p4, p5]
+            page.get_by_role("spinbutton", name="Price", exact=True).fill(p1)
             page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
             page.get_by_role("button", name="Buy").click()
-            page.get_by_role("button", name="Cancel").click()
-
-
-
+            time.sleep(2)
 
             return True, f"Withdrawal initiated successfully"
 

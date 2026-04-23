@@ -92,6 +92,6 @@ def master_saler():
     sme_ws = wb['IPOSME']
     print("------------saler end-------------")
 
-#latest_ipo_entry()
+latest_ipo_entry()
 #update_3pm()
 #master_saler()

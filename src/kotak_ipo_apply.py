@@ -1,7 +1,6 @@
 import asyncio
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 from Base import *
-from trading_base import *
 import difflib
 
 
