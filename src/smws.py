@@ -20,7 +20,9 @@ def smws_buyer():
     silveretfbuy = df.iloc[29, 3]
     print("silveretfbuy:", silveretfbuy)
     buynifty =1
-    if int(buynifty)+int(goldetfbuy)+int(silveretfbuy)>0:
+    total_securities = int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+    amount_per_security = buy_amount / total_securities
+    if total_securities > 0:
         users = load_credentials(CREDENTIALS_FILE)
         # Users
         for user in users:
@@ -34,7 +36,10 @@ def smws_buyer():
             buy_amount = 90
 
             if int(buynifty) == 1:
-                zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=buy_amount,security_symbol="NIFTYIETF")
-
+                zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="NIFTYIETF")
+            if int(goldetfbuy) == 1:
+                zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="TATAGOLD")
+            if int(silveretfbuy) == 1:
+                zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="TATSILV")
 
 smws_buyer()
