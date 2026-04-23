@@ -31,7 +31,6 @@ def zerodha_buy(
                 )
             )
 
-
             page: Page = context.new_page()
             page.set_default_timeout(timeout)
 
@@ -39,11 +38,11 @@ def zerodha_buy(
             page.goto("https://kite.zerodha.com/", wait_until="domcontentloaded")
             time.sleep(1)
 
-
             page.get_by_role("textbox", name="Phone number or User ID").fill(user_id)
             page.get_by_role("textbox", name="Password").fill(password)
             page.get_by_role("button", name="Login").click()
             time.sleep(1)
+                
             # ── TOTP ────────────────────────────────────────────────
             totp = pyotp.TOTP(totp_secret)
             current_otp = totp.now()
@@ -52,7 +51,7 @@ def zerodha_buy(
             page.mouse.click(100, 200);
             time.sleep(.5)
 
-            # Buy
+            # Price amount determination
             page.keyboard.press('PageDown')
             time.sleep(1)
             page.keyboard.press('B')
@@ -61,8 +60,10 @@ def zerodha_buy(
             page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").fill("1")
             page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").press("Tab")
             price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
+            page.get_by_role("button", name="Cancel").click()
             print(type(price))
             p = Base.parse_float(price)
+            q = int((amount/5 - 1) / p)
             p1 = Base.parse_float(p * .995)
             p2 = Base.parse_float(p * .990)
             p3 = Base.parse_float(p * .985)
@@ -70,16 +71,24 @@ def zerodha_buy(
             p5 = Base.parse_float(p * .975)
             print(p, p1, p2, p3, p4, p5)
             target_prices = [p1, p2, p3, p4, p5]
-            page.get_by_role("spinbutton", name="Price", exact=True).fill(p1)
-            page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
-            page.get_by_role("button", name="Buy").click()
-            time.sleep(2)
 
-            return True, f"Withdrawal initiated successfully"
+            # Buy 5 orders
+            for k in target_prices:
+                page.keyboard.press('B')
+                page.get_by_text("Regular").click()
+                page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").click()
+                page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").fill(q)
+                page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").press("Tab")
+                page.get_by_role("spinbutton", name="Price", exact=True).fill(k)
+                page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
+                page.get_by_role("button", name="Buy").click()
+                time.sleep(2)
+
+            return True, f"buy orders initiated successfully"
 
         except Exception as e:
             import traceback
-            return False, f"Withdrawal failed: {str(e)}\n{traceback.format_exc()}"
+            return False, f"buy orders failed: {str(e)}\n{traceback.format_exc()}"
 
         finally:
             if 'context' in locals():
