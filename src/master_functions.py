@@ -1,6 +1,4 @@
 import openpyxl
-#import schedule_all
-import time
 import Base
 from excel_3pm import update_row_3pm
 from ExtractReview import has_dicey_word
@@ -10,7 +8,6 @@ from cleanfetcheddata import clean_ipo_data
 from IpoDataExtractor import ChittorgarhIPOExtractor, IPOData
 from ExtractGMP import get_ipo_gmp
 from ExtractSubscription import get_ipo_subscription_dict
-import Base
 
 
 
@@ -26,8 +23,9 @@ def latest_ipo_entry():
         name1 = ipo['name']
         url3 = ipo['url']
         industry_score = ipo['industry_score']
-        #print("type1",type1,"name1",name1,"url3",url3)
+        print("type1",type1,"name1",name1,"url3",url3)
         data_available = Base.is_data_available(url3)
+        print("data_available",data_available)
         if type1 == "SME":
             row = row_sme
         else:
@@ -35,7 +33,7 @@ def latest_ipo_entry():
         if not ex.exists(type1, name1) and data_available:
             ex.append(ipo,row)
             url2 = ipo['url']
-            # print(url2)
+            print(url2)
             extractor = ChittorgarhIPOExtractor()
             data1 = extractor.extract(url2)
             data2 = clean_ipo_data(data1)

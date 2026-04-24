@@ -89,7 +89,7 @@ class ExcelManager:
                 excel_norm = normalize_name(cell.value)
                 starts1 = scrape_norm.startswith(excel_norm)
                 starts2 = excel_norm.startswith(scrape_norm)
-                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.65
+                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.86
                 if starts1 or starts2 or sim:
                     return True
         return False
@@ -347,5 +347,7 @@ class ExcelManager:
         except Exception as e:
             print(f"write_formula MB An error occurred while saving the file: {e}")
 
+
+#print(ExcelManager().exists("SME","Adisoft Technologies"))
 #ExcelManager().write_formula_sme(108,"SME")
 #ExcelManager().write_formula_mb(69,"MB")

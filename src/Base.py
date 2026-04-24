@@ -2,8 +2,8 @@ from cleanfetcheddata import clean_ipo_data
 from IpoDataExtractor import ChittorgarhIPOExtractor, IPOData
 import openpyxl
 import imaplib
-import email
-from email import message_from_bytes
+import requests
+from bs4 import BeautifulSoup
 import re
 import time
 import datetime
@@ -12,6 +12,23 @@ from email.utils import parsedate_to_datetime
 from typing import Dict, Any
 import yfinance as yf
 import json
+
+def page_contains_trust(url: str) -> bool:
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        text = soup.get_text().lower()
+
+        return "trust" in text
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
 
 def parse_float(val: Any) -> float:
     if isinstance(val, (int, float)):
@@ -180,14 +197,18 @@ def is_data_available(url):
         #print(data1)
         data2 = clean_ipo_data(data1)
         #print(data2)
-        if "N/A" in data2.get('issue_price_per_share','o'):
+        if "N/A" in data2.get('issue_price_per_share','N/A'):
+            print("issue_price_per_share")
             return False
-        elif "N/A" in data2.get("ratios",'o').get("pe_ratio",'o'):
+        elif page_contains_trust(url):
+            print("trust")
             return False
         else:
             return True
+
     except Exception as e:
-        return False
+        print(f"Error: {str(e)}")
+        return True
     
 def get_last_row(file,sheet):
     path = file
@@ -225,7 +246,9 @@ def get_last_row_mb():
             break
     return last_row+1
 
-#print(is_data_available("https://www.chittorgarh.com/ipo/emiac-technologies-ipo/2766/"))
+#print(is_data_available("https://www.chittorgarh.com/ipo_review/emiac-technologies-ipo/5030/"))
+#print(is_data_available("https://www.chittorgarh.com/ipo/propshare-celestia-scheme-ipo/2965/"))
+#print(is_data_available("https://www.chittorgarh.com/ipo/om-power-transmission-ipo/2676/"))
 #print(get_last_row_sme())
 #print(get_last_row('../General.xlsx','IPOSME'))0
 
