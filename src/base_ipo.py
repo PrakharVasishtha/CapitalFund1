@@ -83,7 +83,7 @@ def get_industry_score(industry: str) -> float:
         return 1  # Strongest fundraising and consistent performer
 
     elif any(x in ind for x in ['it & software', 'it ', 'software', 'digital', 'tech', 'saas', 'ai']):
-        return 0.65  # Very strong due to AI, cloud, digital transformation
+        return 0.95  # Very strong due to AI, cloud, digital transformation
 
     elif any(x in ind for x in ['power & energy', 'renewable', 'solar', 'wind', 'energy']):
         return 1  # Green energy push + policy support
@@ -115,8 +115,8 @@ def get_industry_score(industry: str) -> float:
     elif any(x in ind for x in ['jewellery']):
         return 1.
 
-    elif any(x in ind for x in ['media & entertainment','textiles & jewellery','textile']):
-        return 1
+    elif any(x in ind for x in ['media & entertainment','textile']):
+        return .98
 
     elif any(x in ind for x in ['metals & mining', 'steel', 'cement']):
         return 1
