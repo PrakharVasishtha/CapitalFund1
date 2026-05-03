@@ -12,3 +12,5 @@ webdriver-manager
 kiteconnect
 schedule
 yfinance
+rapidfuzz
+html5lib

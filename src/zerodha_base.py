@@ -6,17 +6,41 @@ from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 from typing import Optional
 
+def get_margin(page):
+    selectors = [
+        # primary (clean)
+        lambda: page.locator("div:has-text('Available margin') .value").first.inner_text(),
+
+        # fallback 1 (relative)
+        lambda: page.get_by_text("Available margin").locator("..").locator(".value").inner_text(),
+
+        # fallback 2 (loose match)
+        lambda: page.locator(":text('Available margin')").locator("xpath=..").locator(".value").inner_text(),
+
+        # fallback 3 (generic grab near funds page)
+        lambda: page.locator(".value").nth(0).inner_text(),
+    ]
+
+    for fn in selectors:
+        try:
+            val = fn()
+            if val and any(char.isdigit() for char in val):
+                return val
+        except:
+            continue
+
+    raise Exception("Margin not found")
+
+def parse_money(text):
+    return float(re.sub(r"[^\d.]", "", text))
 
 def get_balance_zerodha(
         user_id: str,
         password: str,
         totp_secret: str,
-        amount: float | int,
-        headless: bool = True,
-        timeout: int = 45000,
-) -> tuple[bool, str]:
-
-    amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
+        headless: bool = False,
+        timeout: int = 5000,
+) -> int:
 
     def run(playwright: Playwright) -> tuple[bool, str]:
         try:
@@ -45,58 +69,24 @@ def get_balance_zerodha(
             totp = pyotp.TOTP(totp_secret)
             current_otp = totp.now()
             page.get_by_role("spinbutton", name="External TOTP").fill(current_otp)
-
+            time.sleep(2)
             # Wait for dashboard to load
+            page.wait_for_selector("text=Funds")
             page.get_by_role("link", name="Funds").click()
-            time.sleep(1)
-            # ── Open withdrawal popup ───────────────────────────────
-            with page.expect_popup() as popup_info:
-                page.get_by_role("link", name="Withdraw").click()
+            page.wait_for_selector("text=Available margin")
 
-            withdraw_page: Page = popup_info.value
-            withdraw_page.wait_for_load_state("domcontentloaded")
+            margin_text = get_margin(page)
+            margin_value = parse_money(margin_text)
 
-            # Sometimes Zerodha redirects or opens console directly
-            if "console.zerodha.com" not in withdraw_page.url:
-                withdraw_page.goto("https://console.zerodha.com/funds/overview?src=kiteweb")
-            wihtdrawable = withdraw_page.get_by_text("₹").nth(4).inner_text()
-            print(wihtdrawable)
-            clean_wihtdrawable = wihtdrawable.replace("₹", "").split(".")[0]
-            clean_wihtdrawable = Base.parse_float(clean_wihtdrawable)
-            print("clean_wihtdrawable",clean_wihtdrawable)
-            print("required amount", amount)
-            #print("Type", type(amount))
-            amount_float = float(amount)
-            print("amount_float", amount_float)
-            final_amount = 1.0
-            if clean_wihtdrawable < amount_float:
-                final_amount = clean_wihtdrawable
-            else:
-                final_amount = amount_float
-            print("final_amount",final_amount)
-            time.sleep(1)
-            # ── Enter amount & confirm ──────────────────────────────
-            if final_amount >= 1:
-                eq_input = withdraw_page.locator("#eq_input")
-                eq_input.wait_for(state="visible", timeout=15000)
-                eq_input.click()
-                amount_str = str(int(float(final_amount)))
-                print("amount_str",amount_str)
-                eq_input.fill(amount_str)
+            print("Margin:", margin_value)
 
-                withdraw_page.get_by_role("button", name="Continue").click()
-                withdraw_page.get_by_role("button", name="Confirm").click()
 
-                # Give some time for confirmation (you can improve this)
-                withdraw_page.wait_for_timeout(4000)
-            else:
-                print("less than 1 amount, so no withdrawal")
 
-            return True, f"Withdrawal initiated successfully"
+            return margin_value
 
         except Exception as e:
             import traceback
-            return False, f"Withdrawal failed: {str(e)}\n{traceback.format_exc()}"
+            return 1
 
         finally:
             if 'context' in locals():

@@ -6,21 +6,16 @@ from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 from typing import Optional
 
-
-def zerodha_buy(
+def zerodha_sell(
         user_id: str,
         password: str,
         totp_secret: str,
-        amount: int,
         security_symbol: str,
         headless: bool = False,
-        timeout: int = 45000,
+        timeout: int = 5000,
 ) -> tuple[bool, str]:
-
-    amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
-
     def run(playwright: Playwright) -> tuple[bool, str]:
-        print("-----",user_id,amount,security_symbol,"-----")
+        print("______zerodha_sell___",user_id,":",security_symbol)
         try:
             browser = playwright.chromium.launch(headless=headless)
             context = browser.new_context(
@@ -43,7 +38,7 @@ def zerodha_buy(
             page.get_by_role("textbox", name="Password").fill(password)
             page.get_by_role("button", name="Login").click()
             time.sleep(1)
-                
+
             # ── TOTP ────────────────────────────────────────────────
             totp = pyotp.TOTP(totp_secret)
             current_otp = totp.now()
@@ -64,62 +59,72 @@ def zerodha_buy(
                 page.keyboard.press('ArrowDown')
                 time.sleep(.3)
                 page.keyboard.press('ArrowDown')
-            security_buy = "BUY " + security_symbol + " (NSE) quantity"
+            security_sell = "SELL " + security_symbol + " (NSE) quantity"
+            print(security_sell)
             time.sleep(1)
 
+            time.sleep(1)
             try:
-                page.keyboard.press('B')
+                page.keyboard.press('S')
                 page.get_by_text("Regular").click()
-                page.get_by_role("spinbutton", name=security_buy).click()
-                page.get_by_role("spinbutton", name=security_buy).fill("1")
-                page.get_by_role("spinbutton", name=security_buy).press("Tab")
+                #page.get_by_role("spinbutton", name=security_sell).click()
+                #page.get_by_role("spinbutton", name=security_sell).fill("1")
+                #page.get_by_role("spinbutton", name=security_sell).press("Tab")
                 price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
                 page.get_by_role("button", name="Cancel").click()
-                time.sleep(1)
+                p = Base.parse_float(price)
+                p1 = str(round(Base.parse_float(p * 1.0025),2))
+                p2 = str(round(Base.parse_float(p * 1.005),2))
+                target_prices = [p1, p2]
+                page.get_by_role("link", name="Holdings").click()
+                try:
+                    page.get_by_role("cell", name=security_symbol).click()
+                    holdings = page.get_by_role("spinbutton", name=security_sell).input_value()
+                except Exception as e:
+                    holdings = 0
+                    print(e)
+                print(holdings)
+                if holdings!=0: q = str(int(int(holdings) / 2))
+                else: q = 0
+
+                print(holdings,q,p,target_prices)
+
             except Exception as e:
                 print(e)
-            time.sleep(1)
-            print(price)
-            p = Base.parse_float(price)
-            q = str(int((amount/5 - 1) / p))
-            p1 = str(round(Base.parse_float(p * .9975),2))
-            p2 = str(round(Base.parse_float(p * .995),2))
-            p3 = str(round(Base.parse_float(p * .9925),2))
-            p4 = str(round(Base.parse_float(p * .99),2))
-            p5 = str(round(Base.parse_float(p * .9875),2))
-            print(p, p1, p2, p3, p4, p5)
-            target_prices = [p1, p2, p3, p4, p5]
-
             # Buy 5 orders
-            for k in target_prices:
-                try:
-                    page.keyboard.press('B')
-                    page.get_by_text("Regular").click()
+            if q!=0:
+                for k in target_prices:
+                    try:
+                        page.keyboard.press('S')
+                        page.get_by_text("Regular").click()
+                        page.get_by_role("spinbutton", name=security_sell).click()
+                        page.get_by_role("spinbutton", name=security_sell).fill(q)
+                        page.get_by_text("Limit").click()
+                        #page.get_by_role("spinbutton", name=security_sell).press("Tab")
+                        time.sleep(2)
+                        page.get_by_role("spinbutton", name="Price", exact=True).click()
+                        page.get_by_role("spinbutton", name="Price", exact=True).press("ControlOrMeta+a")
+                        page.get_by_role("spinbutton", name="Price", exact=True).fill(k)
+                        time.sleep(2)
+                        #page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
+                        page.get_by_role("button", name="Sell").click()
+                        page.get_by_role("button", name="Cancel").click()
+                        time.sleep(2)
+                    except Exception as e:
+                        print(e)
 
-                    page.get_by_role("spinbutton", name=security_buy).click()
-                    page.get_by_role("spinbutton", name=security_buy).fill(q)
-                    time.sleep(1)
-                    page.get_by_role("spinbutton", name=security_buy).press("Tab")
-                    page.get_by_role("spinbutton", name="Price", exact=True).fill(k)
-                    time.sleep(1)
-                    page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
-                    page.get_by_role("button", name="Buy").click()
-                    page.get_by_role("button", name="Cancel").click()
-                    time.sleep(5)
-                except Exception as e:
-                    print(e)
-
-            return 1
+            return True, f"Sell orders initiated successfully"
 
         except Exception as e:
             import traceback
-            return 0
+            return False, f"Sell orders failed: {str(e)}\n{traceback.format_exc()}"
 
         finally:
             if 'context' in locals():
                 context.close()
             if 'browser' in locals():
                 browser.close()
+
     # ── Execute ─────────────────────────────────────────────────────
     with sync_playwright() as playwright:
         return run(playwright)

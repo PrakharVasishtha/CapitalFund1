@@ -12,15 +12,16 @@ def withdraw_from_zerodha(
         password: str,
         totp_secret: str,
         amount: float | int,
-        headless: bool = True,
+        headless: bool = False,
         timeout: int = 45000,
 ) -> tuple[bool, str]:
 
     amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
 
     def run(playwright: Playwright) -> tuple[bool, str]:
+        print(user_id,"reqrd to withdrw frm zerodha",amount)
         try:
-            browser = playwright.chromium.launch(headless=headless)
+            browser = playwright.chromium.launch(headless=False)
             context = browser.new_context(
                 viewport={"width": 1280, "height": 800},
                 user_agent=(
@@ -59,7 +60,8 @@ def withdraw_from_zerodha(
             # Sometimes Zerodha redirects or opens console directly
             if "console.zerodha.com" not in withdraw_page.url:
                 withdraw_page.goto("https://console.zerodha.com/funds/overview?src=kiteweb")
-            wihtdrawable = withdraw_page.get_by_text("₹").nth(4).inner_text()
+            time.sleep(1)
+            wihtdrawable = withdraw_page.get_by_text("₹").nth(5).inner_text()
             print(wihtdrawable)
             clean_wihtdrawable = wihtdrawable.replace("₹", "").split(".")[0]
             clean_wihtdrawable = Base.parse_float(clean_wihtdrawable)
@@ -68,11 +70,19 @@ def withdraw_from_zerodha(
             #print("Type", type(amount))
             amount_float = float(amount)
             print("amount_float", amount_float)
-            final_amount = 1.0
+            #final_amount = 1.0
+            #zerodha balance limit
             if clean_wihtdrawable < amount_float:
                 final_amount = clean_wihtdrawable
             else:
                 final_amount = amount_float
+
+            # zerodha 2 lakh instant limit
+            if final_amount > 200000:
+                final_amount = 200000
+            else:
+                print("final_amount within limit")
+
             print("final_amount",final_amount)
             time.sleep(1)
             # ── Enter amount & confirm ──────────────────────────────
@@ -83,7 +93,6 @@ def withdraw_from_zerodha(
                 amount_str = str(int(float(final_amount)))
                 print("amount_str",amount_str)
                 eq_input.fill(amount_str)
-
                 withdraw_page.get_by_role("button", name="Continue").click()
                 withdraw_page.get_by_role("button", name="Confirm").click()
 

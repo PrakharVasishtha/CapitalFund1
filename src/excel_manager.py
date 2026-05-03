@@ -8,7 +8,7 @@ from formula import Formula
 from ExtractGMP import get_ipo_gmp
 from ExtractReview import has_dicey_word
 from ExtractSubscription import get_ipo_subscription_dict
-from src.Base import get_vix
+from Base import get_vix
 
 
 def safe_get(d: Any, *keys: str, default: Any = None) -> Any:
@@ -82,6 +82,7 @@ class ExcelManager:
 
 
     def exists(self, type1="SME", name="NONE"):
+        #print("---checking if already exists---",name)
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         scrape_norm = normalize_name(name)
         for cell in ws['B']:
@@ -89,8 +90,10 @@ class ExcelManager:
                 excel_norm = normalize_name(cell.value)
                 starts1 = scrape_norm.startswith(excel_norm)
                 starts2 = excel_norm.startswith(scrape_norm)
-                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.86
+                #print(difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio())
+                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.69
                 if starts1 or starts2 or sim:
+                    #print("already exists")
                     return True
         return False
 

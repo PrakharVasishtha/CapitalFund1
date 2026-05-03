@@ -1,11 +1,6 @@
 import openpyxl
-import difflib
-from typing import Dict, Any
 import time
-
-from src.Base import get_vix
-from write_formula import write_formula_sme,write_formula_mb
-from formula import Formula
+from Base import get_vix
 from ExtractGMP import get_ipo_gmp
 from ExtractReview import has_dicey_word
 from ExtractSubscription import get_ipo_subscription_live
@@ -36,7 +31,7 @@ def update_row_3pm(row: int, type1: str):
                 print(gmp)
                 sub = get_ipo_subscription_live(url2)
                 print(sub)
-                review = has_dicey_word(url2)
+                review = int(has_dicey_word(url2))
                 AI = get_vix()
                 ws.cell(row, 28, gmp)
                 ws.cell(row, 23, review)
@@ -57,5 +52,6 @@ def update_row_3pm(row: int, type1: str):
             #print("Closing not today")
             x=0
         wb.close()
+
 #update_row_3pm(114,'SME')
 #update_row_3pm(68,'MB')

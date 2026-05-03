@@ -5,7 +5,7 @@ import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-from src.base_ipo import categorize_ipo_industry, get_industry_score
+from base_ipo import categorize_ipo_industry, get_industry_score
 
 
 def get_latest_ipos():
@@ -17,7 +17,7 @@ def get_latest_ipos():
 
     try:
         options = Options()
-        options.add_argument("--headless")   # Uncomment when stable
+        #options.add_argument("--headless")   # Uncomment when stable
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "

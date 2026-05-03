@@ -7,39 +7,20 @@ def run(playwright: Playwright) -> None:
     context = browser.new_context()
     page = context.new_page()
     page.goto("https://kite.zerodha.com/")
-
-
-    page.get_by_text("NIFTYIETF").click()
-    page.get_by_role("button", name="Buy").click()
-    page.get_by_text("Regular").click()
-
-    page.locator("label").first.click()
-    page.locator("label").first.click()
-    page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").click()
-    page.get_by_role("spinbutton", name="BUY NIFTYIETF (NSE) quantity").fill("12")
-    page.get_by_role("button", name="Buy").click()
-    page.locator(".icon.icon-times.close").click()
-    page.get_by_role("button", name="Cancel").click()
-
-
-    page.get_by_role("textbox", name="Search eg: infy bse, nifty").click()
-    page.get_by_role("textbox", name="Search eg: infy bse, nifty").fill("")
-    page.locator("div").filter(has_text="Hi, Sonam equity 0.1 Margin").nth(3).click()
-    page.get_by_role("button", name="Buy").click()
-    page.get_by_role("button", name="Buy").click()
-    page.locator(".icon.icon-times.close").click()
-    page.get_by_role("button", name="Cancel").click()
-    page.get_by_role("button", name="Buy").click()
-    page.get_by_role("button", name="Buy").click()
-    page.get_by_text("Regular").click()
-    page.locator(".icon.icon-times").click()
-    page.get_by_role("spinbutton", name="Price", exact=True).click()
-    page.get_by_role("button", name="Buy").click()
-    page.locator(".icon.icon-times").click()
-    page.get_by_role("button", name="Cancel").click()
-    page.get_by_role("link", name="User profile").click()
-    page.get_by_text("equity 0.1 Margin available").click()
-    page.get_by_text("0.1 Margin available Margins").click()
+    page.get_by_role("textbox", name="Phone number or User ID").click()
+    page.get_by_role("textbox", name="Phone number or User ID").fill("MFB802")
+    page.get_by_role("textbox", name="Phone number or User ID").press("Tab")
+    page.get_by_role("textbox", name="Password").click()
+    page.get_by_role("textbox", name="Password").fill("RamRate$1")
+    page.get_by_role("button", name="Login").click()
+    page.get_by_role("spinbutton", name="External TOTP").click()
+    page.get_by_role("spinbutton", name="External TOTP").fill("852499")
+    page.get_by_role("link", name="Funds").click()
+    with page.expect_popup() as page1_info:
+        page.get_by_role("link", name="Withdraw").click()
+    page1 = page1_info.value
+    page1.get_by_text("₹").nth(5).click()
+    page1.locator("#equity_card").get_by_text("Withdrawable balance").click()
 
     # ---------------------
     context.close()
