@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 
 from base_ipo import categorize_ipo_industry, get_industry_score
 
@@ -22,6 +23,9 @@ def get_latest_ipos():
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+        #service = Service("/usr/bin/chromedriver")  # <-- use your path
+
+        #driver = webdriver.Chrome(service=service, options=options)
 
         driver = webdriver.Chrome(options=options)
         driver.get(url)
