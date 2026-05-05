@@ -1,4 +1,5 @@
 import openpyxl
+import time
 import Base
 from excel_3pm import update_row_3pm
 from ExtractReview import has_dicey_word
@@ -18,6 +19,7 @@ def latest_ipo_entry():
     row_sme=Base.get_last_row_sme()
     row_mb=Base.get_last_row_mb()
     for ipo in sc:
+        time.sleep(1)
         ex = ExcelManager()
         type1 = ipo['category']
         name1 = ipo['name']

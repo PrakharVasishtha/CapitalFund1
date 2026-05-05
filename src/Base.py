@@ -13,23 +13,6 @@ from typing import Dict, Any
 import yfinance as yf
 import json
 
-def page_contains_trust(url: str) -> bool:
-    try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        text = soup.get_text().lower()
-
-        return "trust" in text
-
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
-
 def parse_float(val: Any) -> float:
     if isinstance(val, (int, float)):
         return float(val)
@@ -190,26 +173,6 @@ def otp_shoonya(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7):
         time.sleep(delay)
     return None
 
-def is_data_available(url):
-    try:
-        extractor = ChittorgarhIPOExtractor()
-        data1 = extractor.extract(url)
-        #print(data1)
-        data2 = clean_ipo_data(data1)
-        #print(data2)
-        if "N/A" in data2.get('issue_price_per_share','N/A'):
-            print("issue_price_per_share")
-            return False
-        elif page_contains_trust(url):
-            print("trust")
-            return False
-        else:
-            return True
-
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        return True
-    
 def get_last_row(file,sheet):
     path = file
     wb = openpyxl.load_workbook(path)
@@ -246,9 +209,46 @@ def get_last_row_mb():
             break
     return last_row+1
 
-#print(is_data_available("https://www.chittorgarh.com/ipo_review/emiac-technologies-ipo/5030/"))
+def page_contains_trust(url: str) -> bool:
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        text = soup.get_text().lower()
+
+        return "investment trust" in text
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return False
+
+def is_data_available(url):
+    try:
+        extractor = ChittorgarhIPOExtractor()
+        data1 = extractor.extract(url)
+        #print(data1)
+        data2 = clean_ipo_data(data1)
+        #print(data2)
+        if "N/A" in data2.get('issue_price_per_share','N/A'):
+            print("issue_price_per_share")
+            return False
+        elif page_contains_trust(url):
+            print("trust")
+            return False
+        else:
+            return True
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return True
+    
+#print(is_data_available("https://www.chittorgarh.com/ipo/powerica-ipo/2570/"))
 #print(is_data_available("https://www.chittorgarh.com/ipo/propshare-celestia-scheme-ipo/2965/"))
-#print(is_data_available("https://www.chittorgarh.com/ipo/om-power-transmission-ipo/2676/"))
+#print(is_data_available("https://www.chittorgarh.com/ipo/gsp-crop-ipo/2031/"))
 #print(get_last_row_sme())
 #print(get_last_row('../General.xlsx','IPOSME'))0
 
