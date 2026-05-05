@@ -42,6 +42,7 @@ def latest_ipo_entry():
             ex.write_details(row, data2, type1)
 
             try:
+                time.sleep(.5)
                 gmp=get_ipo_gmp(name1)
             except Exception as e:
                 print(e)
@@ -52,7 +53,7 @@ def latest_ipo_entry():
                 print(e)
                 sub = ["20","20","10","10"]
             review=has_dicey_word(url2)
-
+            time.sleep(.5)
             ex.write_details_GSR(row, gmp, sub, review, type1,industry_score)
             print("---------write_formula----------")
             if type1 == "SME":
@@ -85,5 +86,5 @@ def update_3pm():
             print(e)
 
 
-latest_ipo_entry()
+#latest_ipo_entry()
 #update_3pm()

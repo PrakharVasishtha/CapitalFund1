@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from rapidfuzz import fuzz
 import re
+import time
 
 
 def normalize(name):
@@ -46,7 +47,7 @@ def extract_percent_gmp(cols, max_valid=98.0):
 def get_ipo_gmp(company_name: str, min_match=65):
     url = "https://www.ipowatch.in/ipo-grey-market-premium-latest/"
     headers = {"User-Agent": "Mozilla/5.0"}
-
+    time.sleep(.5)
     r = requests.get(url, headers=headers, timeout=10)
     r.raise_for_status()
 

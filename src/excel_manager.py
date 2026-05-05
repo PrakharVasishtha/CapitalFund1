@@ -209,7 +209,7 @@ class ExcelManager:
             
     def write_details_GSR(self, row: int,gmp: float, sub: list, review: int, type1: str,industry_score: float):
         ws = self.sme_ws if type1 == "SME" else self.main_ws
-        time.sleep(.2)
+        time.sleep(.5)
         try:
             W = review
             X = parse_float(sub[0])
@@ -222,7 +222,7 @@ class ExcelManager:
         except Exception as e:
             print(f"write_details_GSR An error occurred while assigning data for row {row}: {e}")
             return  # Skip save on error
-
+        time.sleep(.5)
         # Write to cells (using cell(row, col) for reliability)
         ws.cell(row, 23, W)   # A
         ws.cell(row, 24, X)   # B

@@ -66,7 +66,7 @@ schedule.every().day.at("08:30").do(ipo_entry)
 schedule.every().day.at("09:02").do(money_withdraw)
 schedule.every().day.at("09:18").do(smws_seller)
 schedule.every().day.at("09:25").do(smws_buyer)
-schedule.every().day.at("01:05").do(update_before_close)
+schedule.every().day.at("10:05").do(update_before_close)
 schedule.every().day.at("14:50").do(update_before_close)
 schedule.every().day.at("14:55").do(ipo_application)
 
