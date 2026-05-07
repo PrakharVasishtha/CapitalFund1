@@ -5,8 +5,8 @@ import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-
 from base_ipo import categorize_ipo_industry, get_industry_score
+import platform
 
 
 def get_latest_ipos():
@@ -26,8 +26,13 @@ def get_latest_ipos():
         #service = Service("/usr/bin/chromedriver")  # <-- use your path
 
         #driver = webdriver.Chrome(service=service, options=options)
+        print(platform.system())
+        if platform.system() == "Windows":
+            driver = webdriver.Chrome(options=options)
+        else:
+            service = Service("/usr/bin/chromedriver")
+            driver = webdriver.Chrome(service=service, options=options)
 
-        driver = webdriver.Chrome(options=options)
         driver.get(url)
         time.sleep(6)  # Increased slightly for safety
         soup = BeautifulSoup(driver.page_source, 'html.parser')

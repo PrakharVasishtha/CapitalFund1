@@ -75,20 +75,28 @@ def smws_seller():
             email_user = user.get("email_user")
             email_password = user.get("email_password")
 
-            sellnifty = 1
-            goldetfsell = 0
-            silveretfsell = 0
+            #sellnifty = 1
+            #goldetfsell = 0
+            #silveretfsell = 0
+            try:
+                if int(sellnifty) == 1:
+                    zerodha_sell(user_id=client_id, password=password_user, totp_secret=topt_broker,
+                                 security_symbol="NIFTYIETF")
+            except Exception as e:
+                print(e)
+            try:
+                if int(goldetfsell) == 1:
+                    zerodha_sell(user_id=client_id, password=password_user, totp_secret=topt_broker,
+                                 security_symbol="TATAGOLD")
+            except Exception as e:
+                print(e)
+            try:
+                if int(silveretfsell) == 1:
+                    zerodha_sell(user_id=client_id, password=password_user, totp_secret=topt_broker,
+                                 security_symbol="TATSILV")
+            except Exception as e:
+                print(e)
 
-            if int(sellnifty) == 1:
-                zerodha_sell(user_id=client_id, password=password_user, totp_secret=topt_broker,
-                             security_symbol="NIFTYIETF")
-            if int(goldetfsell) == 1:
-                zerodha_sell(user_id=client_id, password=password_user, totp_secret=topt_broker,
-                             security_symbol="TATAGOLD")
-            if int(silveretfsell) == 1:
-                zerodha_sell(user_id=client_id, password=password_user, totp_secret=topt_broker,
-                             security_symbol="TATSILV")
 
-
-smws_buyer()
-#smws_seller()
+#smws_buyer()
+smws_seller()
