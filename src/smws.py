@@ -90,5 +90,5 @@ def smws_seller():
                              security_symbol="TATSILV")
 
 
-#smws_buyer()
+smws_buyer()
 #smws_seller()

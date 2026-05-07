@@ -11,7 +11,7 @@ async def get_kotak_balance(
     EMAIL_PSS= "fds"):
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, slow_mo=500)
+        browser = await p.chromium.launch(headless=False, slow_mo=500)
         context = await browser.new_context(
             viewport={'width': 1366, 'height': 768},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"

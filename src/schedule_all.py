@@ -1,9 +1,7 @@
 import schedule
 import time
 import os
-
-import master_functions, IPO_application, fund_manager, smws
-
+import master_functions, IPO_application, fund_manager, smws, priority_ipo_smws_sell
 
 # Functions setup
 def ipo_entry():
@@ -23,6 +21,12 @@ def smws_seller():
         smws.smws_seller()
     except Exception as Argument:
         print("Problem in smws_seller")
+
+def priority_ipo_smws_seller():
+    try:
+        priority_ipo_smws_sell.priority_ipo_sell_smws()
+    except Exception as Argument:
+        print("Problem in priority_ipo_smws_sell")
 
 def smws_buyer():
     try:
@@ -65,6 +69,7 @@ schedule.every().day.at("08:30").do(ipo_entry)
 #zerodha time instant money 9 to 4, upto 2 lakh
 schedule.every().day.at("09:02").do(money_withdraw)
 schedule.every().day.at("09:18").do(smws_seller)
+schedule.every().day.at("09:18").do(priority_ipo_smws_seller)
 schedule.every().day.at("09:25").do(smws_buyer)
 schedule.every().day.at("10:05").do(update_before_close)
 schedule.every().day.at("14:50").do(update_before_close)

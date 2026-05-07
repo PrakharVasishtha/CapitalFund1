@@ -107,6 +107,7 @@ def daily_money_withdraw():
         users = load_credentials(CREDENTIALS_FILE)
         #Users
         for user in users:
+            uci_user = user.get("uci")
             client_id = user.get("broker_client_id")
             password_user = user.get("password_broker")
             topt_broker = user.get("topt_broker")
@@ -115,13 +116,15 @@ def daily_money_withdraw():
             email_user = user.get("email_user")
             email_password = user.get("email_password")
             try:
-                balance = asyncio.run(kotak_get_balance.get_kotak_balance(USER_ID=bank_user,PASSWORD=bank_password,EMAIL_USR=email_user,EMAIL_PSS= email_password))
+                balance = 10
+                #balance = asyncio.run(kotak_get_balance.get_kotak_balance(USER_ID=bank_user,PASSWORD=bank_password,EMAIL_USR=email_user,EMAIL_PSS= email_password))
             except Exception as e:
                 print(e)
                 balance = 0
             final_amount = required_fund - balance
             print("final_required_amount",final_amount)
             success, message = withdraw_from_zerodha(
+                user_uci=uci_user,
                 user_id=client_id,
                 password=password_user,
                 totp_secret=topt_broker,
@@ -135,4 +138,4 @@ def daily_money_withdraw():
 
 #print(strategy_status_10days())
 #print("ipo_required_fund",ipo_required_fund(0))
-#print(daily_money_withdraw())
+print(daily_money_withdraw())

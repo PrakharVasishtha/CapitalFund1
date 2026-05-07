@@ -1,13 +1,45 @@
 # zerodha_withdraw.py
 import re
 import time
+
+import openpyxl
+
 import Base
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 from typing import Optional
 
 
+def update_excel(uci_target: int, amount_needed: int):
+    path = '../Master.xlsx'
+    wb = openpyxl.load_workbook(path)
+    ws = wb['Users']
+    time.sleep(.2)
+    print(uci_target)
+    for i in range(1, 9):
+        rw = i
+        uci = ws.cell(rw, 1).value
+        print("uci",uci)
+        if uci == uci_target:
+            ws.cell(rw, 2, amount_needed)
+        else:
+            print("not target row")
+    try:
+            wb.save(path)
+            print(f"Successfully updated details for uci_target {uci_target}")
+    except PermissionError:
+            print(f"Error: Permission denied. Please ensure '{path}' is closed.")
+    except Exception as e:
+            print(f" An error occurred while saving the file: {e}")
+
+
+    else:
+        # print("Closing not today")
+        x = 0
+    wb.close()
+
 def withdraw_from_zerodha(
+        user_uci: int,
         user_id: str,
         password: str,
         totp_secret: str,
@@ -84,6 +116,9 @@ def withdraw_from_zerodha(
                 print("final_amount within limit")
 
             print("final_amount",final_amount)
+            still_needed_amount = int(final_amount - amount)
+            print("still_needed_amount",still_needed_amount)
+            update_excel(uci_target =user_uci, amount_needed = still_needed_amount)
             time.sleep(1)
             # ── Enter amount & confirm ──────────────────────────────
             if final_amount >= 1:

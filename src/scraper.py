@@ -23,11 +23,11 @@ def get_latest_ipos():
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
-        service = Service("/usr/bin/chromedriver")  # <-- use your path
+        #service = Service("/usr/bin/chromedriver")  # <-- use your path
 
-        driver = webdriver.Chrome(service=service, options=options)
+        #driver = webdriver.Chrome(service=service, options=options)
 
-        #driver = webdriver.Chrome(options=options)
+        driver = webdriver.Chrome(options=options)
         driver.get(url)
         time.sleep(6)  # Increased slightly for safety
         soup = BeautifulSoup(driver.page_source, 'html.parser')

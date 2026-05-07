@@ -86,5 +86,5 @@ def update_3pm():
             print(e)
 
 
-#latest_ipo_entry()
+latest_ipo_entry()
 #update_3pm()
