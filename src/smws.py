@@ -41,12 +41,21 @@ def smws_buyer():
             amount_per_security = int(buy_amount/ total_securities)
             print("amount_per_security:", amount_per_security)
             if amount_per_security > 3000:
-                if int(buynifty) == 1:
-                    zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="NIFTYIETF")
-                if int(goldetfbuy) == 1:
-                    zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="TATAGOLD")
-                if int(silveretfbuy) == 1:
-                    zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="TATSILV")
+                try:
+                    if int(buynifty) == 1:
+                        zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="NIFTYIETF")
+                except Exception as e:
+                    print(e)
+                try:
+                    if int(goldetfbuy) == 1:
+                        zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="TATAGOLD")
+                except Exception as e:
+                    print(e)
+                try:
+                    if int(silveretfbuy) == 1:
+                        zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="TATSILV")
+                except Exception as e:
+                    print(e)
 
 def smws_seller():
     print("---------smws_seller--------")
@@ -99,4 +108,4 @@ def smws_seller():
 
 
 #smws_buyer()
-smws_seller()
+#smws_seller()
