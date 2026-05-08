@@ -14,7 +14,7 @@ def zerodha_buy(
         amount: int,
         security_symbol: str,
         headless: bool = False,
-        timeout: int = 45000,
+        timeout: int = 5000,
 ) -> tuple[bool, str]:
 
     amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
@@ -65,19 +65,30 @@ def zerodha_buy(
                 time.sleep(.3)
                 page.keyboard.press('ArrowDown')
             security_buy = "BUY " + security_symbol + " (NSE) quantity"
+            security_buy_nse = "BUY " + security_symbol + " (NSE) quantity"
+            security_buy_bse = "BUY " + security_symbol + " (BSE) quantity"
             time.sleep(1)
 
             try:
                 page.keyboard.press('B')
                 page.get_by_text("Regular").click()
-                page.get_by_role("spinbutton", name=security_buy).click()
-                page.get_by_role("spinbutton", name=security_buy).fill("1")
-                page.get_by_role("spinbutton", name=security_buy).press("Tab")
+                page.get_by_role("spinbutton", name=security_buy_nse).click()
+                page.get_by_role("spinbutton", name=security_buy_nse).fill("1")
+                page.get_by_role("spinbutton", name=security_buy_nse).press("Tab")
                 price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
                 page.get_by_role("button", name="Cancel").click()
                 time.sleep(1)
             except Exception as e:
                 print(e)
+                page.keyboard.press('B')
+                page.get_by_text("Regular").click()
+                page.get_by_role("spinbutton", name=security_buy_bse).click()
+                page.get_by_role("spinbutton", name=security_buy_bse).fill("1")
+                page.get_by_role("spinbutton", name=security_buy_bse).press("Tab")
+                price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
+                page.get_by_role("button", name="Cancel").click()
+                time.sleep(1)
+                
             time.sleep(1)
             print(price)
             p = Base.parse_float(price)
@@ -96,18 +107,29 @@ def zerodha_buy(
                     page.keyboard.press('B')
                     page.get_by_text("Regular").click()
 
-                    page.get_by_role("spinbutton", name=security_buy).click()
-                    page.get_by_role("spinbutton", name=security_buy).fill(q)
+                    page.get_by_role("spinbutton", name=security_buy_nse).click()
+                    page.get_by_role("spinbutton", name=security_buy_nse).fill(q)
                     time.sleep(1)
-                    page.get_by_role("spinbutton", name=security_buy).press("Tab")
+                    page.get_by_role("spinbutton", name=security_buy_nse).press("Tab")
                     page.get_by_role("spinbutton", name="Price", exact=True).fill(k)
                     time.sleep(1)
                     page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
                     page.get_by_role("button", name="Buy").click()
-                    page.get_by_role("button", name="Cancel").click()
-                    time.sleep(5)
+                    time.sleep(1)
                 except Exception as e:
                     print(e)
+                    page.keyboard.press('B')
+                    page.get_by_text("Regular").click()
+
+                    page.get_by_role("spinbutton", name=security_buy_bse).click()
+                    page.get_by_role("spinbutton", name=security_buy_bse).fill(q)
+                    time.sleep(1)
+                    page.get_by_role("spinbutton", name=security_buy_bse).press("Tab")
+                    page.get_by_role("spinbutton", name="Price", exact=True).fill(k)
+                    time.sleep(1)
+                    page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
+                    page.get_by_role("button", name="Buy").click()
+                    time.sleep(1)
 
             return 1
 

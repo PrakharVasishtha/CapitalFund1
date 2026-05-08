@@ -1,0 +1,97 @@
+import requests
+import json
+
+
+def get_ipo_indicative_price(symbol: str, exchange: str = "NSE"):
+    """
+    Fetch indicative price during IPO special pre-open session.
+
+    Args:
+        symbol: IPO trading symbol (e.g. "Ather", "TATATECH")
+        exchange: "NSE" or "BSE"
+
+    Returns:
+        dict containing indicative price data
+    """
+
+    exchange = exchange.upper()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json,text/plain,*/*",
+        "Referer": "https://www.nseindia.com/",
+    }
+
+    session = requests.Session()
+    session.headers.update(headers)
+
+    try:
+
+        # ================= NSE =================
+        if exchange == "NSE":
+
+            # Initialize cookies
+            session.get("https://www.nseindia.com", timeout=10)
+
+            url = (
+                f"https://www.nseindia.com/api/quote-equity?symbol={symbol.upper()}"
+            )
+
+            response = session.get(url, timeout=10)
+
+            if response.status_code != 200:
+                return {"error": f"NSE API failed: {response.status_code}"}
+
+            data = response.json()
+
+            preopen = data.get("preOpenMarket", {})
+
+            result = {
+                "exchange": "NSE",
+                "symbol": symbol.upper(),
+                "indicative_price": preopen.get("IEP"),
+                "final_price": preopen.get("finalPrice"),
+                "total_buy_qty": preopen.get("totalBuyQuantity"),
+                "total_sell_qty": preopen.get("totalSellQuantity"),
+                "ato_buy_qty": preopen.get("atoBuyQty"),
+                "ato_sell_qty": preopen.get("atoSellQty"),
+                "last_update_time": preopen.get("lastUpdateTime"),
+            }
+
+            return result
+
+        # ================= BSE =================
+        elif exchange == "BSE":
+
+            headers["Referer"] = "https://www.bseindia.com/"
+            session.headers.update(headers)
+
+            # BSE generally requires scrip code, not symbol
+            # Example API endpoint below
+            url = (
+                f"https://api.bseindia.com/BseIndiaAPI/api/StockReachGraph/w"
+                f"?scripcode={symbol}"
+            )
+
+            response = session.get(url, timeout=10)
+
+            if response.status_code != 200:
+                return {"error": f"BSE API failed: {response.status_code}"}
+
+            return response.json()
+
+        else:
+            return {"error": "Exchange must be NSE or BSE"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ================= Example Usage =================
+
+if __name__ == "__main__":
+
+    # NSE IPO stock
+    result = get_ipo_indicative_price("TATATECH", "BSE")
+
+    print(json.dumps(result, indent=2))

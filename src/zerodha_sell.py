@@ -60,6 +60,8 @@ def zerodha_sell(
                 time.sleep(.3)
                 page.keyboard.press('ArrowDown')
             security_sell = "SELL " + security_symbol + " (NSE) quantity"
+            security_sell_nse = "SELL " + security_symbol + " (NSE) quantity"
+            security_sell_bse = "SELL " + security_symbol + " (BSE) quantity"
             print(security_sell)
             time.sleep(1)
 
@@ -67,51 +69,69 @@ def zerodha_sell(
             try:
                 page.keyboard.press('S')
                 page.get_by_text("Regular").click()
-                #page.get_by_role("spinbutton", name=security_sell).click()
-                #page.get_by_role("spinbutton", name=security_sell).fill("1")
-                #page.get_by_role("spinbutton", name=security_sell).press("Tab")
                 price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
                 page.get_by_role("button", name="Cancel").click()
                 p = Base.parse_float(price)
                 p1 = str(round(Base.parse_float(p * 1.0025),2))
                 p2 = str(round(Base.parse_float(p * 1.005),2))
                 target_prices = [p1, p2]
-                page.get_by_role("link", name="Holdings").click()
-                try:
-                    page.get_by_role("cell", name=security_symbol).click()
-                    holdings = page.get_by_role("spinbutton", name=security_sell).input_value()
-                except Exception as e:
-                    holdings = 0
-                    print(e)
-                print(holdings)
-                if holdings!=0: q = str(int(int(holdings) / 2))
-                else: q = 0
-
-                print(holdings,q,p,target_prices)
 
             except Exception as e:
                 print(e)
+                
+            page.get_by_role("link", name="Holdings").click()
+            time.sleep(2)
+            try:
+                page.get_by_role("cell", name=security_symbol).click()
+                page.get_by_role("link", name="NIFTYIETF").click()
+                try:
+                    holdings = page.get_by_role("spinbutton", name=security_sell_nse).input_value()
+                except Exception as e:
+                    print(e)
+                    holdings = page.get_by_role("spinbutton", name=security_sell_bse).input_value()
+                print("Holdings Inside:",holdings)
+                page.get_by_role("button", name="Cancel").click()
+            except Exception as e:
+                holdings = 0
+                print(e)
+                
+            print("holdings:",holdings)
+            if holdings!=0: q = str(int(int(holdings) / 2))
+            else: q = 0
+
+            print("holdings:",holdings,"q:",q,"p:",p,"target_prices:",target_prices)
+            
+            
             # Buy 5 orders
             if q!=0:
                 for k in target_prices:
                     try:
                         page.keyboard.press('S')
                         page.get_by_text("Regular").click()
-                        page.get_by_role("spinbutton", name=security_sell).click()
-                        page.get_by_role("spinbutton", name=security_sell).fill(q)
+                        page.get_by_role("spinbutton", name=security_sell_nse).click()
+                        page.get_by_role("spinbutton", name=security_sell_nse).fill(q)
                         page.get_by_text("Limit").click()
-                        #page.get_by_role("spinbutton", name=security_sell).press("Tab")
                         time.sleep(2)
                         page.get_by_role("spinbutton", name="Price", exact=True).click()
                         page.get_by_role("spinbutton", name="Price", exact=True).press("ControlOrMeta+a")
                         page.get_by_role("spinbutton", name="Price", exact=True).fill(k)
                         time.sleep(2)
-                        #page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
                         page.get_by_role("button", name="Sell").click()
-                        page.get_by_role("button", name="Cancel").click()
                         time.sleep(2)
                     except Exception as e:
                         print(e)
+                        page.keyboard.press('S')
+                        page.get_by_text("Regular").click()
+                        page.get_by_role("spinbutton", name=security_sell_bse).click()
+                        page.get_by_role("spinbutton", name=security_sell_bse).fill(q)
+                        page.get_by_text("Limit").click()
+                        time.sleep(2)
+                        page.get_by_role("spinbutton", name="Price", exact=True).click()
+                        page.get_by_role("spinbutton", name="Price", exact=True).press("ControlOrMeta+a")
+                        page.get_by_role("spinbutton", name="Price", exact=True).fill(k)
+                        time.sleep(2)
+                        page.get_by_role("button", name="Sell").click()
+                        time.sleep(2)
 
             return True, f"Sell orders initiated successfully"
 

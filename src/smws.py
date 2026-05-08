@@ -22,7 +22,7 @@ def smws_buyer():
     print("goldetfbuy:", goldetfbuy)
     silveretfbuy = df.iloc[29, 3]
     print("silveretfbuy:", silveretfbuy)
-    buynifty =1
+    #buynifty =1
     total_securities = int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
 
     if total_securities > 0:
@@ -40,7 +40,7 @@ def smws_buyer():
             buy_amount = int(buy_amount/3)
             amount_per_security = int(buy_amount/ total_securities)
             print("amount_per_security:", amount_per_security)
-            if amount_per_security > 3000:
+            if amount_per_security > 2000:
                 try:
                     if int(buynifty) == 1:
                         zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="NIFTYIETF")
@@ -69,7 +69,7 @@ def smws_seller():
     print("goldetfsell:", goldetfsell)
     silveretfsell = df.iloc[30, 3]
     print("silveretfsell:", silveretfsell)
-    buynifty =1
+    sellnifty =1
     total_securities = int(sellnifty)+int(goldetfsell)+int(silveretfsell)
 
     if total_securities > 0:
@@ -108,4 +108,4 @@ def smws_seller():
 
 
 #smws_buyer()
-#smws_seller()
+smws_seller()
