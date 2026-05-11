@@ -22,3 +22,11 @@ ipo_automation/
 │   ├── excel_manager.py      # Checks/appends to your Excel format
 ├── requirements.txt
 └── README.md
+
+allotted_holdings.xls
+allotted     1 allotted
+special_session_status 0 not started / 1 started / 2 sold in special session / 3 not sold in spl. session
+regular_session_monitoring 
+regular_session_day
+regular_session_status
+uc_lc_monitoring

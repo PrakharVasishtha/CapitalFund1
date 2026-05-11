@@ -105,4 +105,4 @@ def priority_ipo_sell_smws():
         print("No withdrawal required.")
         return 0
 
-#priority_ipo_sell_smws()
+priority_ipo_sell_smws()
