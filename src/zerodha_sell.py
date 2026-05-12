@@ -2,6 +2,7 @@
 import re
 import time
 import Base
+import foundation
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 from typing import Optional
@@ -26,7 +27,9 @@ def zerodha_sell(
                     "Chrome/128.0.0.0 Safari/537.36"
                 )
             )
-
+            file_path=user_id +".txt"
+            amt_symbl = security_symbol
+            
             page: Page = context.new_page()
             page.set_default_timeout(timeout)
 
@@ -132,10 +135,11 @@ def zerodha_sell(
                         time.sleep(2)
                         page.get_by_role("button", name="Sell").click()
                         time.sleep(2)
-
+            logger(file_path,amt_symbl,"Sold".)
             return True, f"Sell orders initiated successfully"
 
         except Exception as e:
+            logger(file_path,amt_symbl,"not Sold for some Exception".)
             import traceback
             return False, f"Sell orders failed: {str(e)}\n{traceback.format_exc()}"
 

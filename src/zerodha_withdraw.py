@@ -130,18 +130,23 @@ def withdraw_from_zerodha(
                 eq_input.fill(amount_str)
                 withdraw_page.get_by_role("button", name="Continue").click()
                 withdraw_page.get_by_role("button", name="Confirm").click()
-
+                msg_log = "withdrawal initiated on broker"
+                print(msg_log)
                 # Give some time for confirmation (you can improve this)
                 withdraw_page.wait_for_timeout(4000)
             else:
-                print("less than 1 amount, so no withdrawal")
-
-            return True, f"Withdrawal initiated successfully"
+                msg_log = "less than 1 amount, so no withdrawal"
+                print(msg_log)
+            return True, f"."
 
         except Exception as e:
+            msg_log = e
+            print(msg_log)
             import traceback
             return False, f"Withdrawal failed: {str(e)}\n{traceback.format_exc()}"
-
+        
+        file_path=user_uci+".txt"
+        logger(file_path,amount_str,msg_log)
         finally:
             if 'context' in locals():
                 context.close()

@@ -2,6 +2,7 @@
 import re
 import time
 import Base
+import foundation
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 from typing import Optional
@@ -31,7 +32,10 @@ def zerodha_buy(
                     "Chrome/128.0.0.0 Safari/537.36"
                 )
             )
-
+            
+            file_path=user_id +".txt"
+            amt_symbl = amount_str + security_symbol
+            
             page: Page = context.new_page()
             page.set_default_timeout(timeout)
 
@@ -130,13 +134,16 @@ def zerodha_buy(
                     page.get_by_role("spinbutton", name="Price", exact=True).press("Tab")
                     page.get_by_role("button", name="Buy").click()
                     time.sleep(1)
+            
+            logger(file_path,amt_symbl,"Baught".)
 
             return 1
 
         except Exception as e:
+            logger(file_path,amt_symbl,"not baught for some Exception".)
             import traceback
             return 0
-
+        
         finally:
             if 'context' in locals():
                 context.close()

@@ -1,6 +1,7 @@
 import openpyxl
 import time
 import Base
+import foundation
 from excel_3pm import update_row_3pm
 from ExtractReview import has_dicey_word
 from scraper import get_latest_ipos
@@ -60,6 +61,10 @@ def latest_ipo_entry():
                 row_sme = row_sme + 1
             else:
                 row_mb= row_mb + 1
+    try:
+        send_email_with_excel()
+    except Exception as e:
+        print("Cant send General.xls")
 
 def update_3pm():
     print("-----------update_3pm----------")
@@ -84,7 +89,10 @@ def update_3pm():
             update_row_3pm(k,"MB")
         except Exception as e:
             print(e)
+    try:
+        send_email_with_excel()
+    except Exception as e:
+        print("Cant send General.xls")
 
-
-latest_ipo_entry()
+#latest_ipo_entry()
 #update_3pm()

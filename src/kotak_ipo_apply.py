@@ -540,6 +540,7 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
     users = load_credentials(credentials_file)
     # Users
     for user in users:
+        uci = user.get("uci")
         bank_user = user.get("bank_user")
         bank_password = user.get("bank_password")
         email_user = user.get("email_user")
@@ -547,6 +548,9 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
 
         result = asyncio.run(apply_to_ipo(ipo_name=ipo_name,USER_ID=bank_user,PASSWORD=bank_password,EMAIL_USR=email_user,EMAIL_PSS= email_password,type_ipo=type_ipo))
         print("IPO",ipo_name,"result:",result)
+        file_path=uci+".txt"
+        logger(file_path,ipo_name,result)
+        
 
 
 
