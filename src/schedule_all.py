@@ -61,7 +61,7 @@ def run_now():
         print("Problem in run_now")
 
 
-#run_now()
+run_now()
 
 # Task scheduling
 
