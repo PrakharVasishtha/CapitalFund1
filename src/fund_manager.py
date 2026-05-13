@@ -141,4 +141,4 @@ def daily_money_withdraw():
 
 #print(strategy_status_10days())
 #print("ipo_required_fund",ipo_required_fund(0))
-#print(daily_money_withdraw())
+print(daily_money_withdraw())

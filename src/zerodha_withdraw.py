@@ -9,15 +9,18 @@ def update_excel(uci_target: int, amount_needed: int):
     wb = openpyxl.load_workbook(path)
     ws = wb['Users']
     time.sleep(.2)
-    print(uci_target)
+    #print(type(uci_target))
+    #print(uci_target)
+    
     for i in range(1, 9):
         rw = i
-        uci = ws.cell(rw, 1).value
-        print("uci",uci)
+        uci = str(ws.cell(rw, 1).value)
+        #print("uci:",uci,"type:",type(uci))
         if uci == uci_target:
-            ws.cell(rw, 2, amount_needed)
+            ws.cell(rw, 15, abs(amount_needed))
         else:
-            print("not target row")
+            k=1
+            #print("not target row")
     try:
             wb.save(path)
             print(f"Successfully updated details for uci_target {uci_target}")
@@ -40,10 +43,12 @@ def withdraw_from_zerodha(
         timeout: int = 45000,
 ) -> tuple[bool, str]:
 
-    amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
+    #amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
 
     def run(playwright: Playwright) -> tuple[bool, str]:
         print(user_id,"reqrd to withdrw frm zerodha",amount)
+        amount_str = "0"
+        msg_log = "e"
         try:
             browser = playwright.chromium.launch(headless=False)
             context = browser.new_context(
