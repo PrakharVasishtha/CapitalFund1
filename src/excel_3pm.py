@@ -5,9 +5,11 @@ from ExtractGMP import get_ipo_gmp
 from ExtractReview import has_dicey_word
 from ExtractSubscription import get_ipo_subscription_live
 from datetime import date
+from foundation import *
 
 
 def update_row_3pm(row: int, type1: str):
+        write_details("update_row_3pm", row, type1)
         path = '../General.xlsx'
         wb = openpyxl.load_workbook(path)
         sme_ws = wb['IPOSME']

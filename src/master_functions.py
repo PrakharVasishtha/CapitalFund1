@@ -1,7 +1,6 @@
 import openpyxl
-import time
 import Base
-import foundation
+from foundation import *
 from excel_3pm import update_row_3pm
 from ExtractReview import has_dicey_word
 from scraper import get_latest_ipos

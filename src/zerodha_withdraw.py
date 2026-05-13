@@ -1,14 +1,8 @@
-# zerodha_withdraw.py
-import re
-import time
-
+from foundation import *
 import openpyxl
-
 import Base
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
-from typing import Optional
-
 
 def update_excel(uci_target: int, amount_needed: int):
     path = '../Master.xlsx'
@@ -31,8 +25,6 @@ def update_excel(uci_target: int, amount_needed: int):
             print(f"Error: Permission denied. Please ensure '{path}' is closed.")
     except Exception as e:
             print(f" An error occurred while saving the file: {e}")
-
-
     else:
         # print("Closing not today")
         x = 0
@@ -145,9 +137,10 @@ def withdraw_from_zerodha(
             import traceback
             return False, f"Withdrawal failed: {str(e)}\n{traceback.format_exc()}"
         
-        file_path=user_uci+".txt"
-        logger(file_path,amount_str,msg_log)
+
         finally:
+            file_path = user_uci + ".txt"
+            logger(file_path, amount_str, msg_log)
             if 'context' in locals():
                 context.close()
             if 'browser' in locals():

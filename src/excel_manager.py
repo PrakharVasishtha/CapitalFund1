@@ -5,10 +5,8 @@ import time
 import datetime
 import pe
 from formula import Formula
-from ExtractGMP import get_ipo_gmp
-from ExtractReview import has_dicey_word
-from ExtractSubscription import get_ipo_subscription_dict
 from Base import get_vix
+from foundation import *
 
 
 def safe_get(d: Any, *keys: str, default: Any = None) -> Any:
@@ -107,6 +105,7 @@ class ExcelManager:
         return row
 
     def write_details(self, row: int, ipo_data: Dict, type1: str):
+        dprint("write_details")
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         time.sleep(.2)
         try:
@@ -208,6 +207,7 @@ class ExcelManager:
             print(f"write_details An error occurred while saving the file: {e}")
             
     def write_details_GSR(self, row: int,gmp: float, sub: list, review: int, type1: str,industry_score: float):
+        dprint("write_details_GSR")
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         time.sleep(.5)
         try:

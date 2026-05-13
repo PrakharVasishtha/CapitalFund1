@@ -68,6 +68,7 @@ def ipo_required_fund(d=0):
 
 
 def priority_ipo_sell_smws():
+    print("priority_ipo_sell_smws")
     required_fund = ipo_required_fund(1)
     if required_fund != 0:
         users = load_credentials(CREDENTIALS_FILE)
@@ -105,4 +106,4 @@ def priority_ipo_sell_smws():
         print("No withdrawal required.")
         return 0
 
-priority_ipo_sell_smws()
+#priority_ipo_sell_smws()

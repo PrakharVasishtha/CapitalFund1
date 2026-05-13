@@ -7,6 +7,7 @@ import asyncio
 
 from zerodha_withdraw import withdraw_from_zerodha
 from Base import *
+from foundation import *
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -100,6 +101,7 @@ def ipo_required_fund(d = 0):
 
 
 def daily_money_withdraw():
+    print("-----daily_money_withdraw----")
     d0 = ipo_required_fund(0)
     d1=ipo_required_fund(1)
     required_fund = d0 + (0.9*d1)

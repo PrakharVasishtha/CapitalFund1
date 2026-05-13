@@ -2,7 +2,7 @@ import schedule
 import foundation
 import time
 import os
-import master_functions, IPO_application, fund_manager, smws, priority_ipo_smws_sell
+import master_functions, application_ipo, fund_manager, smws, priority_ipo_smws_sell
 
 # Functions setup
 def ipo_entry():
@@ -10,21 +10,21 @@ def ipo_entry():
         master_functions.latest_ipo_entry()
     except Exception as Argument:
         print("Problem in latest_ipo_entry")
-        logger("system.txt",Argument,"ipo_entry")
+        foundation.logger("system.txt",Argument,"ipo_entry")
 
 def money_withdraw():
     try:
         fund_manager.daily_money_withdraw()
     except Exception as Argument:
         print("Problem in daily_money_withdraw")
-        logger("system.txt",Argument,"money_withdraw")
+        foundation.logger("system.txt",Argument,"money_withdraw")
 
 def smws_seller():
     try:
         smws.smws_seller()
     except Exception as Argument:
         print("Problem in smws_seller")
-        logger("system.txt",Argument,"smws_seller")
+        foundation.logger("system.txt",Argument,"smws_seller")
         
 
 def priority_ipo_smws_seller():
@@ -32,28 +32,28 @@ def priority_ipo_smws_seller():
         priority_ipo_smws_sell.priority_ipo_sell_smws()
     except Exception as Argument:
         print("Problem in priority_ipo_smws_sell")
-        logger("system.txt",Argument,"priority_ipo_smws_seller")
+        foundation.logger("system.txt",Argument,"priority_ipo_smws_seller")
 
 def smws_buyer():
     try:
         smws.smws_buyer()
     except Exception as Argument:
         print("Problem in smws_buyer")
-        logger("system.txt",Argument,"smws_buyer")
+        foundation.logger("system.txt",Argument,"smws_buyer")
 
-def ():
+def update_before_close():
     try:
         master_functions.update_3pm()
     except Exception as Argument:
         print("Problem in update_before_close")
-        logger("system.txt",Argument,"update_before_close")
+        foundation.logger("system.txt",Argument,"update_before_close")
 
 def ipo_application():
     try:
-        IPO_application.ipo_application()
+        application_ipo.ipo_application()
     except Exception as Argument:
         print("Problem in ipo_application")
-        logger("system.txt",Argument,"ipo_application")
+        foundation.logger("system.txt",Argument,"ipo_application")
 
 def run_now():
     try:
@@ -63,14 +63,14 @@ def run_now():
         smws.smws_seller()
         smws.smws_buyer()
         master_functions.update_3pm()
-        IPO_application.ipo_application()
+        application_ipo.ipo_application()
         print("Finished")
 
     except Exception as Argument:
-        print("Problem in run_now")
+        print("Problem in run_now",Argument)
 
 
-#run_now()
+run_now()
 
 # Task scheduling
 

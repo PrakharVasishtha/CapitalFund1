@@ -1,11 +1,7 @@
-# zerodha_withdraw.py
-import re
-import time
 import Base
-import foundation
+from foundation import *
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
-from typing import Optional
 
 def zerodha_sell(
         user_id: str,
@@ -135,11 +131,11 @@ def zerodha_sell(
                         time.sleep(2)
                         page.get_by_role("button", name="Sell").click()
                         time.sleep(2)
-            logger(file_path,amt_symbl,"Sold".)
+            logger(file_path,amt_symbl,"Sold")
             return True, f"Sell orders initiated successfully"
 
         except Exception as e:
-            logger(file_path,amt_symbl,"not Sold for some Exception".)
+            logger(file_path,amt_symbl,"not Sold for some Exception")
             import traceback
             return False, f"Sell orders failed: {str(e)}\n{traceback.format_exc()}"
 

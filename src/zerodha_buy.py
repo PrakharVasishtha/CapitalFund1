@@ -1,11 +1,7 @@
-# zerodha_withdraw.py
-import re
-import time
 import Base
-import foundation
+from foundation import *
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
-from typing import Optional
 
 
 def zerodha_buy(
@@ -135,12 +131,12 @@ def zerodha_buy(
                     page.get_by_role("button", name="Buy").click()
                     time.sleep(1)
             
-            logger(file_path,amt_symbl,"Baught".)
+            logger(file_path,amt_symbl,"Baught")
 
             return 1
 
         except Exception as e:
-            logger(file_path,amt_symbl,"not baught for some Exception".)
+            logger(file_path,amt_symbl,"not baught for some Exception")
             import traceback
             return 0
         

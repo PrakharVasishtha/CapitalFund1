@@ -36,17 +36,14 @@ def timenow():
     current_time = time.strftime("%H:%M:%S", t)
     return current_time
 
-import smtplib
-from email.message import EmailMessage
-
-def send_email(email_address = "vasistcapital@gmail.com",sub_send = "default",content_send = "default"):
+def send_email(email_to = "prakharvasishtha9@gmail.com",sub_send = "default",content_send = "default"):
     email_address = "vasistcapital@gmail.com"
-    email_password = "tmvajnwfcajaophh"
+    email_password = "nbfdhxifzaekznjg"
     
     msg = EmailMessage()
     msg['Subject'] = sub_send
     msg['From'] = email_address
-    msg['To'] = "prakharvasishtha9@gmail.com"
+    msg['To'] = email_to
     msg.set_content(content_send)
 
     try:
@@ -71,7 +68,7 @@ def send_email(email_address = "vasistcapital@gmail.com",sub_send = "default",co
 
 def send_email_with_excel():
     email_address = "vasistcapital@gmail.com"
-    email_password = "tmvajnwfcajaophh"
+    email_password = "nbfdhxifzaekznjg"
     
     msg = EmailMessage()
     msg['Subject'] = "Excel Report Attached"
@@ -123,7 +120,7 @@ def internet_on(a1="nosub"):
 def internetcheck(b="NoSubject"):
     while not (internet_on(b)):
         print("Offline")
-        Logger("LogInternet.txt", "Offline", "internet")
+        logger("LogInternet.txt", "Offline", "internet")
         time.sleep(20)
     #print("Online")
 
@@ -133,7 +130,7 @@ def internetcheck(b="NoSubject"):
 #send_email()
 # Call the function with the path to your file
 # Example: r"C:\Users\Name\Documents\data.xlsx"
-send_email_with_excel()
+#send_email_with_excel()
 # print(internet_on())
 # countdown(5)
 # print("Completed Running day :at Time :",TimeNow(),"Sleeping for :")

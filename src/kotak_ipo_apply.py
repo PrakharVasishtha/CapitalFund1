@@ -2,6 +2,7 @@ import asyncio
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 from Base import *
 import difflib
+from foundation import *
 
 
 def calculate_lot_minimum_hni(min_shares_str: str, higher_price_str: str, type_ipo: str):
@@ -534,7 +535,6 @@ async def apply_to_ipo(
         await context.close()
         await browser.close()
 
-
 def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
     credentials_file = "credentials.json"
     users = load_credentials(credentials_file)
@@ -550,11 +550,6 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
         print("IPO",ipo_name,"result:",result)
         file_path=uci+".txt"
         logger(file_path,ipo_name,result)
-        
-
-
-
-
 
 # Run the async function
 #asyncio.run(apply_to_ipo())

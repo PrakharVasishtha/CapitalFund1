@@ -12,6 +12,7 @@ from zerodha_sell import zerodha_sell
 CREDENTIALS_FILE = "credentials.json"
 
 def smws_buyer():
+    print("---------smws_buyer--------")
     url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
     df0 = pd.read_csv(url_csv)
     time.sleep(1)
