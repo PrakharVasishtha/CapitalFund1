@@ -69,8 +69,9 @@ def ipo_required_fund(d=0):
 
 def priority_ipo_sell_smws():
     print("priority_ipo_sell_smws")
-    required_fund = ipo_required_fund(1)
-    if required_fund != 0:
+    required_fund_today = ipo_required_fund(0)
+    required_fund_tomorrow = ipo_required_fund(1)
+    if required_fund_tomorrow != 0:
         users = load_credentials(CREDENTIALS_FILE)
         # Users
         for user in users:
@@ -82,17 +83,19 @@ def priority_ipo_sell_smws():
             email_user = user.get("email_user")
             email_password = user.get("email_password")
             try:
-                balance = asyncio.run(
-                    kotak_get_balance.get_kotak_balance(USER_ID=bank_user, PASSWORD=bank_password, EMAIL_USR=email_user,
-                                                        EMAIL_PSS=email_password))
+                #balance = 120000
+                balance = asyncio.run(kotak_get_balance.get_kotak_balance(USER_ID=bank_user, PASSWORD=bank_password, EMAIL_USR=email_user,EMAIL_PSS=email_password))
             except Exception as e:
                 print(e)
                 balance = 0
-            final_amount = required_fund - balance
-            print("final_required_amount", final_amount)
+            carryover_bank_balance = balance - required_fund_today
+            if carryover_bank_balance < 0:
+                carryover_bank_balance = 0
+            print("carryover_bank_balance", carryover_bank_balance)
+            money_need_tomorrow = required_fund_tomorrow - carryover_bank_balance
+            print(client_id, money_need_tomorrow)
+            if money_need_tomorrow > 2000:
 
-            if final_amount > 1000:
-                print(client_id,final_amount)
                 zerodha_sell(user_id=client_id, password=password_user, totp_secret=topt_broker,
                              security_symbol="NIFTYIETF")
 
