@@ -119,59 +119,82 @@ def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=4)
         time.sleep(delay)
     return None
 
+def get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, search_query, retries=15, delay=4):
 
-def otp_shoonya(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7):
+    otp_pattern = re.compile(
+        r'(?:OTP:|One\s*Time\s*Password)[^\d]*(\d{6})',
+        re.IGNORECASE
+    )
+
     for i in range(retries):
         print(f"Attempt {i + 1}: Searching for OTP...")
+
         try:
             mail = imaplib.IMAP4_SSL("imap.gmail.com")
             mail.login(EMAIL_USER, EMAIL_PASS)
             mail.select("inbox")
 
-            # Search for the specific subject and ensure it's unread
             status, messages = mail.search(None, search_query)
 
+            print(status, messages)
+
             if status == "OK" and messages[0]:
-                # Get the list of matching message IDs and iterate backwards from the latest
+
                 message_ids = messages[0].split()
+
                 for latest_id in reversed(message_ids):
+
                     _, msg_data = mail.fetch(latest_id, "(RFC822)")
                     msg = message_from_bytes(msg_data[0][1])
 
-                    # --- NEW TIME FILTERING CODE ---
-                    # Parse the 'Date' header to a datetime object
+                    # Time filtering
                     email_date = parsedate_to_datetime(msg.get("Date"))
                     now = datetime.datetime.now(datetime.timezone.utc)
 
-                    # Calculate the difference in minutes
                     time_diff = (now - email_date).total_seconds() / 60
 
-                    # If the email is older than 2 minutes, skip it
                     if time_diff > 2:
                         continue
-                        # -------------------------------
 
                     body = ""
+
                     for part in msg.walk():
+
                         content_type = part.get_content_type()
-                        if content_type in ["text/html", "text/plain"]:
-                            payload = part.get_payload(decode=True).decode(errors='ignore')
-                            body += payload
+
+                        if content_type in ["text/plain", "text/html"]:
+
+                            payload = part.get_payload(decode=True)
+
+                            if payload:
+                                body += payload.decode(errors="ignore")
 
                     clean_body = re.sub(r'<[^>]+>', ' ', body)
-                    otp_match = re.search(r'is\s+(\d{5})', clean_body, re.IGNORECASE)
+
+                    print(clean_body)
+
+                    otp_match = otp_pattern.search(clean_body)
 
                     if otp_match:
+                        otp = otp_match.group(1)
+
+                        print("OTP found:", otp)
+
                         mail.store(latest_id, '+FLAGS', '\\Seen')
                         mail.logout()
-                        return otp_match.group(1)
+
+                        return otp
 
             mail.logout()
+
         except Exception as e:
             print(f"Error: {str(e)}")
 
         time.sleep(delay)
+
     return None
+
+
 
 def get_last_row(file,sheet):
     path = file
@@ -256,8 +279,9 @@ def is_data_available(url):
 
 EMAIL_USER = "prakharvasishtha9@gmail.com"
 EMAIL_PASS = "qmtm daun rljp wjrx"
-sub = '(SUBJECT "OTP")'
-search_query = '(SUBJECT "OTP Generated" UNSEEN)'
-#print(get_netbanking_otp(EMAIL_USER, EMAIL_PASS, sub))
+#sub = '(SUBJECT "OTP")'
+#search_query = '(SUBJECT "OTP Generated" UNSEEN)'
+sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
+print(get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, sub))
 #print(otp_shoonya(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7))
 #print(get_vix())
