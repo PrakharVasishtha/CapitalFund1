@@ -11,6 +11,8 @@ def withdraw_bank_to_kite(
         totp_secret: str,
         bank_id: str,
         bank_password: str,
+        EMAIL_USR: str,
+        EMAIL_PSS: str,
         amount: float | int,
         headless: bool = False,
         timeout: int = 5000,
@@ -50,33 +52,38 @@ def withdraw_bank_to_kite(
             page.get_by_role("link", name="Funds").click()
             time.sleep(1)
 
-        with page.expect_popup() as page1_info:
-            page.get_by_role("button", name="Add funds").click()
-        page1 = page1_info.value
-        page1.get_by_role("textbox", name="Enter amount").fill("700")
-        page1.get_by_text("Net banking₹9 + GST").click()
-        page1.get_by_role("button", name="Continue").click()
-        page1.get_by_role("link", name="CRN").click()
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").fill("961633451")
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").press("Tab")
-        page1.get_by_role("textbox", name="Select Bank Select Bank").fill("RamRate#26")
-        page1.get_by_role("link", name="SECURE LOGIN").click()
-        page1.locator("#dynamic-access").click()
-        page1.locator("#dynamic-access").click()
-        page1.locator("#dynamic-access").click()
-        page1.locator("#dynamic-access").fill("398523")
-        page1.get_by_role("link", name="Verify").click()
-        page1.get_by_role("link", name="CONFIRM").dblclick()
-        page1.get_by_role("button", name="Close").click()
-        page1.close()
+            with page.expect_popup() as page1_info:
+                page.get_by_role("button", name="Add funds").click()
+            page1 = page1_info.value
+            page1.get_by_role("textbox", name="Enter amount").fill("700")
+            page1.get_by_text("Net banking₹9 + GST").click()
+            page1.get_by_role("button", name="Continue").click()
+            page1.get_by_role("link", name="CRN").click()
+            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
+            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
+            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").fill("961633451")
+            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").press("Tab")
+            page1.get_by_role("textbox", name="Select Bank Select Bank").fill("RamRate#26")
+            page1.get_by_role("link", name="SECURE LOGIN").click()
+            sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
+            otp1 = Base.get_netbanking_otp_sms(EMAIL_USR, EMAIL_PSS, sub)
+            page1.locator("#dynamic-access").click()
+            page1.locator("#dynamic-access").click()
+            page1.locator("#dynamic-access").click()
+            page1.locator("#dynamic-access").fill(otp1)
+            page1.get_by_role("link", name="Verify").click()
+            page1.get_by_role("link", name="CONFIRM").dblclick()
+            page1.get_by_role("button", name="Close").click()
+            page1.close()
+            return True, f"Success"
 
         except Exception as e:
-            print(e)
-        # ---------------------
-        context.close()
-        browser.close()
+            print(f"❌ Error: {e}")
+            return False, f"Withdrawal failed"
+
+        finally:
+            context.close()
+            browser.close()
 
     # ── Execute ─────────────────────────────────────────────────────
     with sync_playwright() as playwright:

@@ -1,74 +1,89 @@
-import requests
-from bs4 import BeautifulSoup
-from rapidfuzz import fuzz
+from foundation import *
+import openpyxl
+import Base
+from playwright.sync_api import Playwright, sync_playwright, expect, Page
+import pyotp
 
+def withdraw_bank_to_kite(
+        user_uci: int,
+        broker_id: str,
+        broker_password: str,
+        totp_secret: str,
+        bank_id: str,
+        bank_password: str,
+        EMAIL_USR: str,
+        EMAIL_PSS: str,
+        amount: float | int,
+        headless: bool = False,
+        timeout: int = 5000,
+) -> tuple[bool, str]:
 
-def normalize(name):
-    return (
-        name.lower()
-        .replace("ipo", "")
-        .replace("limited", "")
-        .replace("ltd", "")
-        .strip()
-    )
-
-
-def get_ipo_gmp(company_name="Notavalaible", min_match=65):
-    url = "https://www.ipowatch.in/ipo-grey-market-premium-latest/"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        r = requests.get(url, headers=headers, timeout=10)
-        r.raise_for_status()
-    except:
+    def run(playwright: Playwright) -> tuple[bool, str]:
+        print(user_uci, "reqrd to withdrw frm zerodha", amount)
+        amount_str = "0"
+        msg_log = "e"
         try:
-            r = requests.get(url, headers=headers, timeout=12)
-            r.raise_for_status()
-        except Exception as e :
-            print("Exception:",e)
+            browser = playwright.chromium.launch(headless=False)
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 800},
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/128.0.0.0 Safari/537.36"
+                )
+            )
+            page: Page = context.new_page()
+            page.set_default_timeout(timeout)
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    table = soup.find("table")
+            # ── Login ───────────────────────────────────────────────
+            page.goto("https://kite.zerodha.com/", wait_until="domcontentloaded")
+            time.sleep(1)
 
-    if not table:
-        raise Exception("GMP table not found — website layout changed")
+            page.get_by_role("textbox", name="Phone number or User ID").fill(broker_id)
+            page.get_by_role("textbox", name="Password").fill(broker_password)
+            page.get_by_role("button", name="Login").click()
+            time.sleep(1)
+            # ── TOTP ────────────────────────────────────────────────
+            totp = pyotp.TOTP(totp_secret)
+            current_otp = totp.now()
+            page.get_by_role("spinbutton", name="External TOTP").fill(current_otp)
 
-    rows = table.find_all("tr")[1:]
+            # Wait for dashboard to load
+            page.get_by_role("link", name="Funds").click()
+            time.sleep(1)
 
-    target = normalize(company_name)
-    best_match = None
-    best_score = 0
+        with page.expect_popup() as page1_info:
+            page.get_by_role("button", name="Add funds").click()
+        page1 = page1_info.value
+        page1.get_by_role("textbox", name="Enter amount").fill("700")
+        page1.get_by_text("Net banking₹9 + GST").click()
+        page1.get_by_role("button", name="Continue").click()
+        page1.get_by_role("link", name="CRN").click()
+        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
+        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
+        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").fill("961633451")
+        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").press("Tab")
+        page1.get_by_role("textbox", name="Select Bank Select Bank").fill("RamRate#26")
+        page1.get_by_role("link", name="SECURE LOGIN").click()
+        sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
+        otp1 = Base.get_netbanking_otp_sms(EMAIL_USR, EMAIL_PSS, sub)
+        page1.locator("#dynamic-access").click()
+        page1.locator("#dynamic-access").click()
+        page1.locator("#dynamic-access").click()
+        page1.locator("#dynamic-access").fill(otp1)
+        page1.get_by_role("link", name="Verify").click()
+        page1.get_by_role("link", name="CONFIRM").dblclick()
+        page1.get_by_role("button", name="Close").click()
+        page1.close()
 
-    for row in rows:
-        cols = [c.get_text(strip=True) for c in row.find_all("td")]
-        if len(cols) < 5:
-            continue
+        except Exception as e:
+            print(f"❌ Error: {e}")
+            print("Screenshot saved: kotak_error.png")
 
-        ipo_name = cols[0]
-        #print(ipo_name)
-        try:
-            score = fuzz.partial_ratio(target, normalize(ipo_name))
-        except:
-            score = 50
+        context.close()
+        browser.close()
+        return None
 
-        if score > best_score:
-            best_score = score
-            best_match = (ipo_name, cols)
-    #print("Name Match for GMP:", best_score)
-    gmp=.235
-    if best_score >= min_match:
-        gmp=best_match[1][3].replace("%", "").strip()
-    #print("GMP:", gmp)
-    if gmp == .235:
-        return gmp
-    elif gmp == "-":
-        gmp = 0
-        return gmp
-    else:
-        gmp = float(gmp)
-        return gmp
-
-
-# ----------- USAGE ------------
-name = "Notavalaible"
-result = get_ipo_gmp("Mehul Telecom")
-print(result)
+    # ── Execute ─────────────────────────────────────────────────────
+    with sync_playwright() as playwright:
+        return run(playwright)

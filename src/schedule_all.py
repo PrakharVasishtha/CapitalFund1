@@ -3,6 +3,8 @@ import foundation
 import time
 import os
 import master_functions, application_ipo, fund_manager, smws, priority_ipo_smws_sell
+import fund_transfer_for_smws
+
 
 # Functions setup
 def ipo_entry():
@@ -18,6 +20,13 @@ def money_withdraw():
     except Exception as Argument:
         print("Problem in daily_money_withdraw")
         foundation.logger("system.txt",Argument,"money_withdraw")
+
+def bank_to_kite():
+    try:
+        fund_transfer_for_smws.fund_trf_to_kite()
+    except Exception as Argument:
+        print("Problem in bank_to_kite")
+        foundation.logger("system.txt",Argument,"bank_to_kite")
 
 def smws_seller():
     try:
@@ -50,8 +59,9 @@ def ipo_application():
 def run_now():
     try:
         print("running now")
-        master_functions.latest_ipo_entry()
-        fund_manager.daily_money_withdraw()
+        #master_functions.latest_ipo_entry()
+        #fund_manager.daily_money_withdraw()
+        fund_transfer_for_smws.fund_trf_to_kite()
         smws.smws_seller()
         smws.smws_buyer()
         master_functions.update_3pm()
@@ -69,6 +79,7 @@ def run_now():
 schedule.every().day.at("08:30").do(ipo_entry)
 #zerodha time instant money 9 to 4, upto 2 lakh
 schedule.every().day.at("09:02").do(money_withdraw)
+schedule.every().day.at("09:09").do(bank_to_kite)
 schedule.every().day.at("09:18").do(smws_seller)
 schedule.every().day.at("09:25").do(smws_buyer)
 schedule.every().day.at("10:05").do(update_before_close)
