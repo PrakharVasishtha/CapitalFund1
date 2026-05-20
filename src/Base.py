@@ -282,6 +282,6 @@ EMAIL_PASS = "qmtm daun rljp wjrx"
 #sub = '(SUBJECT "OTP")'
 #search_query = '(SUBJECT "OTP Generated" UNSEEN)'
 sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
-print(get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, sub))
+#print(get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, sub))
 #print(otp_shoonya(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7))
 #print(get_vix())
