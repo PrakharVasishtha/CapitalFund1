@@ -1,20 +1,17 @@
-import pandas as pd
-import openpyxl
-from datetime import date,timedelta
 import kotak_get_balance
-import time
 import asyncio
 import priority_ipo_smws_sell
 from fund_bank_to_kite import withdraw_bank_to_kite
-from zerodha_withdraw import withdraw_from_zerodha
 from Base import *
-from foundation import *
 
 CREDENTIALS_FILE = "credentials.json"
 
 
 def fund_trf_to_kite():
-    print("-----fund_trf_to_kite----")
+    print(
+        "*************************************-----------fund_trf_to_kite----------************************************")
+    print(
+        "##############################################################################################################")
     d0 = priority_ipo_smws_sell.ipo_required_fund(0)
     d1 = priority_ipo_smws_sell.ipo_required_fund(1)
     required_fund = d0 + d1

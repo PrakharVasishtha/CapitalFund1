@@ -79,7 +79,10 @@ def apply_ipo_mb(ipo):
     #mb first try in snii category if not sufficient funds, it will try in retail.
 
 def ipo_application():
-    print("--------IPO Application-------")
+    print(
+        "*************************************-----------ipo_application----------************************************")
+    print(
+        "##############################################################################################################")
     all=IPO_to_apply()
     #print(all)
     IPO_mb_3 = all[0]

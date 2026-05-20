@@ -70,6 +70,7 @@ def run_now():
 
     except Exception as Argument:
         print("Problem in run_now",Argument)
+        foundation.logger("system.txt", Argument, "run_now")
 
 
 #run_now()

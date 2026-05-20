@@ -13,7 +13,8 @@ from ExtractSubscription import get_ipo_subscription_dict
 
 
 def latest_ipo_entry():
-    print("-----------latest_ipo_entry----------")
+    print("*************************************-----------latest_ipo_entry----------************************************")
+    print("##############################################################################################################")
     sc = get_latest_ipos()[::-1]
     #print("latest_ipos",sc)
     row_sme=Base.get_last_row_sme()
@@ -66,7 +67,10 @@ def latest_ipo_entry():
         print("Cant send General.xls")
 
 def update_3pm():
-    print("-----------update_3pm----------")
+    print(
+        "*************************************-----------update_3pm----------************************************")
+    print(
+        "##############################################################################################################")
     path = '../General.xlsx'
     wb = openpyxl.load_workbook(path)
     sme_ws = wb['IPOSME']
