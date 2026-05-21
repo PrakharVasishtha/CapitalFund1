@@ -71,8 +71,8 @@ def zerodha_sell(
                 price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
                 page.get_by_role("button", name="Cancel").click()
                 p = Base.parse_float(price)
-                p1 = str(round(Base.parse_float(p * 1.0015),2))
-                p2 = str(round(Base.parse_float(p * 1.0035),2))
+                p1 = str(round(Base.parse_float(p * 1.0005),2))
+                p2 = str(round(Base.parse_float(p * 1.0015),2))
                 target_prices = [p1, p2]
 
             except Exception as e:
