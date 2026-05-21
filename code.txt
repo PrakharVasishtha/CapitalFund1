@@ -1,89 +1,99 @@
-from foundation import *
-import openpyxl
-import Base
-from playwright.sync_api import Playwright, sync_playwright, expect, Page
-import pyotp
+import requests
+import json
 
-def withdraw_bank_to_kite(
-        user_uci: int,
-        broker_id: str,
-        broker_password: str,
-        totp_secret: str,
-        bank_id: str,
-        bank_password: str,
-        EMAIL_USR: str,
-        EMAIL_PSS: str,
-        amount: float | int,
-        headless: bool = False,
-        timeout: int = 5000,
-) -> tuple[bool, str]:
 
-    def run(playwright: Playwright) -> tuple[bool, str]:
-        print(user_uci, "reqrd to withdrw frm zerodha", amount)
-        amount_str = "0"
-        msg_log = "e"
-        try:
-            browser = playwright.chromium.launch(headless=False)
-            context = browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/128.0.0.0 Safari/537.36"
-                )
+def get_ipo_indicative_price(symbol: str, exchange: str = "NSE"):
+    """
+    Fetch indicative price during IPO special pre-open session.
+
+    Args:
+        symbol: IPO trading symbol (e.g. "Ather", "TATATECH")
+        exchange: "NSE" or "BSE"
+
+    Returns:
+        dict containing indicative price data
+    """
+
+    exchange = exchange.upper()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json,text/plain,*/*",
+        "Referer": "https://www.nseindia.com/",
+    }
+
+    session = requests.Session()
+    session.headers.update(headers)
+
+    try:
+
+        # ================= NSE =================
+        if exchange == "NSE":
+
+            # Initialize cookies
+            session.get("https://www.nseindia.com", timeout=10)
+
+            url = (
+                f"https://www.nseindia.com/api/quote-equity?symbol={symbol.upper()}"
             )
-            page: Page = context.new_page()
-            page.set_default_timeout(timeout)
 
-            # ── Login ───────────────────────────────────────────────
-            page.goto("https://kite.zerodha.com/", wait_until="domcontentloaded")
-            time.sleep(1)
+            response = session.get(url, timeout=10)
 
-            page.get_by_role("textbox", name="Phone number or User ID").fill(broker_id)
-            page.get_by_role("textbox", name="Password").fill(broker_password)
-            page.get_by_role("button", name="Login").click()
-            time.sleep(1)
-            # ── TOTP ────────────────────────────────────────────────
-            totp = pyotp.TOTP(totp_secret)
-            current_otp = totp.now()
-            page.get_by_role("spinbutton", name="External TOTP").fill(current_otp)
+            if response.status_code != 200:
+                return {"error": f"NSE API failed: {response.status_code}"}
 
-            # Wait for dashboard to load
-            page.get_by_role("link", name="Funds").click()
-            time.sleep(1)
+            data = response.json()
 
-        with page.expect_popup() as page1_info:
-            page.get_by_role("button", name="Add funds").click()
-        page1 = page1_info.value
-        page1.get_by_role("textbox", name="Enter amount").fill("700")
-        page1.get_by_text("Net banking₹9 + GST").click()
-        page1.get_by_role("button", name="Continue").click()
-        page1.get_by_role("link", name="CRN").click()
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").fill("961633451")
-        page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").press("Tab")
-        page1.get_by_role("textbox", name="Select Bank Select Bank").fill("RamRate#26")
-        page1.get_by_role("link", name="SECURE LOGIN").click()
-        sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
-        otp1 = Base.get_netbanking_otp_sms(EMAIL_USR, EMAIL_PSS, sub)
-        page1.locator("#dynamic-access").click()
-        page1.locator("#dynamic-access").click()
-        page1.locator("#dynamic-access").click()
-        page1.locator("#dynamic-access").fill(otp1)
-        page1.get_by_role("link", name="Verify").click()
-        page1.get_by_role("link", name="CONFIRM").dblclick()
-        page1.get_by_role("button", name="Close").click()
-        page1.close()
+            preopen = data.get("preOpenMarket", {})
 
-        except Exception as e:
-            print(f"❌ Error: {e}")
-            print("Screenshot saved: kotak_error.png")
+            result = {
+                "exchange": "NSE",
+                "symbol": symbol.upper(),
+                "indicative_price": preopen.get("IEP"),
+                "final_price": preopen.get("finalPrice"),
+                "total_buy_qty": preopen.get("totalBuyQuantity"),
+                "total_sell_qty": preopen.get("totalSellQuantity"),
+                "ato_buy_qty": preopen.get("atoBuyQty"),
+                "ato_sell_qty": preopen.get("atoSellQty"),
+                "last_update_time": preopen.get("lastUpdateTime"),
+            }
 
-        context.close()
-        browser.close()
-        return None
+            return result
 
-    # ── Execute ─────────────────────────────────────────────────────
-    with sync_playwright() as playwright:
-        return run(playwright)
+        # ================= BSE =================
+        elif exchange == "BSE":
+
+            headers["Referer"] = "https://www.bseindia.com/"
+            session.headers.update(headers)
+
+            # BSE generally requires scrip code, not symbol
+            # Example API endpoint below
+            url = (
+                f"https://api.bseindia.com/BseIndiaAPI/api/StockReachGraph/w"
+                f"?scripcode={symbol}"
+            )
+
+            response = session.get(url, timeout=10)
+
+            if response.status_code != 200:
+                return {"error": f"BSE API failed: {response.status_code}"}
+            result = response.json()
+            print(result)
+            return result
+
+        else:
+            return {"error": "Exchange must be NSE or BSE"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# ================= Example Usage =================
+
+if __name__ == "__main__":
+
+    # NSE IPO stock
+    #result = get_ipo_indicative_price("TATATECH", "NSE")
+    result = get_ipo_indicative_price("500400", "BSE")
+
+    print(json.dumps(result, indent=2))

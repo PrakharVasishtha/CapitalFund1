@@ -16,10 +16,21 @@ def smws_buyer():
         "*************************************-----------smws_buyer----------************************************")
     print(
         "##############################################################################################################")
-    url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
-    df0 = pd.read_csv(url_csv)
-    time.sleep(1)
-    df = pd.read_csv(url_csv)
+
+    x = "Loading..."
+    i = 0
+    while x == "Loading..." and i < 10:
+        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
+        df = pd.read_csv(url_csv)
+        time.sleep(2)
+        x = df.iloc[24, 3]
+        i = i + 1
+        print(i)
+    if i == 10:
+        print("sheet not loading")
+        return False
+
+
     buynifty = df.iloc[23, 3]
     print("buynifty:", buynifty)
     goldetfbuy = df.iloc[26, 3]
@@ -66,10 +77,21 @@ def smws_seller():
         "*************************************-----------smws_seller----------************************************")
     print(
         "##############################################################################################################")
-    url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
-    df0 = pd.read_csv(url_csv)
-    time.sleep(1)
-    df = pd.read_csv(url_csv)
+
+    x= "Loading..."
+    i=0
+    while x == "Loading..." and i<10:
+        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
+        df = pd.read_csv(url_csv)
+        time.sleep(2)
+        x = df.iloc[24, 3]
+        i = i +1
+        print(i)
+    if i == 10:
+        print("sheet not loading")
+        return False
+
+    #df = pd.read_csv(url_csv)
     sellnifty = df.iloc[24, 3]
     print("sellnifty:", sellnifty)
     goldetfsell = df.iloc[27, 3]

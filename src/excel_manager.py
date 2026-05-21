@@ -216,7 +216,9 @@ class ExcelManager:
             Y = parse_float(sub[1])
             Z = parse_float(sub[2])
             #TS=sub[3]
+            time.sleep(.5)
             AB = gmp
+            time.sleep(.5)
             AQ = industry_score
             AI = get_vix()
         except Exception as e:

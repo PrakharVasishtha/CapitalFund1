@@ -3,7 +3,8 @@ from foundation import *
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 
-def zerodha_sell(
+
+def allotment_monitor(
         user_id: str,
         password: str,
         totp_secret: str,
@@ -12,7 +13,7 @@ def zerodha_sell(
         timeout: int = 5000,
 ) -> tuple[bool, str]:
     def run(playwright: Playwright) -> tuple[bool, str]:
-        print("______zerodha_sell___",user_id,":",security_symbol)
+        print("______zerodha_sell___", user_id, ":", security_symbol)
         try:
             browser = playwright.chromium.launch(headless=headless)
             context = browser.new_context(
@@ -23,9 +24,9 @@ def zerodha_sell(
                     "Chrome/128.0.0.0 Safari/537.36"
                 )
             )
-            file_path=user_id +".txt"
+            file_path = user_id + ".txt"
             amt_symbl = security_symbol
-            
+
             page: Page = context.new_page()
             page.set_default_timeout(timeout)
 
@@ -71,13 +72,13 @@ def zerodha_sell(
                 price = page.get_by_role("spinbutton", name="Price", exact=True).input_value()
                 page.get_by_role("button", name="Cancel").click()
                 p = Base.parse_float(price)
-                p1 = str(round(Base.parse_float(p * 1.0015),2))
-                p2 = str(round(Base.parse_float(p * 1.0035),2))
+                p1 = str(round(Base.parse_float(p * 1.0025), 2))
+                p2 = str(round(Base.parse_float(p * 1.005), 2))
                 target_prices = [p1, p2]
 
             except Exception as e:
                 print(e)
-                
+
             page.get_by_role("link", name="Holdings").click()
             time.sleep(2)
             try:
@@ -88,21 +89,22 @@ def zerodha_sell(
                 except Exception as e:
                     print(e)
                     holdings = page.get_by_role("spinbutton", name=security_sell_bse).input_value()
-                print("Holdings Inside:",holdings)
+                print("Holdings Inside:", holdings)
                 page.get_by_role("button", name="Cancel").click()
             except Exception as e:
                 holdings = 0
                 print(e)
-                
-            print("holdings:",holdings)
-            if holdings!=0: q = str(int(int(holdings) / 4))
-            else: q = 0
 
-            print("holdings:",holdings,"q:",q,"p:",p,"target_prices:",target_prices)
-            
-            
+            print("holdings:", holdings)
+            if holdings != 0:
+                q = str(int(int(holdings) / 2))
+            else:
+                q = 0
+
+            print("holdings:", holdings, "q:", q, "p:", p, "target_prices:", target_prices)
+
             # Buy 5 orders
-            if q!=0:
+            if q != 0:
                 for k in target_prices:
                     try:
                         page.keyboard.press('S')
@@ -131,11 +133,11 @@ def zerodha_sell(
                         time.sleep(2)
                         page.get_by_role("button", name="Sell").click()
                         time.sleep(2)
-            logger(file_path,amt_symbl,"Sold")
+            logger(file_path, amt_symbl, "Sold")
             return True, f"Sell orders initiated successfully"
 
         except Exception as e:
-            logger(file_path,amt_symbl,"not Sold for some Exception")
+            logger(file_path, amt_symbl, "not Sold for some Exception")
             import traceback
             return False, f"Sell orders failed: {str(e)}\n{traceback.format_exc()}"
 

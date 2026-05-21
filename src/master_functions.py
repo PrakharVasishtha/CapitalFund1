@@ -20,7 +20,7 @@ def latest_ipo_entry():
     row_sme=Base.get_last_row_sme()
     row_mb=Base.get_last_row_mb()
     for ipo in sc:
-        time.sleep(1)
+        time.sleep(2)
         ex = ExcelManager()
         type1 = ipo['category']
         name1 = ipo['name']
@@ -49,10 +49,12 @@ def latest_ipo_entry():
                 print(e)
                 gmp=0
             try:
+                time.sleep(.5)
                 sub=get_ipo_subscription_dict(url2)
             except Exception as e:
                 print(e)
                 sub = ["20","20","10","10"]
+            time.sleep(.5)
             review=has_dicey_word(url2)
             time.sleep(.5)
             ex.write_details_GSR(row, gmp, sub, review, type1,industry_score)

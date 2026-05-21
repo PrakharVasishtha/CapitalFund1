@@ -59,8 +59,8 @@ def ipo_application():
 def run_now():
     try:
         print("running now")
-        #master_functions.latest_ipo_entry()
-        #fund_manager.daily_money_withdraw()
+        master_functions.latest_ipo_entry()
+        fund_manager.daily_money_withdraw()
         fund_transfer_for_smws.fund_trf_to_kite()
         smws.smws_seller()
         smws.smws_buyer()
@@ -73,7 +73,7 @@ def run_now():
         foundation.logger("system.txt", Argument, "run_now")
 
 
-#run_now()
+run_now()
 
 # Task scheduling
 

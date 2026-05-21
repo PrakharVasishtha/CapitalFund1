@@ -33,4 +33,4 @@ def ipo_indicative_price_bse(
 
 
     with sync_playwright() as playwright:
-    run(playwright)
+        run(playwright)

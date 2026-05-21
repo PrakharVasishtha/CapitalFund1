@@ -251,7 +251,7 @@ def page_contains_trust(url: str) -> bool:
 
 def is_data_available(url):
     try:
-        time.sleep(.5)
+        time.sleep(1)
         extractor = ChittorgarhIPOExtractor()
         data1 = extractor.extract(url)
         #print(data1)
