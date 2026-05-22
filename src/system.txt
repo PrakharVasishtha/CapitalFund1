@@ -1,2 +1,6 @@
 run_now : [Errno 13] Permission denied: '../General.xlsx' at MM-DD HH:MM :05-21 10:33
 run_now : '>' not supported between instances of 'int' and 'NoneType' at MM-DD HH:MM :05-21 10:46
+send_email_with_excel : send_email_with_excel at MM-DD HH:MM :05-22 11:55
+send_email_with_excel : send_email_with_excel at MM-DD HH:MM :05-22 11:57
+send_email_with_excel : send_email_with_excel at MM-DD HH:MM :05-22 12:18
+send_email_with_excel : send_email_with_excel at MM-DD HH:MM :05-22 13:06

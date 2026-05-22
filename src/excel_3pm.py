@@ -9,7 +9,7 @@ from foundation import *
 
 
 def update_row_3pm(row: int, type1: str):
-        write_details("update_row_3pm", row, type1)
+        print("update_row_3pm", row, type1)
         path = '../General.xlsx'
         wb = openpyxl.load_workbook(path)
         sme_ws = wb['IPOSME']
@@ -55,5 +55,5 @@ def update_row_3pm(row: int, type1: str):
             x=0
         wb.close()
 
-#update_row_3pm(114,'SME')
+update_row_3pm(114,'SME')
 #update_row_3pm(68,'MB')
