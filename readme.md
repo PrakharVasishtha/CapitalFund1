@@ -25,8 +25,5 @@ ipo_automation/
 
 allotted_holdings.xls
 allotted     1 allotted
-special_session_status 0 not started / 1 started / 2 sold in special session / 3 not sold in spl. session
-regular_session_monitoring 
-regular_session_day
-regular_session_status
-uc_lc_monitoring
+special_session_status 0 not started / 1 started / 2 sold in special session / 3 not sold in spl. session / 5 empty
+regular_session_status 0 not started / 1 started / 2 sold in regular session / 3 not sold in regular session / 4 transferred to UC/LC monitor
