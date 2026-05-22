@@ -1,7 +1,6 @@
 from Base import load_credentials
 import pandas as pd
 import time
-
 from zerodha_sell import zerodha_sell
 import pandas as pd
 import openpyxl
@@ -9,13 +8,10 @@ from datetime import date,timedelta
 import kotak_get_balance
 import time
 import asyncio
-
 from zerodha_withdraw import withdraw_from_zerodha
 from Base import *
 
-#to be run after smws_saler()
 CREDENTIALS_FILE = "credentials.json"
-
 
 def ipo_required_fund(d=0):
     total_sme = 0
@@ -46,9 +42,7 @@ def ipo_required_fund(d=0):
                 sme_fund = sme_fund + 280000
                 total_sme = total_sme + 1
 
-
     print("sme fund", sme_fund)
-
 
     for i in range(0, 9):
         rw = row_mb - i
@@ -60,12 +54,10 @@ def ipo_required_fund(d=0):
                 mb_fund = mb_fund + 209000
                 total_mb = total_mb + 1
 
-
     print("mb fund", mb_fund)
     total_fund = sme_fund + mb_fund
     print("Total Fund Required on:", target_day, "is:", total_fund)
     return total_fund
-
 
 def priority_ipo_sell_smws():
     print("priority_ipo_sell_smws")

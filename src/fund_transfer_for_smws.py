@@ -6,7 +6,6 @@ from Base import *
 
 CREDENTIALS_FILE = "credentials.json"
 
-
 def fund_trf_to_kite():
     print(
         "*************************************-----------fund_trf_to_kite----------************************************")
