@@ -5,6 +5,8 @@ import os
 import master_functions, application_ipo, fund_manager, smws, priority_ipo_smws_sell
 import fund_transfer_for_smws
 
+
+# Functions setup
 def ipo_entry():
     try:
         master_functions.latest_ipo_entry()
@@ -33,12 +35,12 @@ def smws_seller():
         print("Problem in smws_seller")
         foundation.logger("system.txt",Argument,"smws_seller")
 
-def priority_ipo_seller():
+def priority_ipo_sell_smws():
     try:
-        priority_ipo_smws_sell.ipo_required_fund()
+        priority_ipo_smws_sell.priority_ipo_sell_smws()
     except Exception as Argument:
-        print("Problem in priority_ipo_seller")
-        foundation.logger("system.txt",Argument,"priority_ipo_seller")
+        print("Problem in priority_ipo_sell_smws")
+        foundation.logger("system.txt",Argument,"priority_ipo_sell_smws")
 
 def smws_buyer():
     try:
@@ -63,35 +65,40 @@ def ipo_application():
 
 def run_now():
     try:
-        print("***********************running now**********************")
-        print("***********************-----------**********************")
+        print("running now")
         master_functions.latest_ipo_entry()
         fund_manager.daily_money_withdraw()
         fund_transfer_for_smws.fund_trf_to_kite()
         smws.smws_seller()
-        priority_ipo_smws_sell.ipo_required_fund()
+        priority_ipo_smws_sell.priority_ipo_sell_smws()
         smws.smws_buyer()
         master_functions.update_3pm()
         application_ipo.ipo_application()
-        print("***********************Finished*************************")
+        print("Finished")
 
     except Exception as Argument:
         print("Problem in run_now",Argument)
         foundation.logger("system.txt", Argument, "run_now")
 
+
 run_now()
+
+# Task scheduling
 
 schedule.every().day.at("08:30").do(ipo_entry)
 #zerodha time instant money 9 to 4, upto 2 lakh
 schedule.every().day.at("09:02").do(money_withdraw)
 schedule.every().day.at("09:09").do(bank_to_kite)
 schedule.every().day.at("09:18").do(smws_seller)
-schedule.every().day.at("09:23").do(priority_ipo_seller)
-schedule.every().day.at("09:28").do(smws_buyer)
+schedule.every().day.at("09:18").do(priority_ipo_sell_smws)
+schedule.every().day.at("09:25").do(smws_buyer)
 schedule.every().day.at("10:05").do(update_before_close)
 schedule.every().day.at("14:50").do(update_before_close)
 schedule.every().day.at("14:55").do(ipo_application)
 
+
 while True:
+    # Checks whether a scheduled task
+    # is pending to run or not
     schedule.run_pending()
     time.sleep(1)

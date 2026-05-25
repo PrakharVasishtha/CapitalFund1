@@ -30,7 +30,7 @@ def ipo_required_fund(d=0):
     target_date = date.today() + timedelta(days=d)
     target_day = target_date.day
     print("date:", target_day)
-    for i in range(0, 9):
+    for i in range(0, 11):
         rw = row_sme - i
         apply = sme_ws.cell(rw, 42).value
         # print(apply)
@@ -75,8 +75,8 @@ def priority_ipo_sell_smws():
             email_user = user.get("email_user")
             email_password = user.get("email_password")
             try:
-                #balance = 120000
-                balance = asyncio.run(kotak_get_balance.get_kotak_balance(USER_ID=bank_user, PASSWORD=bank_password, EMAIL_USR=email_user,EMAIL_PSS=email_password))
+                balance = 120000
+                #balance = asyncio.run(kotak_get_balance.get_kotak_balance(USER_ID=bank_user, PASSWORD=bank_password, EMAIL_USR=email_user,EMAIL_PSS=email_password))
             except Exception as e:
                 print(e)
                 balance = 0
@@ -101,4 +101,4 @@ def priority_ipo_sell_smws():
         print("No withdrawal required.")
         return 0
 
-#priority_ipo_sell_smws()
+#print(priority_ipo_sell_smws())
