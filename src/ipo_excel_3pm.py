@@ -1,11 +1,11 @@
 import openpyxl
 import time
 from Base import get_vix
-from ExtractGMP import get_ipo_gmp
-from ExtractReview import has_dicey_word
-from ExtractSubscription import get_ipo_subscription_live
+from ipo_ExtractGMP import get_ipo_gmp
+from ipo_ExtractReview import has_dicey_word
+from ipo_ExtractSubscription import get_ipo_subscription_live
 from datetime import date
-from foundation import *
+from common_foundation import *
 
 
 def update_row_3pm(row: int, type1: str):

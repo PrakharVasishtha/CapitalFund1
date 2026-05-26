@@ -1,14 +1,14 @@
 from Base import load_credentials
 import pandas as pd
 import time
-from zerodha_sell import zerodha_sell
+from trader_zerodha_sell import zerodha_sell
 import pandas as pd
 import openpyxl
 from datetime import date,timedelta
-import kotak_get_balance
+import fund_kotak_get_balance
 import time
 import asyncio
-from zerodha_withdraw import withdraw_from_zerodha
+from fund_zerodha_withdraw import withdraw_from_zerodha
 from Base import *
 
 CREDENTIALS_FILE = "credentials.json"

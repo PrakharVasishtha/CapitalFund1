@@ -3,7 +3,7 @@ import openpyxl
 import time
 #from typing import Dict, Any
 #from formula import Formula
-from excel_manager import parse_float
+from ipo_excel_manager import parse_float
 #from ExtractGMP import get_ipo_gmp
 #from ExtractReview import has_dicey_word
 #from ExtractSubscription import get_ipo_subscription_dict

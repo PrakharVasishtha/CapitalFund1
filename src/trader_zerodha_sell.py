@@ -1,5 +1,5 @@
 import Base
-from foundation import *
+from common_foundation import *
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 

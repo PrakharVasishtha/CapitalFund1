@@ -1,13 +1,13 @@
 import pandas as pd
 import openpyxl
 from datetime import date,timedelta
-import kotak_get_balance
+import fund_kotak_get_balance
 import time
 import asyncio
 
-from zerodha_withdraw import withdraw_from_zerodha
+from fund_zerodha_withdraw import withdraw_from_zerodha
 from Base import *
-from foundation import *
+from common_foundation import *
 
 CREDENTIALS_FILE = "credentials.json"
 

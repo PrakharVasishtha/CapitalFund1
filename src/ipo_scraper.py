@@ -5,7 +5,7 @@ import datetime
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from base_ipo import categorize_ipo_industry, get_industry_score
+from ipo_base import categorize_ipo_industry, get_industry_score
 import platform
 
 

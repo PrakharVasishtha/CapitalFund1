@@ -1,4 +1,4 @@
-from cleanfetcheddata import clean_ipo_data
+from ipo_cleanfetcheddata import clean_ipo_data
 from IpoDataExtractor import ChittorgarhIPOExtractor, IPOData
 import openpyxl
 import imaplib

@@ -1,14 +1,14 @@
 import openpyxl
 import Base
-from foundation import *
-from excel_3pm import update_row_3pm
-from ExtractReview import has_dicey_word
-from scraper import get_latest_ipos
-from excel_manager import ExcelManager
-from cleanfetcheddata import clean_ipo_data
+from common_foundation import *
+from ipo_excel_3pm import update_row_3pm
+from ipo_ExtractReview import has_dicey_word
+from ipo_scraper import get_latest_ipos
+from ipo_excel_manager import ExcelManager
+from ipo_cleanfetcheddata import clean_ipo_data
 from IpoDataExtractor import ChittorgarhIPOExtractor, IPOData
-from ExtractGMP import get_ipo_gmp
-from ExtractSubscription import get_ipo_subscription_dict
+from ipo_ExtractGMP import get_ipo_gmp
+from ipo_ExtractSubscription import get_ipo_subscription_dict
 
 
 

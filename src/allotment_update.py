@@ -1,12 +1,12 @@
-from fetch_ipo_allotment import fetch_allotment_holdings
+from allotment_fetch import fetch_allotment_holdings
 import openpyxl
 import time
 from Base import get_vix
-from ExtractGMP import get_ipo_gmp
-from ExtractReview import has_dicey_word
-from ExtractSubscription import get_ipo_subscription_live
+from ipo_ExtractGMP import get_ipo_gmp
+from ipo_ExtractReview import has_dicey_word
+from ipo_ExtractSubscription import get_ipo_subscription_live
 from datetime import date
-from foundation import *
+from common_foundation import *
 
 
 def excel_holdings(usr_id: int,security_symbol: str, issue_price: int, total_shares: int, lot_size: int):

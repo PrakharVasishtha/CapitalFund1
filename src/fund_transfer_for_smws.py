@@ -1,6 +1,6 @@
-import kotak_get_balance
+import fund_kotak_get_balance
 import asyncio
-import priority_ipo_smws_sell
+import trader_priority_ipo_smws_sell
 from fund_bank_to_kite import withdraw_bank_to_kite
 from Base import *
 

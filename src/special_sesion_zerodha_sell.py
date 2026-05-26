@@ -3,7 +3,7 @@ from common_foundation import *
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 
-def fetch_allotment_holdings(
+def zerodha_sell_lc(
         user_id: str,
         password: str,
         totp_secret: str,
@@ -12,7 +12,7 @@ def fetch_allotment_holdings(
         timeout: int = 5000,
 ) -> tuple[bool, str]:
     def run(playwright: Playwright) -> tuple[bool, str]:
-        print("______zerodha_sell___", user_id, ":", security_symbol)
+        print("______zerodha_sell_lc___",user_id,":",security_symbol)
         try:
             browser = playwright.chromium.launch(headless=headless)
             context = browser.new_context(
@@ -23,12 +23,13 @@ def fetch_allotment_holdings(
                     "Chrome/128.0.0.0 Safari/537.36"
                 )
             )
-            file_path = user_id + ".txt"
+            file_path=user_id +".txt"
             amt_symbl = security_symbol
-
+            
             page: Page = context.new_page()
             page.set_default_timeout(timeout)
 
+            # ── Login ───────────────────────────────────────────────
             page.goto("https://kite.zerodha.com/", wait_until="domcontentloaded")
             time.sleep(1)
 
@@ -37,6 +38,7 @@ def fetch_allotment_holdings(
             page.get_by_role("button", name="Login").click()
             time.sleep(1)
 
+            # ── TOTP ────────────────────────────────────────────────
             totp = pyotp.TOTP(totp_secret)
             current_otp = totp.now()
             page.get_by_role("spinbutton", name="External TOTP").fill(current_otp)
@@ -44,30 +46,33 @@ def fetch_allotment_holdings(
             page.mouse.click(30, 50)
             time.sleep(.5)
 
+
             page.get_by_role("link", name="Holdings").click()
             time.sleep(2)
+
+            ############################
             try:
                 page.get_by_role("cell", name=security_symbol).click()
                 page.get_by_role("link", name="NIFTYIETF").click()
                 try:
-                    holdings = page.get_by_role("spinbutton", name=security_nse).input_value()
+                    holdings = page.get_by_role("spinbutton", name=security_sell_nse).input_value()
                 except Exception as e:
                     print(e)
-                    holdings = page.get_by_role("spinbutton", name=security_bse).input_value()
-                print("Holdings Inside:", holdings)
+                    holdings = page.get_by_role("spinbutton", name=security_sell_bse).input_value()
+                print("Holdings Inside:",holdings)
                 page.get_by_role("button", name="Cancel").click()
             except Exception as e:
                 holdings = 0
                 print(e)
-
-            print("holdings:", holdings)
-            
-            return holdings
+                
+            ##############################
+            logger(file_path,amt_symbl,"Sold")
+            return True, f"Sell orders initiated successfully"
 
         except Exception as e:
-            logger(file_path, amt_symbl, "not Sold for some Exception")
+            logger(file_path,amt_symbl,"not Sold for some Exception")
             import traceback
-            return False
+            return False, f"Sell orders failed: {str(e)}\n{traceback.format_exc()}"
 
         finally:
             if 'context' in locals():

@@ -1,5 +1,5 @@
 import Base
-from foundation import *
+from common_foundation import *
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 
@@ -50,10 +50,10 @@ def fetch_allotment_holdings(
                 page.get_by_role("cell", name=security_symbol).click()
                 page.get_by_role("link", name="NIFTYIETF").click()
                 try:
-                    holdings = page.get_by_role("spinbutton", name=security_sell_nse).input_value()
+                    holdings = page.get_by_role("spinbutton", name=security_nse).input_value()
                 except Exception as e:
                     print(e)
-                    holdings = page.get_by_role("spinbutton", name=security_sell_bse).input_value()
+                    holdings = page.get_by_role("spinbutton", name=security_bse).input_value()
                 print("Holdings Inside:", holdings)
                 page.get_by_role("button", name="Cancel").click()
             except Exception as e:
