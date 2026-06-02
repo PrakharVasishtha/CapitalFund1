@@ -99,5 +99,5 @@ def update_3pm():
     except Exception as e:
         print("Cant send General.xls")
 
-#latest_ipo_entry()
+latest_ipo_entry()
 #update_3pm()
