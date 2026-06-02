@@ -100,4 +100,4 @@ def update_3pm():
         print("Cant send General.xls")
 
 #latest_ipo_entry()
-update_3pm()
+#update_3pm()
