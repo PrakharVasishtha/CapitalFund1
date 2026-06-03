@@ -55,5 +55,5 @@ def update_row_3pm(row: int, type1: str):
             x=0
         wb.close()
 
-update_row_3pm(114,'SME')
+#update_row_3pm(114,'SME')
 #update_row_3pm(68,'MB')

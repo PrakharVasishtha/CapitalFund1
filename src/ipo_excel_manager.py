@@ -89,7 +89,7 @@ class ExcelManager:
                 starts1 = scrape_norm.startswith(excel_norm)
                 starts2 = excel_norm.startswith(scrape_norm)
                 #print(difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio())
-                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.69
+                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.9
                 if starts1 or starts2 or sim:
                     #print("already exists")
                     return True
