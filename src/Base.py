@@ -258,10 +258,10 @@ def is_data_available(url):
         data2 = clean_ipo_data(data1)
         #print(data2)
         if "N/A" in data2.get('issue_price_per_share','N/A'):
-            print("issue_price_per_share")
+            print("issue_price_per_share not available,so no adding")
             return False
         elif page_contains_trust(url):
-            print("trust")
+            print("trust, so no adding")
             return False
         else:
             return True

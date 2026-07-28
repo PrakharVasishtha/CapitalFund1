@@ -9,7 +9,7 @@ from common_foundation import *
 
 
 def update_row_3pm(row: int, type1: str):
-        print("update_row_3pm", row, type1)
+        #print("update_row_3pm", row, type1)
         path = '../General.xlsx'
         wb = openpyxl.load_workbook(path)
         sme_ws = wb['IPOSME']
@@ -24,15 +24,15 @@ def update_row_3pm(row: int, type1: str):
         if today == close_day or today + 1 == close_day:
             url2 = ws.cell(row, 1).value
             name1 = ws.cell(row, 2).value
-            print(name1)
+            dprint(name1)
             if name1 != None:
                 #
                 url1 = ws.cell(row, 3).value
 
                 gmp = get_ipo_gmp(name1)
-                print(gmp)
+                dprint(gmp)
                 sub = get_ipo_subscription_live(url2)
-                print(sub)
+                dprint(sub)
                 review = int(has_dicey_word(url2))
                 AI = get_vix()
                 ws.cell(row, 28, gmp)
@@ -55,5 +55,5 @@ def update_row_3pm(row: int, type1: str):
             x=0
         wb.close()
 
-#update_row_3pm(114,'SME')
+#update_row_3pm(182,'SME')
 #update_row_3pm(68,'MB')

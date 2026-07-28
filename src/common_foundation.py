@@ -18,7 +18,7 @@ def logger(file, StringText="OK", FunctionName="In Function"):
 def dprint(a=".",b=" ",c=" ",d=" ",e=" ",f=" ",g=" ",h=" "):
     #print("dprint")
     #i=0 for production, i = 1 for debugging.
-    i=1
+    i=0
     if i==1:
         print(str(a)+" "+str(b)+" "+str(c)+" "+str(d)+" "+str(e)+" "+str(f)+" "+str(g)+" "+str(h))
     

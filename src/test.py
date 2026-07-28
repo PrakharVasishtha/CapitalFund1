@@ -12,7 +12,7 @@ def normalize_text(text: str) -> str:
     return " ".join(cleaned.split()).lower()
 
 
-def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cutoff: float = 80.0) -> str:
+def get_gmp_percent(company_name: str, url: str = "https://www.ipopremium.in/", cutoff: float = 80.0) -> str:
     scraper = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "desktop": True}
     )
@@ -25,20 +25,20 @@ def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cuto
 
     soup = BeautifulSoup(response.text, "html.parser")
     rows = soup.find_all("tr")
-    #print(rows)
+    print(rows)
     search_term = normalize_text(company_name)
 
     for row in rows:
         cols = row.find_all("td")
         if len(cols) < 6:
             continue
-        pct = 0
+
         raw_name = cols[0].get_text()
         cleaned_name = normalize_text(raw_name)[:21]
 
         # Calculate similarity score (returns a float between 0.0 and 100.0)
         similarity_score = fuzz.token_sort_ratio(search_term, cleaned_name)
-        #print(similarity_score)
+        print(similarity_score)
         # Check if similarity meets the 80% cutoff threshold
         if similarity_score >= cutoff:
             raw_gmp = cols[2].get_text(strip=True)
@@ -55,8 +55,11 @@ def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cuto
                         pct = round(pct, 2)
                         return pct
             except (IndexError, ValueError, ZeroDivisionError):
-                pct = 0
-                return pct
+                return "0.0"
 
     return "0.0"
-#print(get_ipo_gmp("MV Electrosystems Ltd"))
+
+
+if __name__ == "__main__":
+    # Will match even with minor typos or extra legal suffixes (e.g., "Manipal Health Ltd")
+    print(get_gmp_percent("Manipal Health Enterp"))

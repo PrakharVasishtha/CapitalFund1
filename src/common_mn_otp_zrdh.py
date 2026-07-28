@@ -7,7 +7,7 @@ current_otp = totp.now()
 
 print(f"prakhar login code is: {current_otp}")
 #sonam
-secret = "E7MRCB3DEEMRYATLZHV6BQSI37VL5CYT"
+secret = "GCZYYRS5QTL53P4KM76O3HD7Z7RCTISZ"
 totp = pyotp.TOTP(secret)
 current_otp = totp.now()
 

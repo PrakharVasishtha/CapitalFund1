@@ -8,7 +8,6 @@ from ipo_ExtractSubscription import get_ipo_subscription_live
 from datetime import date
 from common_foundation import *
 
-
 def excel_holdings(usr_id: int,security_symbol: str, issue_price: int, total_shares: int, lot_size: int):
         print("excel_holdings", row, type1)
         path = '../allotted_holdings.xlsx'
@@ -21,9 +20,7 @@ def excel_holdings(usr_id: int,security_symbol: str, issue_price: int, total_sha
                 name1 = ws.cell(row, 2).value
                 print(name1)
                 if name1 != None:
-                    #
                     url1 = ws.cell(row, 3).value
-
                     gmp = get_ipo_gmp(name1)
                     print(gmp)
                     sub = get_ipo_subscription_live(url2)
@@ -46,17 +43,11 @@ def excel_holdings(usr_id: int,security_symbol: str, issue_price: int, total_sha
                 except Exception as e:
                     print(f"excel_holdings An error occurred while saving the file: {e}")
             else:
-                #print("Closing not today")
                 x=0
             k = k + 1
         wb.close()
 
-
-
 def allotment_update():
     holdings = fetch_allotment_holdings()
-    for 
-    excel_holdings()
-    # symbol, issue_price, total_shares, lot_size
     
     

@@ -41,9 +41,9 @@ def find_boa(closing):
     date_obj = datetime.datetime.strptime(date_str, '%d%m%Y')
     dow = date_obj.strftime('%A')
     day = int(date_obj.strftime('%d'))
-    print(dow,day)
+    #print(dow,day)
     if dow == "Friday":
-        print("Friday")
+        #print("Friday")
         boa = day + 3
     else:
         boa = day + 1
@@ -54,15 +54,15 @@ def find_listing(closing):
     date_obj = datetime.datetime.strptime(date_str, '%d%m%Y')
     dow = date_obj.strftime('%A')
     day = int(date_obj.strftime('%d'))
-    print(dow,day)
+    #print(dow,day)
     if dow == "Wednesday":
-        print("Wednesday")
+        #print("Wednesday")
         listing = day + 5
     elif dow == "Thursday":
-        print("Thursday")
+        #print("Thursday")
         listing = day + 5
     elif dow == "Friday":
-        print("Thursday")
+        #print("Thursday")
         listing = day + 5  
     else:
         listing = day + 3
@@ -83,13 +83,17 @@ class ExcelManager:
         #print("---checking if already exists---",name)
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         scrape_norm = normalize_name(name)
+        scrape_norm = scrape_norm[:12]
+        #print(scrape_norm)
         for cell in ws['B']:
             if cell.value:
                 excel_norm = normalize_name(cell.value)
+                excel_norm = excel_norm[:12]
+                #print(excel_norm)
                 starts1 = scrape_norm.startswith(excel_norm)
                 starts2 = excel_norm.startswith(scrape_norm)
                 #print(difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio())
-                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.9
+                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.75
                 if starts1 or starts2 or sim:
                     #print("already exists")
                     return True
@@ -101,11 +105,11 @@ class ExcelManager:
         ws.cell(row, 2, ipo['name'])
         ws.cell(row, 3, ipo['year'])  # Adjust if column 3 is different
         self.wb.save(self.path)
-        print("Appended new IPO")
+        #print("Appended new IPO")
         return row
 
     def write_details(self, row: int, ipo_data: Dict, type1: str):
-        dprint("write_details")
+        #print("write_details")
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         time.sleep(.2)
         try:
@@ -132,7 +136,7 @@ class ExcelManager:
             Q = pe_values[0] if pe_values else 0.0
             R = pe_values[1] if len(pe_values) > 1 else 0.0
             try:
-                S = pe.effect_pe_sme(A) if type1 == "SME" else pe.effect_pe_mb(A)
+                S = ipo_pe.effect_pe_sme(A) if type1 == "SME" else ipo_pe.effect_pe_mb(A)
             except Exception as e:
                 print(e)
                 S = 0
@@ -155,7 +159,7 @@ class ExcelManager:
             AF = round(AF, 2)
             AK = B
             AL = safe_get(ipo_data, "ipo_timeline", "close", default="35112026")
-            print("date",AL)
+            #print("date",AL)
             closing = int(AL[:2])
             boa = find_boa(AL)
             listing = find_listing(AL)
@@ -195,19 +199,19 @@ class ExcelManager:
 
         ws.cell(row, 39, AK) # AK (37)
         ws.cell(row, 40, closing) # AL
-        ws.cell(row, 41, boa) #AM
+        #ws.cell(row, 41, boa) #AM
         #ws.cell(row, 42, listing) #AM
         
         try:
             self.wb.save(self.path)
-            print(f"write_details: Successfully updated details {B}for row {row}")
+            #print(f"write_details: Successfully updated details {B}for row {row}")
         except PermissionError:
             print(f"write_details Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:
             print(f"write_details An error occurred while saving the file: {e}")
             
     def write_details_GSR(self, row: int,gmp: float, sub: list, review: int, type1: str,industry_score: float):
-        dprint("write_details_GSR")
+        #print("write_details_GSR")
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         time.sleep(.5)
         try:
@@ -236,7 +240,7 @@ class ExcelManager:
 
         try:
             self.wb.save(self.path)
-            print(f"write_details_GSR: Successfully updated details for row {row}")
+            #print(f"write_details_GSR: Successfully updated details for row {row}")
         except PermissionError:
             print(f"write_details_GSR Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:
@@ -283,7 +287,7 @@ class ExcelManager:
 
         try:
             self.wb.save(self.path)
-            print(f"write_formula_sme Successfully updated details for row {row}")
+            #print(f"write_formula_sme Successfully updated details for row {row}")
         except PermissionError:
             print(f"write_formula_sme Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:
@@ -346,7 +350,7 @@ class ExcelManager:
 
         try:
             self.wb.save(self.path)
-            print(f"write_formula MB Successfully updated details for row {row}")
+            dprint(f"write_formula MB Successfully updated details for row {row}")
         except PermissionError:
             print(f"write_formula MB Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:

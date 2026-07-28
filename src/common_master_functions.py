@@ -1,4 +1,5 @@
 import openpyxl
+from tqdm import tqdm
 import Base
 from common_foundation import *
 from ipo_excel_3pm import update_row_3pm
@@ -19,16 +20,17 @@ def latest_ipo_entry():
     #print("latest_ipos",sc)
     row_sme=Base.get_last_row_sme()
     row_mb=Base.get_last_row_mb()
-    for ipo in sc:
+    #for ipo in sc:
+    for ipo in tqdm(sc, desc="Processing IPO Entries", unit="ipo"):
         time.sleep(2)
         ex = ExcelManager()
         type1 = ipo['category']
         name1 = ipo['name']
         url3 = ipo['url']
         industry_score = ipo['industry_score']
-        print("type1",type1,"name1",name1,"url3",url3)
+        #print("type1",type1,"name1",name1,"url3",url3)
         data_available = Base.is_data_available(url3)
-        print("data_available",data_available)
+        #print("data_available",data_available)
         if type1 == "SME":
             row = row_sme
         else:
@@ -36,7 +38,7 @@ def latest_ipo_entry():
         if not ex.exists(type1, name1) and data_available:
             ex.append(ipo,row)
             url2 = ipo['url']
-            print(url2)
+            #print(name1)
             extractor = ChittorgarhIPOExtractor()
             data1 = extractor.extract(url2)
             data2 = clean_ipo_data(data1)
@@ -53,12 +55,12 @@ def latest_ipo_entry():
                 sub=get_ipo_subscription_dict(url2)
             except Exception as e:
                 print(e)
-                sub = ["20","20","10","10"]
+                sub = ["2","2","1","1.5"]
             time.sleep(.5)
             review=has_dicey_word(url2)
             time.sleep(.5)
             ex.write_details_GSR(row, gmp, sub, review, type1,industry_score)
-            print("---------write_formula----------")
+            #print("---------write_formula----------")
             if type1 == "SME":
                 row_sme = row_sme + 1
             else:
@@ -99,5 +101,6 @@ def update_3pm():
     except Exception as e:
         print("Cant send General.xls")
 
-latest_ipo_entry()
+
+#latest_ipo_entry()
 #update_3pm()

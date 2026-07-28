@@ -4,6 +4,9 @@ import time
 #from typing import Dict, Any
 #from formula import Formula
 from ipo_excel_manager import parse_float
+from src.ipo_formula import Formula
+
+
 #from ExtractGMP import get_ipo_gmp
 #from ExtractReview import has_dicey_word
 #from ExtractSubscription import get_ipo_subscription_dict
@@ -105,10 +108,10 @@ def write_formula_mb(row: int, type1: str):
         #AA = parse_float(fr.snr_mb(sqib, sni))
         AC = parse_float(fr.gmp_effect_mb(gmp))
 
-        AG = parse_float(fr.pre_sub_aggregate_mb(G, P, peaftr,pryoy, tiyoy,nwyoy))
-        AH = parse_float(fr.post_sub_aggregate_mb(AG, sqib, sni,sri, AA, AC))
+        #AG = parse_float(fr.pre_sub_aggregate_mb(G, P, peaftr,pryoy, tiyoy,nwyoy))
+        #AH = parse_float(fr.post_sub_aggregate_mb(AG, sqib, sni,sri, AA, AC))
         
-        AI = parse_float(fr.total_mb(AG, AH))
+        #AI = parse_float(fr.total_mb(AG, AH))
 
     except Exception as e:
         print(f"write_formula MB An error occurred while assigning data for row {row}: {e}")

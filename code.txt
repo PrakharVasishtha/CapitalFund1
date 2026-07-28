@@ -1,80 +1,104 @@
+import openpyxl
 import Base
 from common_foundation import *
-from playwright.sync_api import Playwright, sync_playwright, expect, Page
-import pyotp
+from ipo_excel_3pm import update_row_3pm
+from ipo_ExtractReview import has_dicey_word
+from ipo_scraper import get_latest_ipos
+from ipo_excel_manager import ExcelManager
+from ipo_cleanfetcheddata import clean_ipo_data
+from IpoDataExtractor import ChittorgarhIPOExtractor, IPOData
+from ipo_ExtractGMP import get_ipo_gmp
+from ipo_ExtractSubscription import get_ipo_subscription_dict
 
-def fetch_allotment_holdings(
-        user_id: str,
-        password: str,
-        totp_secret: str,
-        security_symbol: str,
-        headless: bool = False,
-        timeout: int = 5000,
-) -> tuple[bool, str]:
-    def run(playwright: Playwright) -> tuple[bool, str]:
-        print("______zerodha_sell___", user_id, ":", security_symbol)
-        try:
-            browser = playwright.chromium.launch(headless=headless)
-            context = browser.new_context(
-                viewport={"width": 1280, "height": 800},
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/128.0.0.0 Safari/537.36"
-                )
-            )
-            file_path = user_id + ".txt"
-            amt_symbl = security_symbol
 
-            page: Page = context.new_page()
-            page.set_default_timeout(timeout)
 
-            page.goto("https://kite.zerodha.com/", wait_until="domcontentloaded")
-            time.sleep(1)
+def latest_ipo_entry():
+    print("*************************************-----------latest_ipo_entry----------************************************")
+    print("##############################################################################################################")
+    sc = get_latest_ipos()[::-1]
+    #print("latest_ipos",sc)
+    row_sme=Base.get_last_row_sme()
+    row_mb=Base.get_last_row_mb()
+    for ipo in sc:
+        time.sleep(2)
+        ex = ExcelManager()
+        type1 = ipo['category']
+        name1 = ipo['name']
+        url3 = ipo['url']
+        industry_score = ipo['industry_score']
+        #print("type1",type1,"name1",name1,"url3",url3)
+        data_available = Base.is_data_available(url3)
+        #print("data_available",data_available)
+        if type1 == "SME":
+            row = row_sme
+        else:
+            row = row_mb
+        if not ex.exists(type1, name1) and data_available:
+            ex.append(ipo,row)
+            url2 = ipo['url']
+            print(name1)
+            extractor = ChittorgarhIPOExtractor()
+            data1 = extractor.extract(url2)
+            data2 = clean_ipo_data(data1)
+            ex.write_details(row, data2, type1)
 
-            page.get_by_role("textbox", name="Phone number or User ID").fill(user_id)
-            page.get_by_role("textbox", name="Password").fill(password)
-            page.get_by_role("button", name="Login").click()
-            time.sleep(1)
-
-            totp = pyotp.TOTP(totp_secret)
-            current_otp = totp.now()
-            page.get_by_role("spinbutton", name="External TOTP").fill(current_otp)
-            time.sleep(2)
-            page.mouse.click(30, 50)
-            time.sleep(.5)
-
-            page.get_by_role("link", name="Holdings").click()
-            time.sleep(2)
             try:
-                page.get_by_role("cell", name=security_symbol).click()
-                page.get_by_role("link", name="NIFTYIETF").click()
-                try:
-                    holdings = page.get_by_role("spinbutton", name=security_nse).input_value()
-                except Exception as e:
-                    print(e)
-                    holdings = page.get_by_role("spinbutton", name=security_bse).input_value()
-                print("Holdings Inside:", holdings)
-                page.get_by_role("button", name="Cancel").click()
+                time.sleep(.5)
+                gmp=get_ipo_gmp(name1)
             except Exception as e:
-                holdings = 0
                 print(e)
+                gmp=0
+            try:
+                time.sleep(.5)
+                sub=get_ipo_subscription_dict(url2)
+            except Exception as e:
+                print(e)
+                sub = ["2","2","1","1.5"]
+            time.sleep(.5)
+            review=has_dicey_word(url2)
+            time.sleep(.5)
+            ex.write_details_GSR(row, gmp, sub, review, type1,industry_score)
+            print("---------write_formula----------")
+            if type1 == "SME":
+                row_sme = row_sme + 1
+            else:
+                row_mb= row_mb + 1
+    try:
+        send_email_with_excel()
+    except Exception as e:
+        print("Cant send General.xls")
 
-            print("holdings:", holdings)
-            
-            return holdings
-
+def update_3pm():
+    print(
+        "*************************************-----------update_3pm----------************************************")
+    print(
+        "##############################################################################################################")
+    path = '../General.xlsx'
+    wb = openpyxl.load_workbook(path)
+    sme_ws = wb['IPOSME']
+    main_ws = wb['IPOMB']
+    #print(sme_ws)
+    row_sme = Base.get_last_row_sme()
+    row_mb = Base.get_last_row_mb()
+    wb.close()
+    #print(row_sme, row_mb)
+    for k in range(row_sme-11,row_sme+1):
+        #print(k)
+        try:
+            update_row_3pm(k,"SME")
         except Exception as e:
-            logger(file_path, amt_symbl, "not Sold for some Exception")
-            import traceback
-            return False
+            print(e)
+    for k in range(row_mb-4, row_mb+1):
+        #print(k)
+        try:
+            update_row_3pm(k,"MB")
+        except Exception as e:
+            print(e)
+    try:
+        send_email_with_excel()
+    except Exception as e:
+        print("Cant send General.xls")
 
-        finally:
-            if 'context' in locals():
-                context.close()
-            if 'browser' in locals():
-                browser.close()
 
-    # ── Execute ─────────────────────────────────────────────────────
-    with sync_playwright() as playwright:
-        return run(playwright)
+latest_ipo_entry()
+#update_3pm()

@@ -44,9 +44,9 @@ def effect_pe_sme(url):
 
 def effect_pe_mb(url):
     pe=get_pe(url)
-    print(pe)
+    #print(pe)
     peers_pe = get_peers_pe(url)
-    print(peers_pe)
+    #print(peers_pe)
     pre_pe = pe[0]
     po_pe = pe[1]
     if pre_pe > 250 or po_pe > 250:
@@ -82,7 +82,7 @@ def effect_pe_mb(url):
     
     # 7. Calculate PELA Limit
     pela_limit = pel_avg * 0.98
-    print(pela_limit)
+    #print(pela_limit)
     # 8. Final Conditional Logic for E
     if po_pe > pela_limit:
         e = -.9
