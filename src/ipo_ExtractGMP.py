@@ -12,7 +12,7 @@ def normalize_text(text: str) -> str:
     return " ".join(cleaned.split()).lower()
 
 
-def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cutoff: float = 80.0) -> str:
+def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cutoff: float = 80.0) -> str | float | int:
     scraper = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "desktop": True}
     )
@@ -58,5 +58,5 @@ def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cuto
                 pct = 0
                 return pct
 
-    return "0.0"
+    return 0
 #print(get_ipo_gmp("MV Electrosystems Ltd"))

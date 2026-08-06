@@ -73,6 +73,7 @@ def get_peers_pe(url):
                 #print(x)
     #print(peers_pe)
     if not peers_data:
+        k=0
         print("No peers P/E data found.")
     return peers_pe
 

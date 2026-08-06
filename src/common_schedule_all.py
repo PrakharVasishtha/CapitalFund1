@@ -88,7 +88,7 @@ def run_now():
         print("Problem in run_now",Argument)
         common_foundation.logger("system.txt", Argument, "run_now")
 
-#run_now()
+run_now()
 schedule.every().day.at("08:30").do(ipo_entry)
 schedule.every().day.at("09:02").do(money_withdraw)
 schedule.every().day.at("09:09").do(bank_to_kite)
@@ -98,6 +98,7 @@ schedule.every().day.at("09:25").do(smws_buyer)
 schedule.every().day.at("10:05").do(update_before_close)
 schedule.every().day.at("14:50").do(update_before_close)
 schedule.every().day.at("14:55").do(ipo_application)
+schedule.every().day.at("15:05").do(update_before_close)
 
 while True:
     schedule.run_pending()
