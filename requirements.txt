@@ -15,3 +15,4 @@ yfinance
 rapidfuzz
 html5lib
 curl_cffi
+python-dotenv

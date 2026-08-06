@@ -12,6 +12,13 @@ from email.utils import parsedate_to_datetime
 from typing import Dict, Any
 import yfinance as yf
 import json
+import os
+from dotenv import load_dotenv
+
+# Loads variables from a local .env file (gitignored) into the environment.
+# Safe to call even if .env doesn't exist - it just does nothing.
+load_dotenv()
+
 
 def parse_float(val: Any) -> float:
     if isinstance(val, (int, float)):
@@ -24,18 +31,41 @@ def parse_float(val: Any) -> float:
     except ValueError:
         return 0.0
 
-def load_credentials(file_path: str) -> list:
-    """Load user credentials from JSON file."""
+
+def load_credentials(file_path: str = "credentials.json") -> list:
+    """Load user credentials.
+
+    Credentials now live in the CAPITALFUND_USERS environment variable
+    (set via a local .env file, which is gitignored) instead of a
+    plaintext JSON file in the repo. The `file_path` argument is kept
+    for backward compatibility with existing call sites but is no
+    longer read from disk.
+
+    CAPITALFUND_USERS must be a JSON array of user objects, e.g.:
+
+        CAPITALFUND_USERS='[{"uci": "1", "name": "...", ...}, {...}]'
+
+    See .env.example for the full expected shape.
+    """
+    raw = os.environ.get("CAPITALFUND_USERS")
+    if not raw:
+        print(
+            "Error: CAPITALFUND_USERS environment variable not set. "
+            "Copy .env.example to .env in the project root and fill in "
+            "your real credentials, or set the variable another way "
+            "(CI secrets, systemd EnvironmentFile, etc.)."
+        )
+        return []
     try:
-        with open(file_path, "r") as f:
-            data = json.load(f)
-            return data.get("users", [])
-    except FileNotFoundError:
-        print(f"Error: {file_path} not found. Create it with the correct structure.")
+        users = json.loads(raw)
+        if not isinstance(users, list):
+            print("Error: CAPITALFUND_USERS must be a JSON array of user objects.")
+            return []
+        return users
+    except json.JSONDecodeError as e:
+        print(f"Error: CAPITALFUND_USERS is not valid JSON: {e}")
         return []
-    except json.JSONDecodeError:
-        print(f"Error: Invalid JSON in {file_path}.")
-        return []
+
 
 def Logger(file,StringText="OK",FunctionName="In Function"):
     s = FunctionName+str(StringText)+" at time :"+str(datetime.datetime.now()) 
@@ -52,17 +82,6 @@ def get_vix():
         vix_value = 13.5
     return vix_value
 
-
-def parse_float(val: Any) -> float:
-    if isinstance(val, (int, float)):
-        return float(val)
-    if not isinstance(val, str):
-        return 0.0
-    val = val.replace('%', '').replace('x', '').replace(',', '').replace('₹', '').replace('Cr', '').strip()
-    try:
-        return float(val)
-    except ValueError:
-        return 0.0
 
 def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=4):
     for i in range(retries):
@@ -269,19 +288,13 @@ def is_data_available(url):
     except Exception as e:
         print(f"Error: {str(e)}")
         return True
-    
+
 #print(is_data_available("https://www.chittorgarh.com/ipo/powerica-ipo/2570/"))
 #print(is_data_available("https://www.chittorgarh.com/ipo/propshare-celestia-scheme-ipo/2965/"))
 #print(is_data_available("https://www.chittorgarh.com/ipo/gsp-crop-ipo/2031/"))
 #print(get_last_row_sme())
 #print(get_last_row('../General.xlsx','IPOSME'))0
 
-
-EMAIL_USER = "prakharvasishtha9@gmail.com"
-EMAIL_PASS = "qmtm daun rljp wjrx"
-#sub = '(SUBJECT "OTP")'
-#search_query = '(SUBJECT "OTP Generated" UNSEEN)'
-sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
 #print(get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, sub))
 #print(otp_shoonya(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=7))
 #print(get_vix())
