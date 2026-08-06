@@ -3,6 +3,7 @@ from common_foundation import *
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 
+
 def zerodha_sell_lc(
         user_id: str,
         password: str,
@@ -12,7 +13,7 @@ def zerodha_sell_lc(
         timeout: int = 5000,
 ) -> tuple[bool, str]:
     def run(playwright: Playwright) -> tuple[bool, str]:
-        print("______zerodha_sell_lc___",user_id,":",security_symbol)
+        print("______zerodha_sell_lc___", user_id, ":", security_symbol)
         try:
             browser = playwright.chromium.launch(headless=headless)
             context = browser.new_context(
@@ -23,9 +24,9 @@ def zerodha_sell_lc(
                     "Chrome/128.0.0.0 Safari/537.36"
                 )
             )
-            file_path=user_id +".txt"
+            file_path = user_id + ".txt"
             amt_symbl = security_symbol
-            
+
             page: Page = context.new_page()
             page.set_default_timeout(timeout)
 
@@ -46,6 +47,11 @@ def zerodha_sell_lc(
             page.mouse.click(30, 50)
             time.sleep(.5)
 
+            # NOTE: this block was missing entirely in the original file,
+            # which is why security_sell_nse/bse raised NameError below.
+            # Added to match the working pattern in trader_zerodha_sell.py.
+            security_sell_nse = "SELL " + security_symbol + " (NSE) quantity"
+            security_sell_bse = "SELL " + security_symbol + " (BSE) quantity"
 
             page.get_by_role("link", name="Holdings").click()
             time.sleep(2)
@@ -59,18 +65,18 @@ def zerodha_sell_lc(
                 except Exception as e:
                     print(e)
                     holdings = page.get_by_role("spinbutton", name=security_sell_bse).input_value()
-                print("Holdings Inside:",holdings)
+                print("Holdings Inside:", holdings)
                 page.get_by_role("button", name="Cancel").click()
             except Exception as e:
                 holdings = 0
                 print(e)
-                
+
             ##############################
-            logger(file_path,amt_symbl,"Sold")
+            logger(file_path, amt_symbl, "Sold")
             return True, f"Sell orders initiated successfully"
 
         except Exception as e:
-            logger(file_path,amt_symbl,"not Sold for some Exception")
+            logger(file_path, amt_symbl, "not Sold for some Exception")
             import traceback
             return False, f"Sell orders failed: {str(e)}\n{traceback.format_exc()}"
 

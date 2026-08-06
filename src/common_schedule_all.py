@@ -74,7 +74,7 @@ def ipo_application():
 def run_now():
     try:
         print("running now")
-        common_master_functions.latest_ipo_entry()
+        #common_master_functions.latest_ipo_entry()
         fund_manager.daily_money_withdraw()
         fund_transfer_for_smws.fund_trf_to_kite()
         trader_smws.smws_seller()
