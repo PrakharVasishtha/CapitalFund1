@@ -27,10 +27,12 @@ def fund_trf_to_kite():
             email_user = user.get("email_user")
             email_password = user.get("email_password")
             try:
-                #balance = 600
+                balance = 600
+
                 balance = asyncio.run \
                     (fund_kotak_get_balance.get_kotak_balance(USER_ID=bank_user ,PASSWORD=bank_password ,EMAIL_USR=email_user
                                                         ,EMAIL_PSS= email_password))
+
             except Exception as e:
                 print(e)
                 balance = 0

@@ -58,9 +58,15 @@ def withdraw_bank_to_kite(
             page1.get_by_role("textbox", name="Enter amount").fill("700")
             page1.get_by_text("Net banking₹9 + GST").click()
             page1.get_by_role("button", name="Continue").click()
-            page1.get_by_role("link", name="CRN").click()
+            time.sleep(3)
+            try:
+                page1.get_by_role("link", name="CRN").click()
+
+            except:
+                print("#tab-crn-linkclick")
+                page.locator("#tab-crn-link").click()
             page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
-            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
+
             page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").fill("961633451")
             page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").press("Tab")
             page1.get_by_role("textbox", name="Select Bank Select Bank").fill("RamRate#26")
