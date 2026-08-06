@@ -74,14 +74,14 @@ def ipo_application():
 def run_now():
     try:
         print("running now")
-        common_master_functions.latest_ipo_entry()
-        fund_manager.daily_money_withdraw()
+        #common_master_functions.latest_ipo_entry()
+       # fund_manager.daily_money_withdraw()
         fund_transfer_for_smws.fund_trf_to_kite()
-        trader_smws.smws_seller()
-        trader_priority_ipo_smws_sell.priority_ipo_sell_smws()
-        trader_smws.smws_buyer()
-        common_master_functions.update_3pm()
-        allotment_application_ipo.ipo_application()
+        #trader_smws.smws_seller()
+        #trader_priority_ipo_smws_sell.priority_ipo_sell_smws()
+        #trader_smws.smws_buyer()
+        #common_master_functions.update_3pm()
+        #allotment_application_ipo.ipo_application()
         print("Finished")
 
     except Exception as Argument:

@@ -11,8 +11,8 @@ def fund_trf_to_kite():
         "*************************************-----------fund_trf_to_kite----------************************************")
     print(
         "##############################################################################################################")
-    d0 = priority_ipo_smws_sell.ipo_required_fund(0)
-    d1 = priority_ipo_smws_sell.ipo_required_fund(1)
+    d0 = trader_priority_ipo_smws_sell.ipo_required_fund(0)
+    d1 = trader_priority_ipo_smws_sell.ipo_required_fund(1)
     required_fund = d0 + d1
     if True:
         users = load_credentials(CREDENTIALS_FILE)
