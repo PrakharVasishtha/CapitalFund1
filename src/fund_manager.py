@@ -17,8 +17,9 @@ def strategy_status_10days():
 
     url_csv= "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
     df0 = pd.read_csv(url_csv)
-    time.sleep(1)
+    time.sleep(6)
     df = pd.read_csv(url_csv)
+    time.sleep(3)
     buynifty = df.iloc[23, 3]
     #print("buynifty:", buynifty)
     goldetfbuy = df.iloc[26, 3]
