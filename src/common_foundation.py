@@ -75,7 +75,7 @@ def send_email_with_excel():
     msg['From'] = email_address
     msg['To'] = "prakharvasishtha9@gmail.com"
     msg.set_content("Please find the attached Excel file.")
-    file_path = '../General.xlsx'
+    file_path = os.path.abspath('General.xlsx') if os.path.exists('General.xlsx') else os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'General.xlsx'))
     # --- ATTACHMENT LOGIC ---
     try:
         with open(file_path, 'rb') as f:

@@ -5,7 +5,7 @@ import time
 import datetime
 import ipo_pe
 from ipo_formula import Formula
-from Base import get_vix
+from Base import get_vix, get_excel_path
 from common_foundation import *
 
 
@@ -73,7 +73,7 @@ def find_listing(closing):
 
 class ExcelManager:
     def __init__(self):
-        self.path = '../General.xlsx'
+        self.path = get_excel_path()
         self.wb = openpyxl.load_workbook(self.path)
         self.sme_ws = self.wb['IPOSME']
         self.main_ws = self.wb['IPOMB']

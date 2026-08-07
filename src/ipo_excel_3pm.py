@@ -1,6 +1,6 @@
 import openpyxl
 import time
-from Base import get_vix
+from Base import get_vix, get_excel_path
 from ipo_ExtractGMP import get_ipo_gmp
 from ipo_ExtractReview import has_dicey_word
 from ipo_ExtractSubscription import get_ipo_subscription_live
@@ -10,7 +10,8 @@ from common_foundation import *
 
 def update_row_3pm(row: int, type1: str):
         #print("update_row_3pm", row, type1)
-        path = '../General.xlsx'
+        path = get_excel_path()
+
         wb = openpyxl.load_workbook(path)
         sme_ws = wb['IPOSME']
         main_ws = wb['IPOMB']

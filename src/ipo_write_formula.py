@@ -3,6 +3,7 @@ import openpyxl
 import time
 #from typing import Dict, Any
 #from formula import Formula
+from Base import get_excel_path
 from ipo_excel_manager import parse_float
 from src.ipo_formula import Formula
 
@@ -12,7 +13,7 @@ from src.ipo_formula import Formula
 #from ExtractSubscription import get_ipo_subscription_dict
 
 def write_formula_sme(row: int, type1: str):
-    path = '../General.xlsx'
+    path = get_excel_path()
     wb = openpyxl.load_workbook(path)
     sme_ws = wb['IPOSME']
     main_ws = wb['IPOMB']
@@ -63,7 +64,7 @@ def write_formula_sme(row: int, type1: str):
         print(f"write_formula_sme An error occurred while saving the file: {e}")
 
 def write_formula_mb(row: int, type1: str):
-    path = '../General.xlsx'
+    path = get_excel_path()
     wb = openpyxl.load_workbook(path)
     sme_ws = wb['IPOSME']
     main_ws = wb['IPOMB']

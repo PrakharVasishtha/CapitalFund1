@@ -227,8 +227,21 @@ def get_last_row(file,sheet):
             break
     return last_row
 
+def get_excel_path(filename: str = "General.xlsx") -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        filename,
+        os.path.join("..", filename),
+        os.path.join(script_dir, filename),
+        os.path.join(script_dir, "..", filename),
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            return os.path.abspath(candidate)
+    return os.path.abspath(os.path.join(script_dir, "..", filename))
+
 def get_last_row_sme():
-    path = '../General.xlsx'
+    path = get_excel_path()
     wb = openpyxl.load_workbook(path)
     ws = wb['IPOSME']
     column_index = 2
@@ -240,7 +253,7 @@ def get_last_row_sme():
     return last_row+1
 
 def get_last_row_mb():
-    path = '../General.xlsx'
+    path = get_excel_path()
     wb = openpyxl.load_workbook(path)
     ws = wb['IPOMB']
     column_index = 2
@@ -250,6 +263,7 @@ def get_last_row_mb():
             last_row = row
             break
     return last_row+1
+
 
 def page_contains_trust(url: str) -> bool:
     try:

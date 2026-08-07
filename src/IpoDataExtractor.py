@@ -1,5 +1,6 @@
 # chittorgarh_ipo_extractor.py
 import re
+import html
 import requests
 import pandas as pd
 from typing import Dict, Any, List, Optional

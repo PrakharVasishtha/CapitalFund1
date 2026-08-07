@@ -19,7 +19,7 @@ def IPO_to_apply():
     row_mb = get_last_row_mb() - 1
 
 
-    path = '../General.xlsx'
+    path = get_excel_path()
     wb = openpyxl.load_workbook(path, data_only=True)
     sme_ws = wb['IPOSME']
     main_ws = wb['IPOMB']

@@ -1,3 +1,4 @@
+import time
 import openpyxl
 from tqdm import tqdm
 import Base
@@ -75,7 +76,7 @@ def update_3pm():
         "-----------update_3pm----------")
     print(
         "####################################")
-    path = '../General.xlsx'
+    path = Base.get_excel_path()
     wb = openpyxl.load_workbook(path)
     sme_ws = wb['IPOSME']
     main_ws = wb['IPOMB']

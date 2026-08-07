@@ -37,7 +37,7 @@ def ipo_required_fund(d = 0):
     total_mb_1 = 0
     total_mb_2 = 0
 
-    path = '../General.xlsx'
+    path = get_excel_path()
     wb = openpyxl.load_workbook(path, data_only=True)
     sme_ws = wb['IPOSME']
     main_ws = wb['IPOMB']
