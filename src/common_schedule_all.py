@@ -7,17 +7,19 @@ On startup, runs all tasks immediately via run_now(), then enters an infinite
 loop scheduling each task at fixed times throughout the trading day.
 
 Scheduled Tasks:
-  08:30 - ipo_entry()           : Scrape new IPOs into General.xlsx
-  08:35 - allotment_general()   : Check and record IPO allotments in allotted_holdings.xlsx
-  09:02 - money_withdraw()      : Withdraw funds from Zerodha to Kotak for IPOs
-  09:09 - bank_to_kite()        : Transfer idle Kotak balance to Zerodha for SMWS
-  09:18 - smws_seller()         : Sell SMWS ETFs per strategy signal
-  09:18 - priority_ipo_sell_smws(): Sell SMWS when IPO funds are needed
-  09:25 - smws_buyer()          : Buy SMWS ETFs per strategy signal
-  10:05 - update_before_close() : Refresh IPO data in General.xlsx
-  14:50 - update_before_close() : Pre-close data refresh
-  14:55 - ipo_application()     : Apply to IPOs closing today
-  15:05 - update_before_close() : Final post-close update
+  08:30 - ipo_entry()                : Scrape new IPOs into General.xlsx
+  08:40 - allotment_general()        : Check and record IPO allotments in allotted_holdings.xlsx
+  09:00 - ss_start_lc_sell()         : Place LC sell orders for newly allotted shares today
+  09:02 - money_withdraw()           : Withdraw funds from Zerodha to Kotak for IPOs
+  09:09 - bank_to_kite()             : Transfer idle Kotak balance to Zerodha for SMWS
+  09:18 - smws_seller()              : Sell SMWS ETFs per strategy signal
+  09:18 - priority_ipo_sell_smws()   : Sell SMWS when IPO funds are needed
+  09:25 - smws_buyer()               : Buy SMWS ETFs per strategy signal
+  09:32 - cancel_sale_order_if_loss(): Cancel pre-open LC sell orders if loss threshold exceeded
+  10:05 - update_before_close()      : Refresh IPO data in General.xlsx
+  14:50 - update_before_close()      : Pre-close 3pm data refresh
+  14:55 - ipo_application()          : Apply to IPOs closing today via Kotak UPI
+  15:05 - update_before_close()      : Final post-close update
 
 Usage:
   python src/common_schedule_all.py
@@ -29,6 +31,8 @@ import os
 import common_master_functions, allotment_application_ipo, fund_manager, trader_smws, trader_priority_ipo_smws_sell
 import allotment_general as allotment_gen
 import fund_transfer_for_smws
+import ss_Before_session_close_cancel_sale_or_not
+import ss_sale_order_on_lc_on_start_of_ss
 
 
 # ── Scheduled task wrappers ──────────────────────────────────────────────────
@@ -41,16 +45,25 @@ def ipo_entry():
         common_master_functions.latest_ipo_entry()
     except Exception as Argument:
         print("Problem in latest_ipo_entry")
-        common_foundation.logger("system.txt",Argument,"ipo_entry")
+        common_foundation.logger("system.txt", Argument, "ipo_entry")
 
 def allotment_general():
-    """08:35 — Check Zerodha holdings for new IPO allotments and update allotted_holdings.xlsx."""
+    """08:40 — Check Zerodha holdings for new IPO allotments and update allotted_holdings.xlsx."""
     try:
         print("Allotment General")
         allotment_gen.ipo_allotment_manager()
     except Exception as Argument:
         print("Problem in allotment_general")
         common_foundation.logger("system.txt", Argument, "allotment_general")
+
+def ss_start_lc_sell():
+    """09:00 — Place LC sell orders for newly allotted IPO shares today."""
+    try:
+        print("SS Start LC Sell Order")
+        ss_sale_order_on_lc_on_start_of_ss.place_lc_sell_orders_for_allotted_today()
+    except Exception as Argument:
+        print("Problem in ss_start_lc_sell")
+        common_foundation.logger("system.txt", Argument, "ss_start_lc_sell")
 
 def money_withdraw():
     """09:02 — Calculate IPO fund requirements and withdraw from Zerodha to Kotak bank."""
@@ -59,7 +72,7 @@ def money_withdraw():
         fund_manager.daily_money_withdraw()
     except Exception as Argument:
         print("Problem in daily_money_withdraw")
-        common_foundation.logger("system.txt",Argument,"money_withdraw")
+        common_foundation.logger("system.txt", Argument, "money_withdraw")
 
 def bank_to_kite():
     """09:09 — Transfer excess Kotak bank balance to Zerodha Kite for SMWS trading."""
@@ -68,7 +81,7 @@ def bank_to_kite():
         fund_transfer_for_smws.fund_trf_to_kite()
     except Exception as Argument:
         print("Problem in bank_to_kite")
-        common_foundation.logger("system.txt",Argument,"bank_to_kite")
+        common_foundation.logger("system.txt", Argument, "bank_to_kite")
 
 def smws_seller():
     """09:18 — Sell SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on strategy sheet signal."""
@@ -77,7 +90,7 @@ def smws_seller():
         trader_smws.smws_seller()
     except Exception as Argument:
         print("Problem in smws_seller")
-        common_foundation.logger("system.txt",Argument,"smws_seller")
+        common_foundation.logger("system.txt", Argument, "smws_seller")
 
 def priority_ipo_sell_smws():
     """09:18 — Sell SMWS ETFs with priority when IPO application funds are required."""
@@ -86,7 +99,7 @@ def priority_ipo_sell_smws():
         trader_priority_ipo_smws_sell.priority_ipo_sell_smws()
     except Exception as Argument:
         print("Problem in priority_ipo_sell_smws")
-        common_foundation.logger("system.txt",Argument,"priority_ipo_sell_smws")
+        common_foundation.logger("system.txt", Argument, "priority_ipo_sell_smws")
 
 def smws_buyer():
     """09:25 — Buy SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on strategy sheet signal."""
@@ -95,16 +108,25 @@ def smws_buyer():
         trader_smws.smws_buyer()
     except Exception as Argument:
         print("Problem in smws_buyer")
-        common_foundation.logger("system.txt",Argument,"smws_buyer")
+        common_foundation.logger("system.txt", Argument, "smws_buyer")
 
-def update_before_close():
-    """10:05 / 14:50 / 15:05 — Refresh subscription, GMP, and 3pm data in General.xlsx."""
+def cancel_sale_order_if_loss():
+    """09:32 — Cancel pre-open LC sell orders if IEP indicates discount/loss threshold exceeded."""
     try:
-        print("Update Before Close")
-        common_master_functions.update_3pm()
+        print("Cancel Sale Order If Loss")
+        ss_Before_session_close_cancel_sale_or_not.sale_order_cancel_or_not()
     except Exception as Argument:
-        print("Problem in update_before_close")
-        common_foundation.logger("system.txt",Argument,"update_before_close")
+        print("Problem in cancel_sale_order_if_loss")
+        common_foundation.logger("system.txt", Argument, "cancel_sale_order_if_loss")
+
+def update_dynamic_data():
+    """10:05 / 14:50 / 15:05 — Refresh subscription, GMP, and dynamic_data_update data in General.xlsx."""
+    try:
+        print("Update dynamic data")
+        common_master_functions.dynamic_data_update()
+    except Exception as Argument:
+        print("Problem in update_dynamic_data")
+        common_foundation.logger("system.txt", Argument, "update_dynamic_data")
 
 def ipo_application():
     """14:55 — Submit UPI IPO applications via Kotak for IPOs closing today."""
@@ -113,7 +135,7 @@ def ipo_application():
         allotment_application_ipo.ipo_application()
     except Exception as Argument:
         print("Problem in ipo_application")
-        common_foundation.logger("system.txt",Argument,"ipo_application")
+        common_foundation.logger("system.txt", Argument, "ipo_application")
 
 def run_now():
     """
@@ -125,32 +147,39 @@ def run_now():
         print("running now")
         common_master_functions.latest_ipo_entry()
         allotment_gen.ipo_allotment_manager()
-        fund_manager.daily_money_withdraw()
-        fund_transfer_for_smws.fund_trf_to_kite()
-        trader_smws.smws_seller()
-        trader_priority_ipo_smws_sell.priority_ipo_sell_smws()
-        trader_smws.smws_buyer()
-        common_master_functions.update_3pm()
+        ss_start_lc_sell()
+        money_withdraw()
+        bank_to_kite()
+        smws_seller()
+        priority_ipo_sell_smws()
+        smws_buyer()
+        cancel_sale_order_if_loss()
+        common_master_functions.dynamic_data_update()
         allotment_application_ipo.ipo_application()
         print("Finished")
 
     except Exception as Argument:
-        print("Problem in run_now",Argument)
+        print("Problem in run_now", Argument)
         common_foundation.logger("system.txt", Argument, "run_now")
 
-#run_now()
+# Setup Daily Schedule
 schedule.every().day.at("08:30").do(ipo_entry)
+schedule.every().day.at("08:35").do(update_dynamic_data)
 schedule.every().day.at("08:40").do(allotment_general)
-schedule.every().day.at("09:02").do(money_withdraw)
-schedule.every().day.at("09:09").do(bank_to_kite)
-schedule.every().day.at("09:18").do(smws_seller)
-schedule.every().day.at("09:18").do(priority_ipo_sell_smws)
+schedule.every().day.at("09:00").do(ss_start_lc_sell)
+schedule.every().day.at("09:05").do(money_withdraw)
+schedule.every().day.at("09:10").do(bank_to_kite)
+schedule.every().day.at("09:15").do(smws_seller)
+schedule.every().day.at("09:20").do(priority_ipo_sell_smws)
 schedule.every().day.at("09:25").do(smws_buyer)
-schedule.every().day.at("10:05").do(update_before_close)
-schedule.every().day.at("14:50").do(update_before_close)
+schedule.every().day.at("09:32").do(cancel_sale_order_if_loss)
+schedule.every().day.at("12:05").do(update_dynamic_data)
+schedule.every().day.at("14:52").do(update_dynamic_data)
 schedule.every().day.at("14:55").do(ipo_application)
-schedule.every().day.at("15:05").do(update_before_close)
 
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+if __name__ == "__main__":
+    # Uncomment run_now() if immediate catch-up run is desired on startup
+    # run_now()
+    while True:
+        schedule.run_pending()
+        time.sleep(1)

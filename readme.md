@@ -261,7 +261,7 @@ Per-user allotment tracking. Each user has a sheet named by their `uci` (e.g., `
 | Value | Meaning                                |
 |-------|----------------------------------------|
 | `0`   | Not started                            |
-| `1`   | Regular session sell started           |
+| `1`   | Regular session sell started if not sold in special session         |
 | `2`   | Sold in regular session                |
 | `3`   | Not sold in regular session            |
 | `4`   | Transferred to UC/LC monitor           |

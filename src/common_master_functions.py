@@ -71,9 +71,9 @@ def latest_ipo_entry():
     except Exception as e:
         print("Cant send General.xls")
 
-def update_3pm():
+def dynamic_data_update():
     print(
-        "-----------update_3pm----------")
+        "-----------dynamic_data_update----------")
     print(
         "####################################")
     path = Base.get_excel_path()
@@ -104,4 +104,4 @@ def update_3pm():
 
 
 #latest_ipo_entry()
-#update_3pm()
+#dynamic_data_update()
