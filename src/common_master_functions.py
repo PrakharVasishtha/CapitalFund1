@@ -98,7 +98,7 @@ def update_3pm():
         except Exception as e:
             print(e)
     try:
-        send_email_with_excel()
+        send_email_with_excel(mail_subject="IPO Data Updated",mail_content="IPO Data Updated",path_of_file='General.xlsx')
     except Exception as e:
         print("Cant send General.xls")
 

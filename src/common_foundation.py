@@ -66,17 +66,17 @@ def send_email(email_to = "prakharvasishtha9@gmail.com",sub_send = "default",con
             print(f"Error: {e}")
             logger("system.txt",sub_send,"send_email")
 
-def send_email_with_excel():
+def send_email_with_excel(mail_subject="default",mail_content="default",path_of_file="default",email_to="prakharvasishtha9@gmail.com"):
     email_address = "vasistcapital@gmail.com"
     email_password = "nbfdhxifzaekznjg"
     
     msg = EmailMessage()
-    msg['Subject'] = "Excel Report Attached"
+    msg['Subject'] = mail_subject
     msg['From'] = email_address
-    msg['To'] = "prakharvasishtha9@gmail.com"
-    msg.set_content("Please find the attached Excel file.")
-    file_path = os.path.abspath('General.xlsx') if os.path.exists('General.xlsx') else os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'General.xlsx'))
+    msg['To'] = email_to
+    msg.set_content(mail_content)
     # --- ATTACHMENT LOGIC ---
+    file_path = os.path.abspath(path_of_file) if os.path.exists(path_of_file) else os.path.abspath(os.path.join(os.path.dirname(__file__), '..', path_of_file))
     try:
         with open(file_path, 'rb') as f:
             file_data = f.read()
@@ -130,7 +130,7 @@ def internetcheck(b="NoSubject"):
 #send_email()
 # Call the function with the path to your file
 # Example: r"C:\Users\Name\Documents\data.xlsx"
-#send_email_with_excel()
+#send_email_with_excel(mail_subject="Test",mail_content="Test",path_of_file='allotted_holdings.xlsx')
 # print(internet_on())
 # countdown(5)
 # print("Completed Running day :at Time :",TimeNow(),"Sleeping for :")

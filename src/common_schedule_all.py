@@ -8,6 +8,7 @@ loop scheduling each task at fixed times throughout the trading day.
 
 Scheduled Tasks:
   08:30 - ipo_entry()           : Scrape new IPOs into General.xlsx
+  08:35 - allotment_general()   : Check and record IPO allotments in allotted_holdings.xlsx
   09:02 - money_withdraw()      : Withdraw funds from Zerodha to Kotak for IPOs
   09:09 - bank_to_kite()        : Transfer idle Kotak balance to Zerodha for SMWS
   09:18 - smws_seller()         : Sell SMWS ETFs per strategy signal
@@ -26,6 +27,7 @@ import common_foundation
 import time
 import os
 import common_master_functions, allotment_application_ipo, fund_manager, trader_smws, trader_priority_ipo_smws_sell
+import allotment_general as allotment_gen
 import fund_transfer_for_smws
 
 
@@ -40,6 +42,15 @@ def ipo_entry():
     except Exception as Argument:
         print("Problem in latest_ipo_entry")
         common_foundation.logger("system.txt",Argument,"ipo_entry")
+
+def allotment_general():
+    """08:35 — Check Zerodha holdings for new IPO allotments and update allotted_holdings.xlsx."""
+    try:
+        print("Allotment General")
+        allotment_gen.ipo_allotment_manager()
+    except Exception as Argument:
+        print("Problem in allotment_general")
+        common_foundation.logger("system.txt", Argument, "allotment_general")
 
 def money_withdraw():
     """09:02 — Calculate IPO fund requirements and withdraw from Zerodha to Kotak bank."""
@@ -113,6 +124,7 @@ def run_now():
     try:
         print("running now")
         common_master_functions.latest_ipo_entry()
+        allotment_gen.ipo_allotment_manager()
         fund_manager.daily_money_withdraw()
         fund_transfer_for_smws.fund_trf_to_kite()
         trader_smws.smws_seller()
@@ -126,8 +138,9 @@ def run_now():
         print("Problem in run_now",Argument)
         common_foundation.logger("system.txt", Argument, "run_now")
 
-run_now()
+#run_now()
 schedule.every().day.at("08:30").do(ipo_entry)
+schedule.every().day.at("08:40").do(allotment_general)
 schedule.every().day.at("09:02").do(money_withdraw)
 schedule.every().day.at("09:09").do(bank_to_kite)
 schedule.every().day.at("09:18").do(smws_seller)

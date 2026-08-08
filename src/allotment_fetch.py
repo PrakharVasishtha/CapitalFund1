@@ -87,10 +87,9 @@ def fetch_allotment_holdings(
                 page.get_by_role("link", name="Holdings").click()
             time.sleep(2)
 
-            # ── Extract holding symbols ─────────────────────────────
-            raw_symbols = page.evaluate("""() => {
-                const symbols = [];
-                // Target holdings container specifically, ignoring top header/market overview bar
+            # ── Extract holding symbols & quantities ──────────────────
+            raw_holdings = page.evaluate(r"""() => {
+                const holdings = [];
                 const holdingsContainer = document.querySelector(".holdings, .holdings-table, div.holdings, .table-wrapper");
                 const container = holdingsContainer || document;
 
@@ -104,13 +103,20 @@ def fetch_allotment_holdings(
                         const symbolSpan = cell.querySelector(".tradingsymbol, .instrument-name, span");
                         const txt = ((symbolSpan ? symbolSpan.innerText : cell.innerText) || "").trim();
                         if (txt) {
-                            const sym = txt.split("\\n")[0].trim();
-                            if (sym) symbols.push(sym);
+                            const sym = txt.split("\n")[0].trim();
+                            const qtyCell = row.querySelector("td.quantity, td.qty, td:nth-child(2)");
+                            let qty = 0;
+                            if (qtyCell) {
+                                const qTxt = (qtyCell.innerText || "").replace(/,/g, "").trim();
+                                const parsed = parseInt(qTxt, 10);
+                                if (!isNaN(parsed)) qty = parsed;
+                            }
+                            if (sym) holdings.push({symbol: sym, quantity: qty});
                         }
                     }
                 });
 
-                return symbols;
+                return holdings;
             }""")
 
             ignored_words = {
@@ -119,19 +125,22 @@ def fetch_allotment_holdings(
                 "CUR.VAL", "AVG.COST", "DAY'S P&L", "UNREALISED P&L", "REALISED P&L"
             }
 
-            cleaned_symbols = []
-            for sym in raw_symbols:
-                s_clean = sym.strip().upper()
+            cleaned_holdings = []
+            seen_symbols = set()
+            for item in raw_holdings:
+                sym = item.get("symbol", "").strip().upper()
+                qty = item.get("quantity", 0)
                 if (
-                    s_clean 
-                    and s_clean not in ignored_words 
-                    and s_clean not in DEFAULT_HOLDINGS 
-                    and s_clean not in INDEX_SYMBOLS
+                    sym 
+                    and sym not in ignored_words 
+                    and sym not in DEFAULT_HOLDINGS 
+                    and sym not in INDEX_SYMBOLS
                 ):
-                    if s_clean not in cleaned_symbols:
-                        cleaned_symbols.append(s_clean)
+                    if sym not in seen_symbols:
+                        seen_symbols.add(sym)
+                        cleaned_holdings.append({"symbol": sym, "quantity": qty})
 
-            print(f"Other holdings found for {user_id}: {cleaned_symbols}")
+            print(f"Other holdings found for {user_id}: {cleaned_holdings}")
 
             # If specific security_symbol requested, check quantity
             if security_symbol:
@@ -152,12 +161,12 @@ def fetch_allotment_holdings(
                     holdings_qty = 0
                 return holdings_qty
 
-            if not cleaned_symbols:
+            if not cleaned_holdings:
                 return None
-            elif len(cleaned_symbols) == 1:
-                return cleaned_symbols[0]
+            elif len(cleaned_holdings) == 1:
+                return cleaned_holdings[0]
             else:
-                return cleaned_symbols
+                return cleaned_holdings
 
         except Exception as e:
             logger(file_path, amt_symbl, f"Exception in fetch_allotment_holdings: {e}")

@@ -156,8 +156,10 @@ For email alerts and OTP forwarding, you need a Gmail App Password:
 | Time    | Task                   | Description                                                             |
 |---------|------------------------|-------------------------------------------------------------------------|
 | Startup | `run_now()`            | Runs all tasks once immediately on script start                         |
-| 08:30   | `ipo_entry()`          | Scrapes new IPOs and appends them to `General.xlsx`                     |
-| 09:02   | `money_withdraw()`     | Calculates required IPO funds, withdraws from Zerodha to Kotak          |
+| 08:30   | `ipo_entry()`                  | Scrapes new IPOs and appends them to `General.xlsx`                     |
+| 08:40   | `allotment_general()`          | Checks Zerodha holdings for new IPO allotments and updates tracker      |
+| 09:00   | `special_session_monitoring()` | Monitors listing day pre-open indicative prices & places sell orders   |
+| 09:02   | `money_withdraw()`             | Calculates required IPO funds, withdraws from Zerodha to Kotak          |
 | 09:09   | `bank_to_kite()`       | Transfers excess idle bank balance to Zerodha Kite for SMWS trading     |
 | 09:18   | `smws_seller()`        | Sells SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on strategy sheet |
 | 09:18   | `priority_ipo_sell()`  | Sells SMWS specifically when IPO fund is required                       |

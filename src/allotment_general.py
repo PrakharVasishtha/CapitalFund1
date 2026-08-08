@@ -13,6 +13,7 @@ For each user in CAPITALFUND_USERS, this module:
 Usage (standalone):
   python src/allotment_general.py
 """
+from common_foundation import send_email_with_excel
 import sys
 import os
 
@@ -56,13 +57,28 @@ def ipo_allotment_manager():
 
         if holdings:
             try:
-                symbols = [holdings] if isinstance(holdings, str) else holdings
-                for sym in symbols:
-                    excel_holdings(uci_user, holding_symbol=sym)
+                symbols = [holdings] if isinstance(holdings, (dict, str, tuple)) else holdings
+                for sym_entry in symbols:
+                    if isinstance(sym_entry, dict):
+                        sym = sym_entry.get("symbol")
+                        qty = sym_entry.get("quantity", 0)
+                    elif isinstance(sym_entry, (list, tuple)) and len(sym_entry) >= 2:
+                        sym = sym_entry[0]
+                        qty = sym_entry[1]
+                    else:
+                        sym = str(sym_entry)
+                        qty = 0
+
+                    print(f"Processing allotment for {uci_user}: Symbol={sym}, Quantity={qty}")
+                    excel_holdings(uci_user, holding_symbol=sym, shares_allocated=qty)
             except Exception as e:
                 print(f"ipo_allotment_manager: excel_holdings failed for {uci_user}: {e}")
         else:
             print("No allotment found for user:", uci_user)
+    try:
+        send_email_with_excel(mail_subject="IPO Data Updated",mail_content="IPO Data Updated",path_of_file='allotted_holdings.xlsx')
+    except Exception as e:
+        print("Cant send allotted_holdings.xlsx")
 
 
 if __name__ == "__main__":
