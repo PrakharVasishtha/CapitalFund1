@@ -1,7 +1,6 @@
 from allotment_update import excel_holdings
-from Base import *
-from common_foundation import *
-from allotment_fetch import *
+from Base import load_credentials
+from allotment_fetch import fetch_allotment_holdings
 from special_session_indicative_price_nse import get_ipo_indicative_price
 import time
 from datetime import datetime

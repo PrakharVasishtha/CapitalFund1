@@ -6,8 +6,7 @@ import time
 import asyncio
 
 from fund_zerodha_withdraw import withdraw_from_zerodha
-from Base import *
-from common_foundation import *
+from Base import get_last_row_sme, get_last_row_mb, get_excel_path, load_credentials
 
 CREDENTIALS_FILE = "credentials.json"
 

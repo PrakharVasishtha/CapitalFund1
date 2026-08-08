@@ -83,7 +83,7 @@ def get_vix():
     return vix_value
 
 
-def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=4):
+def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=7, delay=4):
     for i in range(retries):
         print(f"Attempt {i + 1}: Searching for OTP...")
         try:
@@ -138,7 +138,7 @@ def get_netbanking_otp(EMAIL_USER,EMAIL_PASS, search_query, retries=15, delay=4)
         time.sleep(delay)
     return None
 
-def get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, search_query, retries=15, delay=4):
+def get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, search_query, retries=7, delay=4):
 
     otp_pattern = re.compile(
         r'(?:OTP:|One\s*Time\s*Password)[^\d]*(\d{6})',

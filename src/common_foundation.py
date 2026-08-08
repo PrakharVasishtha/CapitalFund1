@@ -1,7 +1,7 @@
 import datetime
 import time
 import smtplib, ssl
-from urllib.request import *
+from urllib.request import urlopen
 from email.message import EmailMessage
 import os
 

@@ -2,7 +2,7 @@ from datetime import date
 
 import openpyxl
 
-from Base import *
+from Base import get_last_row_sme, get_last_row_mb, get_excel_path
 from allotment_kotak_ipo_apply import apply_to_ipo, apply_to_ipo_all_users
 
 

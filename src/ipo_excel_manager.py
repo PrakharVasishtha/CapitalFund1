@@ -6,7 +6,7 @@ import datetime
 import ipo_pe
 from ipo_formula import Formula
 from Base import get_vix, get_excel_path
-from common_foundation import *
+from common_foundation import dprint
 
 
 def safe_get(d: Any, *keys: str, default: Any = None) -> Any:

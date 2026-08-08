@@ -1,5 +1,4 @@
 import time
-from common_foundation import *
 import openpyxl
 import Base
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
@@ -60,17 +59,14 @@ def withdraw_bank_to_kite(
             page1.get_by_text("Net banking₹9 + GST").click()
             page1.get_by_role("button", name="Continue").click()
             time.sleep(3)
-            try:
-                page1.get_by_role("link", name="CRN").click()
+            
+            page1.get_by_role("link", name="CRN").click()
+            page1.get_by_role("spinbutton", name="Enter CRN or Customer ID").click()
+            page1.get_by_role("spinbutton", name="Enter CRN or Customer ID").fill(bank_id)
+            page1.get_by_role("spinbutton", name="Enter CRN or Customer ID").press("Tab")
+            page1.get_by_role("textbox", name="Select Bank Select Bank").click()
+            page1.get_by_role("textbox", name="Select Bank Select Bank").fill(bank_password)
 
-            except:
-                print("#tab-crn-linkclick")
-                page.locator("#tab-crn-link").click()
-            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").click()
-
-            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").fill("961633451")
-            page1.get_by_role("tabpanel", name="CRN").get_by_placeholder("Enter CRN or Customer ID").press("Tab")
-            page1.get_by_role("textbox", name="Select Bank Select Bank").fill("RamRate#26")
             page1.get_by_role("link", name="SECURE LOGIN").click()
             sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
             otp1 = Base.get_netbanking_otp_sms(EMAIL_USR, EMAIL_PSS, sub)

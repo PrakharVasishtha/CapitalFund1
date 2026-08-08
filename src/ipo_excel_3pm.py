@@ -5,7 +5,7 @@ from ipo_ExtractGMP import get_ipo_gmp
 from ipo_ExtractReview import has_dicey_word
 from ipo_ExtractSubscription import get_ipo_subscription_live
 from datetime import date
-from common_foundation import *
+from common_foundation import dprint
 
 
 def update_row_3pm(row: int, type1: str):

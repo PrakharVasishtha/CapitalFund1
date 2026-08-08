@@ -1,6 +1,5 @@
 from allotment_update import excel_holdings
-from Base import *
-from common_foundation import *
+from Base import load_credentials
 from allotment_fetch import fetch_allotment_holdings
 
 CREDENTIALS_FILE = "credentials.json"

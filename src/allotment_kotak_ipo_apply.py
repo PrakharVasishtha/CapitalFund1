@@ -1,9 +1,9 @@
 import asyncio
 import time
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
-from Base import *
+from Base import get_netbanking_otp, load_credentials
 import difflib
-from common_foundation import *
+from common_foundation import logger
 
 
 def calculate_lot_minimum_hni(min_shares_str: str, higher_price_str: str, type_ipo: str):

@@ -2,7 +2,7 @@ import fund_kotak_get_balance
 import asyncio
 import trader_priority_ipo_smws_sell
 from fund_bank_to_kite import withdraw_bank_to_kite
-from Base import *
+from Base import load_credentials
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -28,11 +28,11 @@ def fund_trf_to_kite():
             email_password = user.get("email_password")
             try:
                 balance = 600
-
+                
                 balance = asyncio.run \
                     (fund_kotak_get_balance.get_kotak_balance(USER_ID=bank_user ,PASSWORD=bank_password ,EMAIL_USR=email_user
                                                         ,EMAIL_PSS= email_password))
-
+                
             except Exception as e:
                 print(e)
                 balance = 0

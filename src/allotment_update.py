@@ -6,7 +6,6 @@ from ipo_ExtractGMP import get_ipo_gmp
 from ipo_ExtractReview import has_dicey_word
 from ipo_ExtractSubscription import get_ipo_subscription_live
 from datetime import date
-from common_foundation import *
 
 
 def excel_holdings(usr_id: str):

@@ -1,0 +1,9 @@
+# --- Add these lines to your existing root .gitignore ---
+.env
+.venv/
+__pycache__/
+*.pyc
+General.xlsx
+~$*.xlsx
+*.txt
+.idea

@@ -2,7 +2,7 @@ import time
 import openpyxl
 from tqdm import tqdm
 import Base
-from common_foundation import *
+from common_foundation import send_email_with_excel
 from ipo_excel_3pm import update_row_3pm
 from ipo_ExtractReview import has_dicey_word
 from ipo_scraper import get_latest_ipos

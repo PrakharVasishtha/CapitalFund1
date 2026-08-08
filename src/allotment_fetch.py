@@ -1,6 +1,6 @@
 import time
 import Base
-from common_foundation import *
+from common_foundation import logger
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 
@@ -44,6 +44,9 @@ def fetch_allotment_holdings(
             time.sleep(2)
             page.mouse.click(30, 50)
             time.sleep(.5)
+
+            security_nse = "SELL " + security_symbol + " (NSE) quantity"
+            security_bse = "SELL " + security_symbol + " (BSE) quantity"
 
             page.get_by_role("link", name="Holdings").click()
             time.sleep(2)
