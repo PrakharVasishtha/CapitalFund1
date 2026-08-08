@@ -23,7 +23,7 @@ def smws_buyer():
         url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
         df = pd.read_csv(url_csv)
         time.sleep(2)
-        x = df.iloc[24, 3]
+        x = df.iloc[23, 4]
         i = i + 1
         print(i)
     if i == 10:
@@ -31,11 +31,11 @@ def smws_buyer():
         return False
 
 
-    buynifty = df.iloc[23, 3]
+    buynifty = df.iloc[23, 4]
     print("buynifty:", buynifty)
-    goldetfbuy = df.iloc[26, 3]
+    goldetfbuy = df.iloc[26, 4]
     print("goldetfbuy:", goldetfbuy)
-    silveretfbuy = df.iloc[29, 3]
+    silveretfbuy = df.iloc[29, 4]
     print("silveretfbuy:", silveretfbuy)
     #buynifty =1
     total_securities = int(buynifty)+int(goldetfbuy)+int(silveretfbuy)

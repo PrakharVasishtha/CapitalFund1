@@ -1,0 +1,86 @@
+[2026-08-08 21:18:01] [INFO] [common_foundation.py:57:log_info] [test_module] Test info logging
+[2026-08-08 21:18:01] [ERROR] [common_foundation.py:47:log_error] [test_module] Test error logging | Exception: Sample error
+NoneType: None
+
+[2026-08-08 21:18:37] [INFO] [common_foundation.py:57:log_info] [run_now] Running all tasks now in sequence...
+[2026-08-08 21:18:37] [INFO] [common_foundation.py:57:log_info] [ipo_entry] Executing IPO Entry task...
+[2026-08-08 21:20:42] [ERROR] [common_foundation.py:47:log_error] [send_email_with_excel] Excel attachment file not found at 'd:\CapitalFund1\default' | Exception: [Errno 2] No such file or directory: 'd:\\CapitalFund1\\default'
+Traceback (most recent call last):
+  File "d:\CapitalFund1\src\common_foundation.py", line 139, in send_email_with_excel
+    with open(file_path, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'd:\\CapitalFund1\\default'
+
+[2026-08-08 21:20:42] [INFO] [common_foundation.py:57:log_info] [allotment_general] Executing Allotment General task...
+[2026-08-08 21:21:04] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'allotted_holdings.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-08 21:21:04] [INFO] [common_foundation.py:57:log_info] [money_withdraw] Executing Money Withdraw task...
+[2026-08-08 21:23:31] [INFO] [common_foundation.py:57:log_info] [run_now] Running all tasks now in sequence...
+[2026-08-08 21:23:31] [INFO] [common_foundation.py:57:log_info] [ipo_entry] Executing IPO Entry task...
+[2026-08-08 21:25:34] [ERROR] [common_foundation.py:47:log_error] [send_email_with_excel] Excel attachment file not found at 'D:\CapitalFund1\default' | Exception: [Errno 2] No such file or directory: 'D:\\CapitalFund1\\default'
+Traceback (most recent call last):
+  File "D:\CapitalFund1\src\common_foundation.py", line 139, in send_email_with_excel
+    with open(file_path, 'rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'D:\\CapitalFund1\\default'
+
+[2026-08-08 21:25:34] [INFO] [common_foundation.py:57:log_info] [allotment_general] Executing Allotment General task...
+[2026-08-08 21:25:54] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'allotted_holdings.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-08 21:25:54] [INFO] [common_foundation.py:57:log_info] [money_withdraw] Executing Money Withdraw task...
+[2026-08-08 21:26:16] [INFO] [common_foundation.py:57:log_info] [run_now] Running all tasks now in sequence...
+[2026-08-08 21:26:16] [INFO] [common_foundation.py:57:log_info] [ipo_entry] Executing IPO Entry task...
+[2026-08-08 21:26:20] [INFO] [common_foundation.py:57:log_info] [bank_to_kite] Executing Bank to Kite task...
+[2026-08-08 21:26:27] [INFO] [common_foundation.py:57:log_info] [smws_seller] Executing SMWS Sell task...
+[2026-08-08 21:26:56] [INFO] [common_foundation.py:72:logger] Sold : NIFTYIETF at MM-DD HH:MM :08-08 21:26
+[2026-08-08 21:27:12] [INFO] [common_foundation.py:72:logger] Sold : TATAGOLD at MM-DD HH:MM :08-08 21:27
+[2026-08-08 21:27:29] [INFO] [common_foundation.py:72:logger] Sold : TATSILV at MM-DD HH:MM :08-08 21:27
+[2026-08-08 21:27:45] [INFO] [common_foundation.py:72:logger] Sold : NIFTYIETF at MM-DD HH:MM :08-08 21:27
+[2026-08-08 21:28:02] [INFO] [common_foundation.py:72:logger] Sold : TATAGOLD at MM-DD HH:MM :08-08 21:28
+[2026-08-08 21:28:18] [INFO] [common_foundation.py:72:logger] Sold : TATSILV at MM-DD HH:MM :08-08 21:28
+[2026-08-08 21:28:19] [INFO] [common_foundation.py:57:log_info] [priority_ipo_sell_smws] Executing Priority IPO Sell SMWS task...
+[2026-08-08 21:28:21] [INFO] [common_foundation.py:57:log_info] [smws_buyer] Executing SMWS Buy task...
+[2026-08-08 21:28:32] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'General.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-08 21:28:32] [INFO] [common_foundation.py:57:log_info] [allotment_general] Executing Allotment General task...
+[2026-08-08 21:28:32] [INFO] [common_foundation.py:57:log_info] [update_dynamic_data] Executing Update dynamic data task...
+[2026-08-08 21:28:52] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'allotted_holdings.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-08 21:28:52] [INFO] [common_foundation.py:57:log_info] [money_withdraw] Executing Money Withdraw task...
+[2026-08-08 21:28:54] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'General.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-08 21:28:54] [INFO] [common_foundation.py:57:log_info] [ipo_application] Executing IPO Application task...
+[2026-08-08 21:28:55] [INFO] [common_foundation.py:57:log_info] [run_now] Finished running all tasks.
+[2026-08-08 21:29:05] [ERROR] [common_foundation.py:47:log_error] [money_withdraw] Problem in money_withdraw | Exception: invalid literal for int() with base 10: 'Loading...'
+Traceback (most recent call last):
+  File "d:\CapitalFund1\src\common_schedule_all.py", line 69, in money_withdraw
+    fund_manager.daily_money_withdraw()
+  File "d:\CapitalFund1\src\fund_manager.py", line 108, in daily_money_withdraw
+    d0 = ipo_required_fund(0)
+         ^^^^^^^^^^^^^^^^^^^^
+  File "d:\CapitalFund1\src\fund_manager.py", line 45, in ipo_required_fund
+    buy=int(strategy_status_10days())
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\CapitalFund1\src\fund_manager.py", line 29, in strategy_status_10days
+    return int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+           ^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'Loading...'
+
+[2026-08-08 21:29:05] [INFO] [common_foundation.py:57:log_info] [bank_to_kite] Executing Bank to Kite task...
+[2026-08-08 21:31:31] [ERROR] [common_foundation.py:47:log_error] [bank_to_kite] Problem in bank_to_kite | Exception: '>' not supported between instances of 'int' and 'NoneType'
+Traceback (most recent call last):
+  File "d:\CapitalFund1\src\common_schedule_all.py", line 77, in bank_to_kite
+    fund_transfer_for_smws.fund_trf_to_kite()
+  File "d:\CapitalFund1\src\fund_transfer_for_smws.py", line 40, in fund_trf_to_kite
+    if required_fund > balance:
+       ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: '>' not supported between instances of 'int' and 'NoneType'
+
+[2026-08-08 21:31:31] [INFO] [common_foundation.py:57:log_info] [smws_seller] Executing SMWS Sell task...
+[2026-08-08 21:31:59] [INFO] [common_foundation.py:72:logger] Sold : NIFTYIETF at MM-DD HH:MM :08-08 21:31
+[2026-08-08 21:32:16] [INFO] [common_foundation.py:72:logger] Sold : TATAGOLD at MM-DD HH:MM :08-08 21:32
+[2026-08-08 21:32:34] [INFO] [common_foundation.py:72:logger] Sold : TATSILV at MM-DD HH:MM :08-08 21:32
+[2026-08-08 21:32:51] [INFO] [common_foundation.py:72:logger] Sold : NIFTYIETF at MM-DD HH:MM :08-08 21:32
+[2026-08-08 21:33:07] [INFO] [common_foundation.py:72:logger] Sold : TATAGOLD at MM-DD HH:MM :08-08 21:33
+[2026-08-08 21:33:24] [INFO] [common_foundation.py:72:logger] Sold : TATSILV at MM-DD HH:MM :08-08 21:33
+[2026-08-08 21:33:25] [INFO] [common_foundation.py:57:log_info] [priority_ipo_sell_smws] Executing Priority IPO Sell SMWS task...
+[2026-08-08 21:33:26] [INFO] [common_foundation.py:57:log_info] [smws_buyer] Executing SMWS Buy task...
+[2026-08-08 21:33:33] [INFO] [common_foundation.py:57:log_info] [update_dynamic_data] Executing Update dynamic data task...
+[2026-08-08 21:33:50] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'General.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-08 21:33:50] [INFO] [common_foundation.py:57:log_info] [ipo_application] Executing IPO Application task...
+[2026-08-08 21:33:51] [INFO] [common_foundation.py:57:log_info] [run_now] Finished running all tasks.

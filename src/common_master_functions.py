@@ -67,7 +67,7 @@ def latest_ipo_entry():
             else:
                 row_mb= row_mb + 1
     try:
-        send_email_with_excel()
+        send_email_with_excel(mail_subject="latest_ipo_entry",mail_content="latest_ipo_entry",path_of_file='General.xlsx')
     except Exception as e:
         print("Cant send General.xls")
 

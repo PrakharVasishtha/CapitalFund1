@@ -6,3 +6,9 @@ Exception in fetch_allotment_holdings: Page.evaluate: SyntaxError: Invalid or un
     at eval (<anonymous>)
     at UtilityScript.evaluate (<anonymous>:311:30)
     at UtilityScript.<anonymous> (<anonymous>:1:44) : ALLOTMENT at MM-DD HH:MM :08-08 19:30
+Sold : NIFTYIETF at MM-DD HH:MM :08-08 21:26
+Sold : TATAGOLD at MM-DD HH:MM :08-08 21:27
+Sold : TATSILV at MM-DD HH:MM :08-08 21:27
+Sold : NIFTYIETF at MM-DD HH:MM :08-08 21:31
+Sold : TATAGOLD at MM-DD HH:MM :08-08 21:32
+Sold : TATSILV at MM-DD HH:MM :08-08 21:32

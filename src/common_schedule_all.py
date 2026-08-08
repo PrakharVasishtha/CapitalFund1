@@ -41,101 +41,90 @@ import ss_sale_order_on_lc_on_start_of_ss
 def ipo_entry():
     """08:30 — Scrape latest IPOs from Chittorgarh and append to General.xlsx."""
     try:
-        print("IPO Entry")
+        common_foundation.log_info("Executing IPO Entry task...", "ipo_entry")
         common_master_functions.latest_ipo_entry()
     except Exception as Argument:
-        print("Problem in latest_ipo_entry")
-        common_foundation.logger("system.txt", Argument, "ipo_entry")
+        common_foundation.log_error("Problem in ipo_entry", exc=Argument, function_name="ipo_entry")
 
 def allotment_general():
     """08:40 — Check Zerodha holdings for new IPO allotments and update allotted_holdings.xlsx."""
     try:
-        print("Allotment General")
+        common_foundation.log_info("Executing Allotment General task...", "allotment_general")
         allotment_gen.ipo_allotment_manager()
     except Exception as Argument:
-        print("Problem in allotment_general")
-        common_foundation.logger("system.txt", Argument, "allotment_general")
+        common_foundation.log_error("Problem in allotment_general", exc=Argument, function_name="allotment_general")
 
 def ss_start_lc_sell():
     """09:00 — Place LC sell orders for newly allotted IPO shares today."""
     try:
-        print("SS Start LC Sell Order")
+        common_foundation.log_info("Executing SS Start LC Sell Order task...", "ss_start_lc_sell")
         ss_sale_order_on_lc_on_start_of_ss.place_lc_sell_orders_for_allotted_today()
     except Exception as Argument:
-        print("Problem in ss_start_lc_sell")
-        common_foundation.logger("system.txt", Argument, "ss_start_lc_sell")
+        common_foundation.log_error("Problem in ss_start_lc_sell", exc=Argument, function_name="ss_start_lc_sell")
 
 def money_withdraw():
-    """09:02 — Calculate IPO fund requirements and withdraw from Zerodha to Kotak bank."""
+    """09:05 — Calculate IPO fund requirements and withdraw from Zerodha to Kotak bank."""
     try:
-        print("Money Withdraw")
+        common_foundation.log_info("Executing Money Withdraw task...", "money_withdraw")
         fund_manager.daily_money_withdraw()
     except Exception as Argument:
-        print("Problem in daily_money_withdraw")
-        common_foundation.logger("system.txt", Argument, "money_withdraw")
+        common_foundation.log_error("Problem in money_withdraw", exc=Argument, function_name="money_withdraw")
 
 def bank_to_kite():
-    """09:09 — Transfer excess Kotak bank balance to Zerodha Kite for SMWS trading."""
+    """09:10 — Transfer excess Kotak bank balance to Zerodha Kite for SMWS trading."""
     try:
-        print("Bank to Kite")
+        common_foundation.log_info("Executing Bank to Kite task...", "bank_to_kite")
         fund_transfer_for_smws.fund_trf_to_kite()
     except Exception as Argument:
-        print("Problem in bank_to_kite")
-        common_foundation.logger("system.txt", Argument, "bank_to_kite")
+        common_foundation.log_error("Problem in bank_to_kite", exc=Argument, function_name="bank_to_kite")
 
 def smws_seller():
-    """09:18 — Sell SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on strategy sheet signal."""
+    """09:15 — Sell SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on strategy sheet signal."""
     try:
-        print("SMWS Sell")
+        common_foundation.log_info("Executing SMWS Sell task...", "smws_seller")
         trader_smws.smws_seller()
     except Exception as Argument:
-        print("Problem in smws_seller")
-        common_foundation.logger("system.txt", Argument, "smws_seller")
+        common_foundation.log_error("Problem in smws_seller", exc=Argument, function_name="smws_seller")
 
 def priority_ipo_sell_smws():
-    """09:18 — Sell SMWS ETFs with priority when IPO application funds are required."""
+    """09:20 — Sell SMWS ETFs with priority when IPO application funds are required."""
     try:
-        print("Priority IPO Sell SMWS")
+        common_foundation.log_info("Executing Priority IPO Sell SMWS task...", "priority_ipo_sell_smws")
         trader_priority_ipo_smws_sell.priority_ipo_sell_smws()
     except Exception as Argument:
-        print("Problem in priority_ipo_sell_smws")
-        common_foundation.logger("system.txt", Argument, "priority_ipo_sell_smws")
+        common_foundation.log_error("Problem in priority_ipo_sell_smws", exc=Argument, function_name="priority_ipo_sell_smws")
 
 def smws_buyer():
     """09:25 — Buy SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on strategy sheet signal."""
     try:
-        print("SMWS Buy")
+        common_foundation.log_info("Executing SMWS Buy task...", "smws_buyer")
         trader_smws.smws_buyer()
     except Exception as Argument:
-        print("Problem in smws_buyer")
-        common_foundation.logger("system.txt", Argument, "smws_buyer")
+        common_foundation.log_error("Problem in smws_buyer", exc=Argument, function_name="smws_buyer")
 
 def cancel_sale_order_if_loss():
     """09:32 — Cancel pre-open LC sell orders if IEP indicates discount/loss threshold exceeded."""
     try:
-        print("Cancel Sale Order If Loss")
+        common_foundation.log_info("Executing Cancel Sale Order If Loss task...", "cancel_sale_order_if_loss")
         ss_Before_session_close_cancel_sale_or_not.sale_order_cancel_or_not()
     except Exception as Argument:
-        print("Problem in cancel_sale_order_if_loss")
-        common_foundation.logger("system.txt", Argument, "cancel_sale_order_if_loss")
+        common_foundation.log_error("Problem in cancel_sale_order_if_loss", exc=Argument, function_name="cancel_sale_order_if_loss")
 
 def update_dynamic_data():
-    """10:05 / 14:50 / 15:05 — Refresh subscription, GMP, and dynamic_data_update data in General.xlsx."""
+    """12:05 / 14:52 — Refresh subscription, GMP, and dynamic_data_update data in General.xlsx."""
     try:
-        print("Update dynamic data")
+        common_foundation.log_info("Executing Update dynamic data task...", "update_dynamic_data")
         common_master_functions.dynamic_data_update()
     except Exception as Argument:
-        print("Problem in update_dynamic_data")
-        common_foundation.logger("system.txt", Argument, "update_dynamic_data")
+        common_foundation.log_error("Problem in update_dynamic_data", exc=Argument, function_name="update_dynamic_data")
 
 def ipo_application():
     """14:55 — Submit UPI IPO applications via Kotak for IPOs closing today."""
     try:
-        print("IPO Application")
+        common_foundation.log_info("Executing IPO Application task...", "ipo_application")
         allotment_application_ipo.ipo_application()
     except Exception as Argument:
-        print("Problem in ipo_application")
-        common_foundation.logger("system.txt", Argument, "ipo_application")
+        common_foundation.log_error("Problem in ipo_application", exc=Argument, function_name="ipo_application")
 
 def run_now():
     """
@@ -144,9 +133,9 @@ def run_now():
     Useful for catching up on any tasks missed if the script was restarted mid-day.
     """
     try:
-        print("running now")
-        ipo_entry()
-        allotment_general()
+        common_foundation.log_info("Running all tasks now in sequence...", "run_now")
+        #ipo_entry()
+        #allotment_general()
         #ss_start_lc_sell()
         money_withdraw()
         bank_to_kite()
@@ -156,11 +145,10 @@ def run_now():
         #cancel_sale_order_if_loss()
         update_dynamic_data()
         ipo_application()
-        print("Finished")
+        common_foundation.log_info("Finished running all tasks.", "run_now")
 
     except Exception as Argument:
-        print("Problem in run_now", Argument)
-        common_foundation.logger("system.txt", Argument, "run_now")
+        common_foundation.log_error("Problem in run_now", exc=Argument, function_name="run_now")
 
 # Setup Daily Schedule
 schedule.every().day.at("08:30").do(ipo_entry)
@@ -179,7 +167,7 @@ schedule.every().day.at("14:55").do(ipo_application)
 
 if __name__ == "__main__":
     # Uncomment run_now() if immediate catch-up run is desired on startup
-    # run_now()
+    #run_now()
     while True:
         schedule.run_pending()
         time.sleep(1)

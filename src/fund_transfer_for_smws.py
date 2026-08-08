@@ -8,9 +8,7 @@ CREDENTIALS_FILE = "credentials.json"
 
 def fund_trf_to_kite():
     print(
-        "*************************************-----------fund_trf_to_kite----------************************************")
-    print(
-        "##############################################################################################################")
+        "-----------fund_trf_to_kite----------")
     d0 = trader_priority_ipo_smws_sell.ipo_required_fund(0)
     d1 = trader_priority_ipo_smws_sell.ipo_required_fund(1)
     required_fund = d0 + d1
@@ -27,7 +25,7 @@ def fund_trf_to_kite():
             email_user = user.get("email_user")
             email_password = user.get("email_password")
             try:
-                balance = 600
+                #balance = 600
                 
                 balance = asyncio.run \
                     (fund_kotak_get_balance.get_kotak_balance(USER_ID=bank_user ,PASSWORD=bank_password ,EMAIL_USR=email_user
@@ -36,6 +34,7 @@ def fund_trf_to_kite():
             except Exception as e:
                 print(e)
                 balance = 0
+            balance = int(float(balance))
             final_amount = 0
             if required_fund > balance:
                 final_amount = 0

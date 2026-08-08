@@ -20,7 +20,7 @@ def withdraw_bank_to_kite(
 
     def run(playwright: Playwright) -> tuple[bool, str]:
         print(user_uci, "reqrd to withdrw frm zerodha", amount)
-        amount_str = "0"
+        amount_str = str(amount)
         msg_log = "e"
         try:
             browser = playwright.chromium.launch(headless=False)
@@ -55,7 +55,7 @@ def withdraw_bank_to_kite(
             with page.expect_popup() as page1_info:
                 page.get_by_role("button", name="Add funds").click()
             page1 = page1_info.value
-            page1.get_by_role("textbox", name="Enter amount").fill("700")
+            page1.get_by_role("textbox", name="Enter amount").fill(amount_str)
             page1.get_by_text("Net banking₹9 + GST").click()
             page1.get_by_role("button", name="Continue").click()
             time.sleep(3)

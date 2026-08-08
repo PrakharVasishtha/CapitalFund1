@@ -100,7 +100,7 @@ async def get_kotak_balance(
 
         await context.close()
         await browser.close()
-        return None
+        return 0
 
 
 # Run the script
