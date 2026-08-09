@@ -31,10 +31,10 @@ def strategy_status_10days():
         return 0
         
     try:
-        buynifty = df.iloc[23, 4]
-        goldetfbuy = df.iloc[26, 4]
-        silveretfbuy = df.iloc[29, 4]
-        return int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+        b_nifty = parse_float(str(df.iloc[23, 4])) if len(df) > 23 else 0.0
+        g_buy = parse_float(str(df.iloc[26, 4])) if len(df) > 26 else 0.0
+        s_buy = parse_float(str(df.iloc[29, 4])) if len(df) > 29 else 0.0
+        return int(b_nifty) + int(g_buy) + int(s_buy)
     except (ValueError, TypeError) as e:
         print("Invalid signal value in sheet:", e)
         return 0

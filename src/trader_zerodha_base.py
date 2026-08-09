@@ -79,8 +79,11 @@ def get_balance_zerodha(
             margin_value = parse_money(margin_text)
 
             print("Margin:", margin_value)
-
-
+            try:
+                from master_excel_manager import update_master_user
+                update_master_user(uci=str(user_id), current_value=float(margin_value))
+            except Exception as ex:
+                print(f"Error updating Master.xlsx current_value for {user_id}: {ex}")
 
             return margin_value
 

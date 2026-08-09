@@ -194,8 +194,14 @@ def zerodha_execute_regular_sell(
                 try:
                     page.keyboard.press("S")
                     time.sleep(0.5)
-                    page.get_by_text("Regular").click()
-                    page.get_by_text("Limit").click()
+                    try:
+                        page.get_by_text("Regular").click(timeout=3000)
+                    except Exception:
+                        pass
+                    try:
+                        page.get_by_text("Limit").click(timeout=3000)
+                    except Exception:
+                        pass
 
                     for label in [security_sell_nse, security_sell_bse, "Quantity"]:
                         try:
@@ -221,8 +227,14 @@ def zerodha_execute_regular_sell(
                 try:
                     page.keyboard.press("S")
                     time.sleep(0.5)
-                    page.get_by_text("Regular").click()
-                    page.get_by_text("Limit").click()
+                    try:
+                        page.get_by_text("Regular").click(timeout=3000)
+                    except Exception:
+                        pass
+                    try:
+                        page.get_by_text("Limit").click(timeout=3000)
+                    except Exception:
+                        pass
 
                     for label in [security_sell_nse, security_sell_bse, "Quantity"]:
                         try:
@@ -245,10 +257,11 @@ def zerodha_execute_regular_sell(
 
             logger(file_path, security_symbol, f"Regular Session Sell Placed ({strategy_label})")
 
+            clean_label = strategy_label.replace(">", "&gt;").replace("<", "&lt;")
             send_telegram_notification(
                 f"📈 <b>Regular Session Sell Placed</b>\n"
                 f"<b>Stock</b>: {security_symbol}\n"
-                f"<b>Strategy</b>: {strategy_label} (Ratio: {ratio_pct:.1f}%)\n"
+                f"<b>Strategy</b>: {clean_label} (Ratio: {ratio_pct:.1f}%)\n"
                 f"<b>Order 1</b>: {qty_1} shares @ ₹{price_1}\n"
                 f"<b>Order 2</b>: {qty_2} shares @ ₹{price_2}"
             )
@@ -288,17 +301,27 @@ def regular_session_ipo_sell():
         return
 
     file_changed = False
+    processed_count = 0
 
     for user in users:
-        uci_user = str(user.get("uci"))
+        raw_uci = str(user.get("uci")).strip()
         client_id = user.get("broker_client_id")
         password_user = user.get("password_broker")
         totp_broker = user.get("topt_broker") or user.get("totp_broker")
 
-        if uci_user not in wb.sheetnames:
+        # Support both '1' and 'user1' sheet names
+        target_sheet = None
+        for candidate in [raw_uci, f"user{raw_uci}", raw_uci.replace("user", "")]:
+            if candidate in wb.sheetnames:
+                target_sheet = candidate
+                break
+
+        if not target_sheet:
+            print(f"Sheet for UCI '{raw_uci}' not found in '{excel_path}'. Available sheets: {wb.sheetnames}")
             continue
 
-        ws = wb[uci_user]
+        print(f"Scanning sheet '{target_sheet}' for UCI '{raw_uci}'...")
+        ws = wb[target_sheet]
 
         for r in range(2, ws.max_row + 1):
             security_symbol = ws.cell(r, 1).value
@@ -331,10 +354,13 @@ def regular_session_ipo_sell():
             except (ValueError, TypeError):
                 reg_status = 0
 
+            print(f"  [Row {r}] Symbol: '{security_symbol}' | Shares: {shares_allocated} | spl_status: {spl_status} | reg_status: {reg_status}")
+
             # Condition to sell in regular session:
             # Not sold in special session (spl_status != 2) AND regular session sell not completed (reg_status != 2)
             if spl_status != 2 and reg_status != 2 and shares_allocated > 0:
-                print(f"\n[User: {uci_user}] Executing Regular Session Strategy for '{security_symbol}' | Shares: {shares_allocated} | Cat: {stock_category}")
+                print(f"  -> Executing Regular Session Strategy for '{security_symbol}' | Shares: {shares_allocated} | Cat: {stock_category}")
+                processed_count += 1
 
                 success, result_msg = zerodha_execute_regular_sell(
                     user_id=client_id,
@@ -352,6 +378,9 @@ def regular_session_ipo_sell():
                     else:
                         ws.cell(r, reg_status_col, 2)  # 2 = Regular Session Orders Placed
                     file_changed = True
+            else:
+                reason = "special_session_status is 2 (Sold in pre-open)" if spl_status == 2 else ("regular_session_status is 2 (Already completed)" if reg_status == 2 else "Zero shares allocated")
+                print(f"  -> Skipped '{security_symbol}': {reason}")
 
     if file_changed:
         try:
@@ -361,6 +390,7 @@ def regular_session_ipo_sell():
             print(f"regular_session_ipo_sell: Error saving workbook '{excel_path}': {e}")
 
     wb.close()
+    print(f"regular_session_ipo_sell: Completed. Processed {processed_count} eligible holding(s).")
 
 
 if __name__ == "__main__":

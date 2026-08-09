@@ -146,6 +146,11 @@ def run_now():
     """
     try:
         common_foundation.log_info("Running all tasks now in sequence...", "run_now")
+        try:
+            import master_excel_manager
+            master_excel_manager.sync_master_with_credentials()
+        except Exception as me_err:
+            common_foundation.log_error(f"Error syncing Master.xlsx: {me_err}", exc=me_err, function_name="run_now")
         #ipo_entry()
         #allotment_general()
         #ss_start_lc_sell()
@@ -153,9 +158,10 @@ def run_now():
         #bank_to_kite()
         #smws_seller()
         #priority_ipo_sell_smws()
-        smws_buyer()
+        #smws_buyer()
         #cancel_sale_order_if_loss()
         #update_dynamic_data()
+        #regular_session_ipo_sell()
         #ipo_application()
         #common_foundation.log_info("Finished running all tasks.", "run_now")
 

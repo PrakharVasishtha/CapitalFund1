@@ -188,6 +188,18 @@ def load_allotted_holdings():
         return pd.DataFrame()
 
 @st.cache_data(ttl=30)
+def load_master_database():
+    try:
+        from master_excel_manager import get_master_excel_path
+        path = get_master_excel_path()
+        if os.path.exists(path):
+            df = pd.read_excel(path, sheet_name="Users")
+            return df
+    except Exception as e:
+        print(f"load_master_database error: {e}")
+    return pd.DataFrame()
+
+@st.cache_data(ttl=30)
 def fetch_smws_signals():
     url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?gid=614695683&single=true&output=csv"
     try:
@@ -362,6 +374,7 @@ df_sme_clean = clean_ipo_dataframe(df_sme_raw, "SME")
 df_mb_clean = clean_ipo_dataframe(df_mb_raw, "Mainboard")
 df_all_ipos = pd.concat([df_mb_clean, df_sme_clean], ignore_index=True)
 df_allotments = load_allotted_holdings()
+df_master = load_master_database()
 
 # -----------------------------------------------------------------------------
 # TAB 1: Executive Dashboard
@@ -369,9 +382,19 @@ df_allotments = load_allotted_holdings()
 if nav == "📊 Executive Dashboard":
     st.markdown("<div class='section-head'>📊 Executive Summary & System Overview</div>", unsafe_allow_html=True)
     
-    kpi1, kpi2 = st.columns(2)
+    kpi1, kpi2, kpi3 = st.columns(3)
     
     with kpi1:
+        total_valuation = df_master['current_value'].dropna().sum() if not df_master.empty and 'current_value' in df_master.columns else 0.0
+        st.markdown(f"""
+        <div class="glass-card">
+            <div class="kpi-title">Total Account Valuation</div>
+            <div class="kpi-value text-emerald">₹{total_valuation:,.2f}</div>
+            <div class="kpi-footer">Synced from Master.xlsx</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with kpi2:
         allotment_cnt = len(df_allotments) if not df_allotments.empty else 0
         st.markdown(f"""
         <div class="glass-card">
@@ -381,7 +404,7 @@ if nav == "📊 Executive Dashboard":
         </div>
         """, unsafe_allow_html=True)
 
-    with kpi2:
+    with kpi3:
         total_ipos = len(df_all_ipos)
         st.markdown(f"""
         <div class="glass-card">
@@ -460,6 +483,15 @@ elif nav == "💰 Balances & Account Manager":
                 pan = u.get("PAN", "N/A")
                 intraday = "Enabled" if u.get("intraday") == "1" else "Disabled"
                 
+                # Find matching row in df_master
+                curr_val_str = "N/A"
+                if not df_master.empty and 'uci' in df_master.columns and 'current_value' in df_master.columns:
+                    match_row = df_master[df_master['uci'].astype(str) == str(u.get('uci'))]
+                    if not match_row.empty:
+                        val = match_row.iloc[0]['current_value']
+                        if pd.notnull(val):
+                            curr_val_str = f"₹{float(val):,.2f}"
+
                 st.markdown(f"""
                 <div class="glass-card" style="border-top: 4px solid #38bdf8;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -470,8 +502,13 @@ elif nav == "💰 Balances & Account Manager":
                     <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Broker Client ID: <b style="color:#f8fafc;">{client_id}</b></p>
                     <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">PAN Reference: <b style="color:#f8fafc;">{pan}</b></p>
                     <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Intraday Mode: <b style="color:#34d399;">{intraday}</b></p>
+                    <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Current Value (Master.xlsx): <b style="color:#34d399;">{curr_val_str}</b></p>
                 </div>
                 """, unsafe_allow_html=True)
+
+    if not df_master.empty:
+        st.markdown("<div class='section-head'>📋 Master User Database (Master.xlsx)</div>", unsafe_allow_html=True)
+        st.dataframe(df_master, use_container_width=True, hide_index=True)
 
     st.markdown("<div class='section-head'>⚙️ Automated Capital Routing Rules</div>", unsafe_allow_html=True)
     
@@ -602,14 +639,18 @@ elif nav == "📈 Live SMWS Strategy Monitor":
         sig_c1, sig_c2, sig_c3 = st.columns(3)
         
         def format_signal(val, label):
-            if "Loading" in str(val):
-                return f'<span class="pill pill-amber">⏳ Sheet Recalculating ({val})</span>'
-            elif str(val) == "1":
-                return f'<span class="pill pill-green">🟢 BUY SIGNAL (1)</span>'
-            elif str(val) == "0":
+            val_str = str(val).strip()
+            if "Loading" in val_str:
+                return f'<span class="pill pill-amber">⏳ Sheet Recalculating ({val_str})</span>'
+            elif val_str == "1":
+                if label.lower() == "sell":
+                    return f'<span class="pill pill-red">🔴 SELL SIGNAL (1)</span>'
+                else:
+                    return f'<span class="pill pill-green">🟢 BUY SIGNAL (1)</span>'
+            elif val_str == "0":
                 return f'<span class="pill pill-purple">⚪ HOLD / NO SIGNAL (0)</span>'
             else:
-                return f'<span class="pill pill-blue">SIGNAL: {val}</span>'
+                return f'<span class="pill pill-blue">SIGNAL: {val_str}</span>'
 
         with sig_c1:
             st.markdown(f"""
@@ -667,17 +708,19 @@ elif nav == "📜 System Health & Activity Logs":
     
     env_exists = os.path.exists(os.path.join(BASE_DIR, ".env"))
     gen_exists = os.path.exists(os.path.join(BASE_DIR, "General.xlsx"))
+    master_exists = os.path.exists(os.path.join(BASE_DIR, "Master.xlsx"))
     allot_exists = os.path.exists(os.path.join(BASE_DIR, "allotted_holdings.xlsx"))
     
     env_badge = '<span class="pill pill-green">Found</span>' if env_exists else '<span class="pill pill-amber">Missing</span>'
     gen_badge = '<span class="pill pill-green">Found</span>' if gen_exists else '<span class="pill pill-amber">Missing</span>'
+    master_badge = '<span class="pill pill-green">Found</span>' if master_exists else '<span class="pill pill-amber">Missing</span>'
     allot_badge = '<span class="pill pill-green">Found</span>' if allot_exists else '<span class="pill pill-amber">Missing</span>'
     net_badge = '<span class="pill pill-green">Online</span>' if internet_ok else '<span class="pill pill-amber">Offline</span>'
 
     with h1:
         st.markdown(f"<b>.env Credentials File</b>: {env_badge}", unsafe_allow_html=True)
     with h2:
-        st.markdown(f"<b>General.xlsx Database</b>: {gen_badge}", unsafe_allow_html=True)
+        st.markdown(f"<b>General.xlsx Database</b>: {gen_badge}<br><b>Master.xlsx Database</b>: {master_badge}", unsafe_allow_html=True)
     with h3:
         st.markdown(f"<b>Allotted Holdings File</b>: {allot_badge}", unsafe_allow_html=True)
     with h4:

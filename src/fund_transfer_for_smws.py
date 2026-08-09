@@ -32,9 +32,14 @@ def fund_trf_to_kite():
                                                         ,EMAIL_PSS= email_password))
                 
             except Exception as e:
-                print(e)
+                print("Error getting Kotak balance:", e)
                 balance = 0
-            balance = int(float(balance))
+            if balance is None:
+                balance = 0
+            try:
+                balance = int(float(balance))
+            except (ValueError, TypeError):
+                balance = 0
             final_amount = 0
             if required_fund > balance:
                 final_amount = 0

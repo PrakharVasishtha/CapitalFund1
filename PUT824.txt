@@ -15,3 +15,4 @@ Sold : TATSILV at MM-DD HH:MM :08-08 21:33
 Sold : NIFTYIETF at MM-DD HH:MM :08-09 13:18
 Sold : TATAGOLD at MM-DD HH:MM :08-09 13:19
 Sold : TATSILV at MM-DD HH:MM :08-09 13:19
+Regular Session Sell Placed (Low Buyer Ratio (<60%)) : TATATECH at MM-DD HH:MM :08-09 18:07

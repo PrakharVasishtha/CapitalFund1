@@ -6,33 +6,12 @@ from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
 
 def update_excel(uci_target: int, amount_needed: int):
-    path = '../Master.xlsx'
-    wb = openpyxl.load_workbook(path)
-    ws = wb['Users']
-    time.sleep(.2)
-    #print(type(uci_target))
-    #print(uci_target)
-    
-    for i in range(1, 9):
-        rw = i
-        uci = str(ws.cell(rw, 1).value)
-        #print("uci:",uci,"type:",type(uci))
-        if uci == uci_target:
-            ws.cell(rw, 15, abs(amount_needed))
-        else:
-            k=1
-            #print("not target row")
     try:
-            wb.save(path)
-            print(f"Successfully updated details for uci_target {uci_target}")
-    except PermissionError:
-            print(f"Error: Permission denied. Please ensure '{path}' is closed.")
+        from master_excel_manager import update_master_user
+        update_master_user(uci=str(uci_target), amount_needed=abs(amount_needed))
+        print(f"Successfully updated details for uci_target {uci_target} in Master.xlsx")
     except Exception as e:
-            print(f" An error occurred while saving the file: {e}")
-    else:
-        # print("Closing not today")
-        x = 0
-    wb.close()
+        print(f"An error occurred while updating Master.xlsx: {e}")
 
 def withdraw_from_zerodha(
         user_uci: int,

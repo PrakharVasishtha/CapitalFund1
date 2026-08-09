@@ -211,6 +211,17 @@ def send_telegram_notification(msg: str, parse_mode: str = "HTML") -> bool:
                 log_info("Telegram notification sent successfully.", "send_telegram_notification")
                 return True
     except Exception as e:
+        if parse_mode:
+            payload.pop("parse_mode", None)
+            try:
+                data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    if resp.status == 200:
+                        log_info("Telegram notification sent successfully (plain text fallback).", "send_telegram_notification")
+                        return True
+            except Exception:
+                pass
         log_error(f"Failed to send Telegram notification: {e}", exc=e, function_name="send_telegram_notification")
 
     return False
