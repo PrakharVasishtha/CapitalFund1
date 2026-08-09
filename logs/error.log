@@ -84,3 +84,79 @@ TypeError: '>' not supported between instances of 'int' and 'NoneType'
 [2026-08-08 21:33:50] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'General.xlsx' to prakharvasishtha9@gmail.com
 [2026-08-08 21:33:50] [INFO] [common_foundation.py:57:log_info] [ipo_application] Executing IPO Application task...
 [2026-08-08 21:33:51] [INFO] [common_foundation.py:57:log_info] [run_now] Finished running all tasks.
+[2026-08-09 08:40:43] [INFO] [common_foundation.py:57:log_info] [ipo_entry] Executing IPO Entry task...
+[2026-08-09 08:41:08] [ERROR] [common_foundation.py:47:log_error] [ipo_entry] Problem in ipo_entry | Exception: [Errno 22] Invalid argument
+Traceback (most recent call last):
+  File "D:\CapitalFund1\src\common_schedule_all.py", line 45, in ipo_entry
+    common_master_functions.latest_ipo_entry()
+  File "D:\CapitalFund1\src\common_master_functions.py", line 25, in latest_ipo_entry
+    for ipo in tqdm(sc, desc="Processing IPO Entries", unit="ipo"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruce\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\tqdm\std.py", line 1096, in __init__
+    self.sp = self.status_printer(self.fp)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\bruce\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\tqdm\std.py", line 448, in status_printer
+    getattr(sys.stderr, 'flush', lambda: None)()
+OSError: [Errno 22] Invalid argument
+
+[2026-08-09 08:41:08] [INFO] [common_foundation.py:57:log_info] [update_dynamic_data] Executing Update dynamic data task...
+[2026-08-09 08:41:46] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'General.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-09 08:41:46] [INFO] [common_foundation.py:57:log_info] [allotment_general] Executing Allotment General task...
+[2026-08-09 08:42:12] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'allotted_holdings.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-09 09:05:00] [INFO] [common_foundation.py:57:log_info] [money_withdraw] Executing Money Withdraw task...
+[2026-08-09 09:05:00] [INFO] [common_foundation.py:57:log_info] [money_withdraw] Executing Money Withdraw task...
+[2026-08-09 09:05:12] [ERROR] [common_foundation.py:47:log_error] [money_withdraw] Problem in money_withdraw | Exception: invalid literal for int() with base 10: 'Loading...'
+Traceback (most recent call last):
+  File "D:\CapitalFund1\src\common_schedule_all.py", line 69, in money_withdraw
+    fund_manager.daily_money_withdraw()
+  File "D:\CapitalFund1\src\fund_manager.py", line 108, in daily_money_withdraw
+  File "D:\CapitalFund1\src\fund_manager.py", line 45, in ipo_required_fund
+    path = get_excel_path()
+            ^^^^^^^^^^^^^^^^
+  File "D:\CapitalFund1\src\fund_manager.py", line 29, in strategy_status_10days
+    #print("buynifty:", buynifty)
+           ^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'Loading...'
+
+[2026-08-09 09:05:33] [ERROR] [common_foundation.py:47:log_error] [money_withdraw] Problem in money_withdraw | Exception: invalid literal for int() with base 10: 'Loading...'
+Traceback (most recent call last):
+  File "d:\CapitalFund1\src\common_schedule_all.py", line 69, in money_withdraw
+    fund_manager.daily_money_withdraw()
+  File "d:\CapitalFund1\src\fund_manager.py", line 114, in daily_money_withdraw
+    d0 = ipo_required_fund(0)
+         ^^^^^^^^^^^^^^^^^^^^
+  File "d:\CapitalFund1\src\fund_manager.py", line 51, in ipo_required_fund
+    buy=int(strategy_status_10days())
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "d:\CapitalFund1\src\fund_manager.py", line 35, in strategy_status_10days
+    return int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+           ^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: 'Loading...'
+
+[2026-08-09 09:10:00] [INFO] [common_foundation.py:57:log_info] [bank_to_kite] Executing Bank to Kite task...
+[2026-08-09 09:10:00] [INFO] [common_foundation.py:57:log_info] [bank_to_kite] Executing Bank to Kite task...
+[2026-08-09 09:15:00] [INFO] [common_foundation.py:57:log_info] [smws_seller] Executing SMWS Sell task...
+[2026-08-09 09:15:00] [INFO] [common_foundation.py:57:log_info] [smws_seller] Executing SMWS Sell task...
+[2026-08-09 09:20:00] [INFO] [common_foundation.py:57:log_info] [priority_ipo_sell_smws] Executing Priority IPO Sell SMWS task...
+[2026-08-09 09:20:00] [INFO] [common_foundation.py:57:log_info] [priority_ipo_sell_smws] Executing Priority IPO Sell SMWS task...
+[2026-08-09 09:25:00] [INFO] [common_foundation.py:57:log_info] [smws_buyer] Executing SMWS Buy task...
+[2026-08-09 09:25:00] [INFO] [common_foundation.py:57:log_info] [smws_buyer] Executing SMWS Buy task...
+[2026-08-09 11:42:59] [INFO] [common_foundation.py:57:log_info] [run_now] Running all tasks now in sequence...
+[2026-08-09 11:42:59] [INFO] [common_foundation.py:57:log_info] [smws_buyer] Executing SMWS Buy task...
+[2026-08-09 11:43:29] [INFO] [common_foundation.py:57:log_info] [update_dynamic_data] Executing Update dynamic data task...
+[2026-08-09 11:43:57] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'General.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-09 11:43:57] [INFO] [common_foundation.py:57:log_info] [ipo_application] Executing IPO Application task...
+[2026-08-09 11:43:58] [INFO] [common_foundation.py:57:log_info] [run_now] Finished running all tasks.
+[2026-08-09 11:46:22] [INFO] [common_foundation.py:57:log_info] [run_now] Running all tasks now in sequence...
+[2026-08-09 11:46:22] [INFO] [common_foundation.py:57:log_info] [smws_buyer] Executing SMWS Buy task...
+[2026-08-09 12:05:00] [INFO] [common_foundation.py:57:log_info] [update_dynamic_data] Executing Update dynamic data task...
+[2026-08-09 12:05:26] [INFO] [common_foundation.py:57:log_info] [send_email_with_excel] Email sent successfully with attachment 'General.xlsx' to prakharvasishtha9@gmail.com
+[2026-08-09 12:47:39] [INFO] [common_foundation.py:57:log_info] [run_now] Running all tasks now in sequence...
+[2026-08-09 12:47:39] [INFO] [common_foundation.py:57:log_info] [smws_buyer] Executing SMWS Buy task...
+[2026-08-09 13:04:55] [INFO] [common_foundation.py:57:log_info] [__main__] Scheduler stopped by user (KeyboardInterrupt).
+[2026-08-09 13:18:04] [INFO] [common_foundation.py:72:logger] Sold : NIFTYIETF at MM-DD HH:MM :08-09 13:18
+[2026-08-09 13:18:20] [INFO] [common_foundation.py:72:logger] Sold : TATAGOLD at MM-DD HH:MM :08-09 13:18
+[2026-08-09 13:18:37] [INFO] [common_foundation.py:72:logger] Sold : TATSILV at MM-DD HH:MM :08-09 13:18
+[2026-08-09 13:18:54] [INFO] [common_foundation.py:72:logger] Sold : NIFTYIETF at MM-DD HH:MM :08-09 13:18
+[2026-08-09 13:19:10] [INFO] [common_foundation.py:72:logger] Sold : TATAGOLD at MM-DD HH:MM :08-09 13:19
+[2026-08-09 13:19:27] [INFO] [common_foundation.py:72:logger] Sold : TATSILV at MM-DD HH:MM :08-09 13:19

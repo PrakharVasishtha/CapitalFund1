@@ -16,23 +16,28 @@ def strategy_status_10days():
 
     x = "Loading..."
     i = 0
-    while x == "Loading..." and i < 10:
-        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
-        df = pd.read_csv(url_csv)
+    df = None
+    while (x == "Loading..." or x == "nan") and i < 10:
+        url_csv = f"https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv&t={int(time.time())}"
+        try:
+            df = pd.read_csv(url_csv)
+            x = str(df.iloc[23, 4]).strip()
+        except Exception as e:
+            print("Error reading Google Sheet CSV:", e)
         time.sleep(2)
-        x = df.iloc[23, 4]
         i = i + 1
-    if i == 10:
+    if i == 10 or x == "Loading..." or df is None:
         print("sheet not loading")
+        return 0
         
-    buynifty = df.iloc[23, 4]
-    #print("buynifty:", buynifty)
-    goldetfbuy = df.iloc[26, 4]
-    #print("goldetfbuy:", goldetfbuy)
-    silveretfbuy = df.iloc[29, 4]
-    #print("silveretfbuy:", silveretfbuy)
-
-    return int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+    try:
+        buynifty = df.iloc[23, 4]
+        goldetfbuy = df.iloc[26, 4]
+        silveretfbuy = df.iloc[29, 4]
+        return int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+    except (ValueError, TypeError) as e:
+        print("Invalid signal value in sheet:", e)
+        return 0
 
 def ipo_required_fund(d = 0):
     row_sme = get_last_row_sme() - 1

@@ -137,15 +137,15 @@ def run_now():
         #ipo_entry()
         #allotment_general()
         #ss_start_lc_sell()
-        money_withdraw()
-        bank_to_kite()
-        smws_seller()
-        priority_ipo_sell_smws()
+        #money_withdraw()
+        #bank_to_kite()
+        #smws_seller()
+        #priority_ipo_sell_smws()
         smws_buyer()
         #cancel_sale_order_if_loss()
-        update_dynamic_data()
-        ipo_application()
-        common_foundation.log_info("Finished running all tasks.", "run_now")
+        #update_dynamic_data()
+        #ipo_application()
+        #common_foundation.log_info("Finished running all tasks.", "run_now")
 
     except Exception as Argument:
         common_foundation.log_error("Problem in run_now", exc=Argument, function_name="run_now")
@@ -166,8 +166,10 @@ schedule.every().day.at("14:52").do(update_dynamic_data)
 schedule.every().day.at("14:55").do(ipo_application)
 
 if __name__ == "__main__":
-    # Uncomment run_now() if immediate catch-up run is desired on startup
-    #run_now()
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    try:
+        run_now()
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    except KeyboardInterrupt:
+        common_foundation.log_info("Scheduler stopped by user (KeyboardInterrupt).", "__main__")

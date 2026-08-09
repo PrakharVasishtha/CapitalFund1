@@ -12,33 +12,37 @@ from trader_zerodha_sell import zerodha_sell
 CREDENTIALS_FILE = "credentials.json"
 
 def smws_buyer():
-    print(
-        "*************************************-----------smws_buyer----------************************************")
-    print(
-        "##############################################################################################################")
+    print("-----------smws_buyer----------")
 
     x = "Loading..."
     i = 0
-    while x == "Loading..." and i < 10:
-        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
-        df = pd.read_csv(url_csv)
+    df = None
+    while ("Loading" in x or "nan" in x) and i < 10:
+        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?gid=614695683&single=true&output=csv"
+        try:
+            df = pd.read_csv(url_csv)
+            time.sleep(6)
+            x = df.iloc[23, 4]
+        except Exception as e:
+            print("Error reading Google Sheet CSV:", e)
         time.sleep(2)
-        x = df.iloc[23, 4]
         i = i + 1
         print(i)
-    if i == 10:
+    if i == 10 or x == "Loading..." or df is None:
         print("sheet not loading")
         return False
 
-
-    buynifty = df.iloc[23, 4]
-    print("buynifty:", buynifty)
-    goldetfbuy = df.iloc[26, 4]
-    print("goldetfbuy:", goldetfbuy)
-    silveretfbuy = df.iloc[29, 4]
-    print("silveretfbuy:", silveretfbuy)
-    #buynifty =1
-    total_securities = int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+    try:
+        buynifty = df.iloc[23, 4]
+        print("buynifty:", buynifty)
+        goldetfbuy = df.iloc[26, 4]
+        print("goldetfbuy:", goldetfbuy)
+        silveretfbuy = df.iloc[29, 4]
+        print("silveretfbuy:", silveretfbuy)
+        total_securities = int(buynifty)+int(goldetfbuy)+int(silveretfbuy)
+    except (ValueError, TypeError) as e:
+        print("Invalid strategy signal value in sheet:", e)
+        return False
 
     if total_securities > 0:
         users = load_credentials(CREDENTIALS_FILE)
@@ -71,35 +75,42 @@ def smws_buyer():
                         zerodha_buy(user_id=client_id,password=password_user,totp_secret=topt_broker,amount=amount_per_security,security_symbol="TATSILV")
                 except Exception as e:
                     print(e)
+    else:
+        print("Total securities SMWS is 0, not buying any securities")
 
 def smws_seller():
     print(
-        "*************************************-----------smws_seller----------************************************")
-    print(
-        "##############################################################################################################")
-
-    x= "Loading..."
-    i=0
-    while x == "Loading..." and i<10:
-        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
-        df = pd.read_csv(url_csv)
+        "-----------smws_seller----------")
+    x = "Loading..."
+    i = 0
+    df = None
+    while ("Loading" in x or "nan" in x) and i < 10:
+        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?gid=614695683&single=true&output=csv"
+        try:
+            df = pd.read_csv(url_csv)
+            time.sleep(6)
+            x = df.iloc[24, 4]
+        except Exception as e:
+            print("Error reading Google Sheet CSV:", e)
         time.sleep(2)
-        x = df.iloc[24, 3]
-        i = i +1
+        i = i + 1
         print(i)
-    if i == 10:
+    if i == 10 or x == "Loading..." or df is None:
         print("sheet not loading")
         return False
 
-    #df = pd.read_csv(url_csv)
-    sellnifty = df.iloc[24, 3]
-    print("sellnifty:", sellnifty)
-    goldetfsell = df.iloc[27, 3]
-    print("goldetfsell:", goldetfsell)
-    silveretfsell = df.iloc[30, 3]
-    print("silveretfsell:", silveretfsell)
-    sellnifty =1
-    total_securities = int(sellnifty)+int(goldetfsell)+int(silveretfsell)
+    try:
+        sellnifty = df.iloc[24, 3]
+        print("sellnifty:", sellnifty)
+        goldetfsell = df.iloc[27, 3]
+        print("goldetfsell:", goldetfsell)
+        silveretfsell = df.iloc[30, 3]
+        print("silveretfsell:", silveretfsell)
+        sellnifty = 1
+        total_securities = int(sellnifty)+int(goldetfsell)+int(silveretfsell)
+    except (ValueError, TypeError) as e:
+        print("Invalid strategy signal value in sheet:", e)
+        return False
 
     if total_securities > 0:
         users = load_credentials(CREDENTIALS_FILE)
@@ -134,7 +145,8 @@ def smws_seller():
                                  security_symbol="TATSILV")
             except Exception as e:
                 print(e)
-
+    else:
+        print("Total securities SMWS is 0, not selling any securities") 
 
 #smws_buyer()
 #smws_seller()
