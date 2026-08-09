@@ -33,6 +33,7 @@ import allotment_general as allotment_gen
 import fund_transfer_for_smws
 import ss_Before_session_close_cancel_sale_or_not
 import ss_sale_order_on_lc_on_start_of_ss
+import regular_session_sell
 
 
 # ── Scheduled task wrappers ──────────────────────────────────────────────────
@@ -105,10 +106,21 @@ def smws_buyer():
 def cancel_sale_order_if_loss():
     """09:32 — Cancel pre-open LC sell orders if IEP indicates discount/loss threshold exceeded."""
     try:
-        common_foundation.log_info("Executing Cancel Sale Order If Loss task...", "cancel_sale_order_if_loss")
+        common_foundation.log_info("Starting cancel_sale_order_if_loss task...", "cancel_sale_order_if_loss")
         ss_Before_session_close_cancel_sale_or_not.sale_order_cancel_or_not()
-    except Exception as Argument:
-        common_foundation.log_error("Problem in cancel_sale_order_if_loss", exc=Argument, function_name="cancel_sale_order_if_loss")
+        common_foundation.log_info("Finished cancel_sale_order_if_loss task.", "cancel_sale_order_if_loss")
+    except Exception as e:
+        common_foundation.log_error(f"Error in cancel_sale_order_if_loss: {e}", exc=e, function_name="cancel_sale_order_if_loss")
+
+
+def regular_session_ipo_sell():
+    try:
+        common_foundation.log_info("Starting regular_session_ipo_sell (10:00 AM) task...", "regular_session_ipo_sell")
+        regular_session_sell.regular_session_ipo_sell()
+        common_foundation.log_info("Finished regular_session_ipo_sell task.", "regular_session_ipo_sell")
+    except Exception as e:
+        common_foundation.log_error(f"Error in regular_session_ipo_sell: {e}", exc=e, function_name="regular_session_ipo_sell")
+
 
 def update_dynamic_data():
     """12:05 / 14:52 — Refresh subscription, GMP, and dynamic_data_update data in General.xlsx."""
@@ -154,13 +166,14 @@ def run_now():
 schedule.every().day.at("08:30").do(ipo_entry)
 schedule.every().day.at("08:35").do(update_dynamic_data)
 schedule.every().day.at("08:40").do(allotment_general)
-#schedule.every().day.at("09:00").do(ss_start_lc_sell)
+schedule.every().day.at("09:00").do(ss_start_lc_sell)
 schedule.every().day.at("09:05").do(money_withdraw)
 schedule.every().day.at("09:10").do(bank_to_kite)
 schedule.every().day.at("09:15").do(smws_seller)
 schedule.every().day.at("09:20").do(priority_ipo_sell_smws)
 schedule.every().day.at("09:25").do(smws_buyer)
-#schedule.every().day.at("09:32").do(cancel_sale_order_if_loss)
+schedule.every().day.at("09:32").do(cancel_sale_order_if_loss)
+schedule.every().day.at("10:01").do(regular_session_ipo_sell)
 schedule.every().day.at("12:05").do(update_dynamic_data)
 schedule.every().day.at("14:52").do(update_dynamic_data)
 schedule.every().day.at("14:55").do(ipo_application)

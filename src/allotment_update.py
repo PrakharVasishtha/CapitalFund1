@@ -228,6 +228,16 @@ def excel_holdings(usr_id: str, holding_symbol: str = None, shares_allocated: in
             try:
                 wb.save(path)
                 print(f"excel_holdings: Appended new holding '{holding_symbol}' (Shares={shares_allocated}) at row {next_row}")
+                try:
+                    from common_foundation import send_telegram_notification
+                    send_telegram_notification(
+                        f"🎉 <b>New IPO Allotment Detected!</b>\n"
+                        f"<b>Security</b>: {holding_symbol}\n"
+                        f"<b>Account (UCI)</b>: {usr_id}\n"
+                        f"<b>Shares Allocated</b>: {shares_allocated or 'N/A'}"
+                    )
+                except Exception:
+                    pass
             except Exception as e:
                 print(f"excel_holdings Error saving new holding row: {e}")
         else:

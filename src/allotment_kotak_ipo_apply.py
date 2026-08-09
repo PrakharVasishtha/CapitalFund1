@@ -552,6 +552,25 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
         file_path=uci+".txt"
         logger(file_path,ipo_name,result)
 
+        # Record application in IPO-applied.xlsx
+        try:
+            from ipo_applied_manager import record_ipo_application
+            record_ipo_application(uci=uci, ipo_name=ipo_name, type_ipo=type_ipo)
+        except Exception as err:
+            print(f"Error recording IPO application in IPO-applied.xlsx: {err}")
+
+        try:
+            from common_foundation import send_telegram_notification
+            send_telegram_notification(
+                f"🚀 <b>IPO Application Processed</b>\n"
+                f"<b>Company</b>: {ipo_name}\n"
+                f"<b>Type</b>: {type_ipo.upper()}\n"
+                f"<b>Account (UCI)</b>: {uci}\n"
+                f"<b>Status</b>: {result or 'Applied Successfully'}"
+            )
+        except Exception:
+            pass
+
 # Run the async function
 #asyncio.run(apply_to_ipo())
 #apply_to_ipo_all_users(ipo_name="Citius Transnet", type_ipo="mb")

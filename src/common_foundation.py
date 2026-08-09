@@ -1,13 +1,16 @@
+import os
 import datetime
 import time
 import smtplib, ssl
-from urllib.request import urlopen
-from email.message import EmailMessage
-import os
+import json
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
+from email.message import EmailMessage
+import urllib.request
+from urllib.request import urlopen
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -178,3 +181,37 @@ def internetcheck(b="NoSubject"):
         log_error("Internet offline. Waiting 20s before retrying...", function_name="internetcheck")
         logger("LogInternet.txt", "Offline", "internet")
         time.sleep(20)
+
+
+def send_telegram_notification(msg: str, parse_mode: str = "HTML") -> bool:
+    """
+    Sends a push notification via Telegram Bot API.
+    Reads TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID from environment variables (.env).
+    """
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+    if not token or not chat_id:
+        log_info("Telegram notification skipped: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured.", "send_telegram_notification")
+        return False
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": msg,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True
+    }
+
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 200:
+                log_info("Telegram notification sent successfully.", "send_telegram_notification")
+                return True
+    except Exception as e:
+        log_error(f"Failed to send Telegram notification: {e}", exc=e, function_name="send_telegram_notification")
+
+    return False
+

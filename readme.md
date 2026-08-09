@@ -379,3 +379,25 @@ Kotak sends OTP via SMS for fund transfers. To automate OTP reading:
 4. Set the destination Gmail to the `email_user` configured in `.env`.
 
 The Python scripts check this Gmail inbox for the latest OTP email when a Kotak transaction requires SMS verification.
+
+
+
+
+Sale of Allotted IPO shares:
+
+IPO pre-open special session:
+    MB	
+      if during pre open session, indications are for positive listing, do not sell during pre open session, If indicative price >-12%, sell immediately placing a LC order in special session
+	  SME	
+      If during pre open session, indications (depth and indicative price at BSE/NSE are for negative listing, sell using lower circuit rate i.e. sell at any cost
+
+
+IPO regular session:
+  If listed ipo share is not sold in special session, then  regular session will start.
+ Mainboard listed Share:	
+  	if buyer/saler ratio is > 60%, wait for UC for 30 minutes, if no uc in next 30 minutes, place  gtt order for sale of half shares  at price = LTP +2%,for other half shares put gtt sale order for price = LTP +5%. However if Upper circuit hit during initial 30 minte, do not sale shares.
+    if buyer/saler ratio is< 60%, place  gtt order for sale of half shares  at price = LTP +.5%,for other half shares put gtt sale order for price = LTP +1%.
+	
+  SME listed Share:	
+    If listed ipo share is not sold in special session, then  regular session will start 	if buyer/saler ratio is > 60%, wait for UC for 30 minutes, if no uc in next 30 minutes, place  gtt order for sale of half shares  at price = LTP +2%,for other half shares put gtt sale order for price = LTP +5%. However if Upper circuit hit during initial 30 minte, do not sale shares	
+    if buyer/saler ratio is< 60%, place  gtt order for sale of half shares  at price = LTP +.5%,for other half shares put gtt sale order for price = LTP +1%.

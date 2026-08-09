@@ -139,6 +139,15 @@ def daily_money_withdraw():
                 balance = 0
             final_amount = required_fund - balance
             print("final_required_amount",final_amount)
+            try:
+                from common_foundation import send_telegram_notification
+                send_telegram_notification(
+                    f"💸 <b>Capital Withdrawal Initiated</b>\n"
+                    f"<b>Account (UCI)</b>: {uci_user}\n"
+                    f"<b>Required Amount</b>: ₹{final_amount:,.2f}"
+                )
+            except Exception:
+                pass
             success, message = withdraw_from_zerodha(
                 user_uci=uci_user,
                 user_id=client_id,

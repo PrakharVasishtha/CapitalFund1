@@ -683,6 +683,39 @@ elif nav == "📜 System Health & Activity Logs":
     with h4:
         st.markdown(f"<b>Internet Connection</b>: {net_badge}", unsafe_allow_html=True)
         
+    # ── Telegram Push Notification Health & Tester ──
+    st.markdown("---")
+    st.markdown("#### 📲 Telegram Push Notification Control & Diagnostics")
+    
+    tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    tg_chat = os.environ.get("TELEGRAM_CHAT_ID")
+    tg_configured = bool(tg_token and tg_chat)
+    
+    tg_status_badge = '<span class="pill pill-green">Configured</span>' if tg_configured else '<span class="pill pill-amber">Not Configured</span>'
+    
+    tg_col1, tg_col2 = st.columns([2, 1])
+    with tg_col1:
+        st.markdown(f"<b>Telegram Bot Status</b>: {tg_status_badge}", unsafe_allow_html=True)
+        if tg_configured:
+            masked_token = tg_token[:6] + "..." + tg_token[-4:] if len(tg_token) > 10 else "***"
+            st.caption(f"Bot Token: `{masked_token}` | Chat ID: `{tg_chat}`")
+        else:
+            st.info("💡 To enable push notifications on your phone, add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file.")
+            
+    with tg_col2:
+        if st.button("🧪 Send Test Telegram Alert"):
+            from common_foundation import send_telegram_notification
+            test_msg = (
+                "🧪 <b>CapitalFund1 Test Push Notification</b>\n\n"
+                "✅ Your Telegram Bot integration is working perfectly!\n"
+                f"⏰ <b>Timestamp</b>: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}"
+            )
+            success = send_telegram_notification(test_msg)
+            if success:
+                st.success("✅ Test notification sent! Check your Telegram app.")
+            else:
+                st.error("❌ Failed to send. Please check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env.")
+
     st.markdown("---")
     st.markdown("#### Live Console Output Viewer")
     
