@@ -17,3 +17,5 @@ selenium
 tqdm
 webdriver-manager
 yfinance
+streamlit
+

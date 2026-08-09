@@ -7,6 +7,9 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── Centralized Logging Setup ────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -95,8 +98,8 @@ def timenow():
 
 
 def send_email(email_to="prakharvasishtha9@gmail.com", sub_send="default", content_send="default"):
-    email_address = "vasistcapital@gmail.com"
-    email_password = "nbfdhxifzaekznjg"
+    email_address = os.getenv("ALERT_EMAIL_USER", "vasistcapital@gmail.com")
+    email_password = os.getenv("ALERT_EMAIL_PASS", "nbfdhxifzaekznjg")
 
     msg = EmailMessage()
     msg['Subject'] = sub_send
@@ -125,8 +128,8 @@ def send_email(email_to="prakharvasishtha9@gmail.com", sub_send="default", conte
 
 
 def send_email_with_excel(mail_subject="default", mail_content="default", path_of_file="default", email_to="prakharvasishtha9@gmail.com"):
-    email_address = "vasistcapital@gmail.com"
-    email_password = "nbfdhxifzaekznjg"
+    email_address = os.getenv("ALERT_EMAIL_USER", "vasistcapital@gmail.com")
+    email_password = os.getenv("ALERT_EMAIL_PASS", "nbfdhxifzaekznjg")
 
     msg = EmailMessage()
     msg['Subject'] = mail_subject
