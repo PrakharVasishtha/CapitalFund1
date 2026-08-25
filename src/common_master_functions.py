@@ -30,42 +30,43 @@ def latest_ipo_entry():
         url3 = ipo['url']
         industry_score = ipo['industry_score']
         #print("type1",type1,"name1",name1,"url3",url3)
-        data_available = Base.is_data_available(url3)
-        #print("data_available",data_available)
         if type1 == "SME":
             row = row_sme
         else:
             row = row_mb
-        if not ex.exists(type1, name1) and data_available:
-            ex.append(ipo,row)
-            url2 = ipo['url']
-            #print(name1)
-            extractor = ChittorgarhIPOExtractor()
-            data1 = extractor.extract(url2)
-            data2 = clean_ipo_data(data1)
-            ex.write_details(row, data2, type1)
+        if not ex.exists(type1, name1) and Base.is_data_available(url3):
+            try:
+                ex.append(ipo,row)
+                url2 = ipo['url']
+                #print(name1)
+                extractor = ChittorgarhIPOExtractor()
+                data1 = extractor.extract(url2)
+                data2 = clean_ipo_data(data1)
+                ex.write_details(row, data2, type1)
 
-            try:
+                try:
+                    time.sleep(.5)
+                    gmp=get_ipo_gmp(name1)
+                except Exception as e:
+                    print(e)
+                    gmp=0
+                try:
+                    time.sleep(.5)
+                    sub=get_ipo_subscription_dict(url2)
+                except Exception as e:
+                    print(e)
+                    sub = ["2","2","1","1.5"]
                 time.sleep(.5)
-                gmp=get_ipo_gmp(name1)
-            except Exception as e:
-                print(e)
-                gmp=0
-            try:
+                review=has_dicey_word(url2)
                 time.sleep(.5)
-                sub=get_ipo_subscription_dict(url2)
-            except Exception as e:
-                print(e)
-                sub = ["2","2","1","1.5"]
-            time.sleep(.5)
-            review=has_dicey_word(url2)
-            time.sleep(.5)
-            ex.write_details_GSR(row, gmp, sub, review, type1,industry_score)
-            #print("---------write_formula----------")
-            if type1 == "SME":
-                row_sme = row_sme + 1
-            else:
-                row_mb= row_mb + 1
+                ex.write_details_GSR(row, gmp, sub, review, type1,industry_score)
+                #print("---------write_formula----------")
+                if type1 == "SME":
+                    row_sme = row_sme + 1
+                else:
+                    row_mb= row_mb + 1
+            except Exception as item_err:
+                print(f"Error processing IPO {name1}: {item_err}")
     try:
         send_email_with_excel(mail_subject="latest_ipo_entry",mail_content="latest_ipo_entry",path_of_file='General.xlsx')
     except Exception as e:
@@ -77,31 +78,31 @@ def dynamic_data_update():
     print(
         "####################################")
     path = Base.get_excel_path()
-    wb = openpyxl.load_workbook(path)
+    wb = Base.safe_load_workbook(path)
     sme_ws = wb['IPOSME']
     main_ws = wb['IPOMB']
     #print(sme_ws)
     row_sme = Base.get_last_row_sme()
     row_mb = Base.get_last_row_mb()
     wb.close()
-    #print(row_sme, row_mb)
-    for k in range(row_sme-11,row_sme+1):
-        #print(k)
+    start_sme = max(2, row_sme - 25)
+    for k in range(start_sme, row_sme + 1):
         try:
-            update_row_3pm(k,"SME")
+            update_row_3pm(k, "SME")
         except Exception as e:
-            print(e)
-    for k in range(row_mb-4, row_mb+1):
-        #print(k)
+            print(f"Error updating row {k} SME: {e}")
+
+    start_mb = max(2, row_mb - 25)
+    for k in range(start_mb, row_mb + 1):
         try:
-            update_row_3pm(k,"MB")
+            update_row_3pm(k, "MB")
         except Exception as e:
-            print(e)
+            print(f"Error updating row {k} MB: {e}")
     try:
         send_email_with_excel(mail_subject="IPO Data Updated",mail_content="IPO Data Updated",path_of_file='General.xlsx')
     except Exception as e:
         print("Cant send General.xls")
 
-
-#latest_ipo_entry()
-#dynamic_data_update()
+if __name__ == "__main__":
+    latest_ipo_entry()
+    dynamic_data_update()

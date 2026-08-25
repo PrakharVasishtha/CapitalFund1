@@ -151,7 +151,8 @@ $$\text{Buyer Ratio \%} = \frac{\text{Total Buy Quantity}}{\text{Total Buy Quant
 
 | Time | Function | Description |
 | :--- | :--- | :--- |
-| **Startup** | `run_now()` | Syncs `Master.xlsx` and runs setup tasks on script start |
+| **Startup** | `run_now()` | Syncs `Master.xlsx`, initiates Streamlit dashboard, and runs setup tasks on script start |
+| **08:00** | `launch_streamlit_dashboard()` | Launches Streamlit Control Hub web application (if not already running) |
 | **08:30** | `ipo_entry()` | Scrapes new IPO listings from Chittorgarh into `General.xlsx` |
 | **08:35** | `update_dynamic_data()` | Refreshes subscription, GMP, and reviews in `General.xlsx` |
 | **08:40** | `allotment_general()` | Scans Zerodha portfolio holdings for new IPO allotments |

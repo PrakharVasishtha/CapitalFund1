@@ -158,13 +158,17 @@ def load_ipo_database():
     excel_path = os.path.join(BASE_DIR, "General.xlsx")
     if not os.path.exists(excel_path):
         return pd.DataFrame(), pd.DataFrame()
-    try:
-        df_sme = pd.read_excel(excel_path, sheet_name="IPOSME")
-        df_mb = pd.read_excel(excel_path, sheet_name="IPOMB")
-        return df_sme, df_mb
-    except Exception as e:
-        st.error(f"Error loading General.xlsx: {e}")
-        return pd.DataFrame(), pd.DataFrame()
+    for attempt in range(5):
+        try:
+            df_sme = pd.read_excel(excel_path, sheet_name="IPOSME")
+            df_mb = pd.read_excel(excel_path, sheet_name="IPOMB")
+            return df_sme, df_mb
+        except Exception as e:
+            if attempt == 4:
+                st.error(f"Error loading General.xlsx: {e}")
+                return pd.DataFrame(), pd.DataFrame()
+            time.sleep(0.3)
+    return pd.DataFrame(), pd.DataFrame()
 
 @st.cache_data(ttl=60)
 def load_allotted_holdings():
@@ -376,6 +380,11 @@ df_all_ipos = pd.concat([df_mb_clean, df_sme_clean], ignore_index=True)
 df_allotments = load_allotted_holdings()
 df_master = load_master_database()
 
+# Extract active recent IPOs (strictly last 10 records of each category in General.xlsx)
+df_sme_last10 = clean_ipo_dataframe(df_sme_raw.tail(10), "SME") if not df_sme_raw.empty else pd.DataFrame()
+df_mb_last10 = clean_ipo_dataframe(df_mb_raw.tail(10), "Mainboard") if not df_mb_raw.empty else pd.DataFrame()
+df_recent_active = pd.concat([df_mb_last10, df_sme_last10], ignore_index=True) if (not df_sme_last10.empty or not df_mb_last10.empty) else df_all_ipos
+
 # -----------------------------------------------------------------------------
 # TAB 1: Executive Dashboard
 # -----------------------------------------------------------------------------
@@ -417,11 +426,6 @@ if nav == "📊 Executive Dashboard":
     # Section: IPOs Closing Today & Schedule
     today_day = datetime.date.today().day
     st.markdown(f"<div class='section-head'>⏰ Active IPO Schedule & Closing Filter (Today: Day {today_day})</div>", unsafe_allow_html=True)
-    
-    # Extract active recent IPOs (strictly last 10 records of each category in General.xlsx)
-    df_sme_last10 = clean_ipo_dataframe(df_sme_raw.tail(10), "SME") if not df_sme_raw.empty else pd.DataFrame()
-    df_mb_last10 = clean_ipo_dataframe(df_mb_raw.tail(10), "Mainboard") if not df_mb_raw.empty else pd.DataFrame()
-    df_recent_active = pd.concat([df_mb_last10, df_sme_last10], ignore_index=True) if (not df_sme_last10.empty or not df_mb_last10.empty) else df_all_ipos
 
     recent_days = sorted([int(d) for d in df_recent_active['Close Day'].unique() if d > 0])
     upcoming_days = [d for d in recent_days if d >= today_day]

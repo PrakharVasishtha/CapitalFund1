@@ -83,7 +83,12 @@ class ChittorgarhIPOExtractor:
         if not html:
             return IPOData(url=url, extracted_at=datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-        tables = pd.read_html(StringIO(html), flavor="bs4")
+        try:
+            tables = pd.read_html(StringIO(html), flavor="bs4")
+        except Exception as e:
+            print(f"No tables found or error parsing tables for {url}: {e}")
+            tables = []
+
         data = IPOData(url=url, extracted_at=datetime.now().strftime("%Y-%m-%d %H:%M"))
 
         # Company name
@@ -152,13 +157,32 @@ class ChittorgarhIPOExtractor:
 
         # print(data.ipo_details)
 
-        # Anchor Allocation
-        m = re.search(r'Anchor Investor Shares Offered.*?(\d+)', html, re.I)
-        if m:
-            shares = self._clean_amount_text(m.group(1))
-            data.anchor_allocation = 1 if shares and int(shares) > 0 else "No"
-        else:
-            data.anchor_allocation = 0
+        # Anchor Allocation detection
+        anchor_found = 0
+        for df in tables:
+            if df.empty or df.shape[1] < 2:
+                continue
+            for _, row in df.iterrows():
+                first_col = str(row.iloc[0]).lower().strip()
+                row_str = ' '.join([str(v) for v in row.values]).lower()
+                if 'anchor' in first_col or ('anchor' in row_str and any(k in row_str for k in ['investor', 'portion', 'shares', 'lock-in'])):
+                    if any(bad in row_str for bad in ['top 20', 'top 10', 'merchant banker', 'reports', 'advisory', 'message board', 'nav']):
+                        continue
+                    nums = re.findall(r'\d[\d,]*', row_str)
+                    for num in nums:
+                        try:
+                            val = int(num.replace(',', ''))
+                            if val > 0:
+                                anchor_found = 1
+                                break
+                        except ValueError:
+                            pass
+                if anchor_found:
+                    break
+            if anchor_found:
+                break
+
+        data.anchor_allocation = anchor_found
 
         # Financials (only March data)
         fin = {}

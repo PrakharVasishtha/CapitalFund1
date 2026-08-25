@@ -80,22 +80,33 @@ class ExcelManager:
 
 
     def exists(self, type1="SME", name="NONE"):
-        #print("---checking if already exists---",name)
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         scrape_norm = normalize_name(name)
-        scrape_norm = scrape_norm[:12]
-        #print(scrape_norm)
+        scrape_words = scrape_norm.split()
+        if not scrape_words:
+            return False
+        first_word_scrape = scrape_words[0]
+
         for cell in ws['B']:
             if cell.value:
-                excel_norm = normalize_name(cell.value)
-                excel_norm = excel_norm[:12]
-                #print(excel_norm)
-                starts1 = scrape_norm.startswith(excel_norm)
-                starts2 = excel_norm.startswith(scrape_norm)
-                #print(difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio())
-                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.75
+                excel_norm = normalize_name(str(cell.value))
+                excel_words = excel_norm.split()
+                if not excel_words:
+                    continue
+                first_word_excel = excel_words[0]
+
+                # Ensure first significant word of company name matches (e.g. 'leap' vs 'orkla')
+                if first_word_scrape != first_word_excel:
+                    if not (len(first_word_scrape) >= 4 and len(first_word_excel) >= 4 and 
+                            (first_word_scrape.startswith(first_word_excel) or first_word_excel.startswith(first_word_scrape))):
+                        continue
+
+                scrape_trunc = scrape_norm[:15]
+                excel_trunc = excel_norm[:15]
+                starts1 = scrape_trunc.startswith(excel_trunc)
+                starts2 = excel_trunc.startswith(scrape_trunc)
+                sim = difflib.SequenceMatcher(None, excel_norm, scrape_norm).ratio() > 0.98
                 if starts1 or starts2 or sim:
-                    #print("already exists")
                     return True
         return False
 
@@ -176,7 +187,7 @@ class ExcelManager:
 
         ws.cell(row, 5, E)   # E
         ws.cell(row, 6, F)   # F
-        ws.cell(row, 7, G)   # G
+        #ws.cell(row, 7, G)   # G
         ws.cell(row, 8, H)   # H
         ws.cell(row, 9, I)   # I
         ws.cell(row, 10, J)  # J PAT% (10)
@@ -185,7 +196,7 @@ class ExcelManager:
         ws.cell(row, 13, M)  # M
         ws.cell(row, 14, N)  # N
         ws.cell(row, 15, O)  # O
-        ws.cell(row, 16, P)  # P
+        #ws.cell(row, 16, P)  # P
         ws.cell(row, 17, Q)  # Q
         ws.cell(row, 18, R)  # R
         ws.cell(row, 19, S)  # R
@@ -197,7 +208,7 @@ class ExcelManager:
         ws.cell(row, 31, AE) # AE
         ws.cell(row, 32, AF) #AF
 
-        ws.cell(row, 39, AK) # AK (37)
+        #ws.cell(row, 39, AK) # AK (37)
         ws.cell(row, 40, closing) # AL
         #ws.cell(row, 41, boa) #AM
         #ws.cell(row, 42, listing) #AM
@@ -277,13 +288,13 @@ class ExcelManager:
             return  # Skip save on error
 
         # Write to cells (using cell(row, col) for reliability)
-        ws.cell(row, 7, G)  # G
-        ws.cell(row, 16, P)  # P
-        ws.cell(row, 27, AA)  # C
-        ws.cell(row, 29, AC)  # C
-        ws.cell(row, 33, AG)  # C
-        ws.cell(row, 34, AH)
-        #ws.cell(row, 35, AI)
+        #ws.cell(row, 7, G)  # G
+        #ws.cell(row, 16, P)  # P
+        #ws.cell(row, 27, AA)  # C
+        #ws.cell(row, 29, AC)  # C
+        #ws.cell(row, 33, AG)  # C
+        #ws.cell(row, 34, AH)
+        ws.cell(row, 35, AI)
 
         try:
             self.wb.save(self.path)
@@ -340,12 +351,12 @@ class ExcelManager:
             return  # Skip save on error
 
         # Write to cells (using cell(row, col) for reliability)
-        ws.cell(row, 7, G)  # G
-        ws.cell(row, 16, P)  # P
-        ws.cell(row, 27, AA)  # C
-        ws.cell(row, 29, AC)  # C
-        ws.cell(row, 33, AG)  # C
-        ws.cell(row, 34, AH)
+        #ws.cell(row, 7, G)  # G
+        #ws.cell(row, 16, P)  # P
+        #ws.cell(row, 27, AA)  # C
+        #ws.cell(row, 29, AC)  # C
+        #ws.cell(row, 33, AG)  # C
+        #ws.cell(row, 34, AH)
         ws.cell(row, 35, AI)
 
         try:

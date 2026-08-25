@@ -12,7 +12,15 @@ def normalize_text(text: str) -> str:
     return " ".join(cleaned.split()).lower()
 
 
-def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cutoff: float = 80.0) -> str | float | int:
+def clean_name_for_gmp(text: str) -> str:
+    if not text:
+        return ""
+    s = str(text).replace('&amp;', '&').strip()
+    s = re.sub(r'\s*(?:Price|GMP|Date|Pric|Pr|GM|Review|Details|Ltd|Limited|NSE|BSE|SME|Mainboard)\b.*$', '', s, flags=re.IGNORECASE).strip()
+    return normalize_text(s)
+
+
+def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cutoff: float = 70.0) -> float:
     scraper = cloudscraper.create_scraper(
         browser={"browser": "chrome", "platform": "windows", "desktop": True}
     )
@@ -21,42 +29,47 @@ def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cuto
         response = scraper.get(url, timeout=15)
         response.raise_for_status()
     except Exception as e:
-        return f"Error fetching website: {e}"
+        print(f"Error fetching GMP website: {e}")
+        return 0.0
 
     soup = BeautifulSoup(response.text, "html.parser")
     rows = soup.find_all("tr")
-    #print(rows)
-    search_term = normalize_text(company_name)
+    search_clean = clean_name_for_gmp(company_name)
+    if not search_clean:
+        return 0.0
 
     for row in rows:
         cols = row.find_all("td")
         if len(cols) < 6:
             continue
-        pct = 0
         raw_name = cols[0].get_text()
-        cleaned_name = normalize_text(raw_name)[:21]
+        row_clean = clean_name_for_gmp(raw_name)
+        if not row_clean:
+            continue
 
-        # Calculate similarity score (returns a float between 0.0 and 100.0)
-        similarity_score = fuzz.token_sort_ratio(search_term, cleaned_name)
-        #print(similarity_score)
-        # Check if similarity meets the 80% cutoff threshold
-        if similarity_score >= cutoff:
+        score1 = fuzz.token_sort_ratio(search_clean, row_clean)
+        score2 = fuzz.partial_ratio(search_clean, row_clean)
+        best_score = max(score1, score2)
+
+        match = (best_score >= cutoff) or (search_clean in row_clean) or (row_clean in search_clean)
+        if match:
             raw_gmp = cols[2].get_text(strip=True)
             raw_price_band = cols[5].get_text(strip=True)
 
             try:
-                gmp_val = float(re.findall(r"\d+(?:\.\d+)?", raw_gmp)[0])
+                gmp_match = re.findall(r"\d+(?:\.\d+)?", raw_gmp)
+                if not gmp_match:
+                    return 0.0
+                gmp_val = float(gmp_match[0])
                 prices = re.findall(r"\d+(?:\.\d+)?", raw_price_band)
 
                 if prices:
                     upper_price = float(prices[-1])
                     if upper_price > 0:
-                        pct = (gmp_val / upper_price) * 100
-                        pct = round(pct, 2)
+                        pct = round((gmp_val / upper_price) * 100, 2)
                         return pct
             except (IndexError, ValueError, ZeroDivisionError):
-                pct = 0
-                return pct
+                return 0.0
 
-    return 0
+    return 0.0
 #print(get_ipo_gmp("MV Electrosystems Ltd"))

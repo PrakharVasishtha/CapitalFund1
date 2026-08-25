@@ -7,13 +7,14 @@ On startup, runs all tasks immediately via run_now(), then enters an infinite
 loop scheduling each task at fixed times throughout the trading day.
 
 Scheduled Tasks:
+  08:00 - launch_streamlit_dashboard(): Initiate Streamlit control hub dashboard
   08:30 - ipo_entry()                : Scrape new IPOs into General.xlsx
   08:40 - allotment_general()        : Check and record IPO allotments in allotted_holdings.xlsx
   09:00 - ss_start_lc_sell()         : Place LC sell orders for newly allotted shares today
   09:02 - money_withdraw()           : Withdraw funds from Zerodha to Kotak for IPOs
   09:09 - bank_to_kite()             : Transfer idle Kotak balance to Zerodha for SMWS
   09:18 - smws_seller()              : Sell SMWS ETFs per strategy signal
-  09:18 - priority_ipo_sell_smws()   : Sell SMWS when IPO funds are needed
+  09:18 - priority_ipo_sell_smws()   : Sell SMWS when IPO funds are required
   09:25 - smws_buyer()               : Buy SMWS ETFs per strategy signal
   09:32 - cancel_sale_order_if_loss(): Cancel pre-open LC sell orders if loss threshold exceeded
   10:05 - update_before_close()      : Refresh IPO data in General.xlsx
@@ -28,6 +29,9 @@ import schedule
 import common_foundation
 import time
 import os
+import sys
+import subprocess
+import socket
 import common_master_functions, allotment_application_ipo, fund_manager, trader_smws, trader_priority_ipo_smws_sell
 import allotment_general as allotment_gen
 import fund_transfer_for_smws
@@ -38,6 +42,33 @@ import regular_session_sell
 
 # ── Scheduled task wrappers ──────────────────────────────────────────────────
 # Each function wraps the underlying logic with exception handling and logging.
+
+def is_port_open(host="127.0.0.1", port=8501):
+    """Check if a local TCP port is already open/in use."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(1)
+            return s.connect_ex((host, port)) == 0
+    except Exception:
+        return False
+
+def launch_streamlit_dashboard():
+    """08:00 — Launch Streamlit control hub dashboard if not already running."""
+    try:
+        common_foundation.log_info("Checking Streamlit dashboard status...", "launch_streamlit_dashboard")
+        if is_port_open(port=8501):
+            common_foundation.log_info("Streamlit dashboard is already running on port 8501.", "launch_streamlit_dashboard")
+            return
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        dashboard_path = os.path.join(base_dir, "dashboard.py")
+        
+        common_foundation.log_info(f"Initiating Streamlit dashboard from {dashboard_path}...", "launch_streamlit_dashboard")
+        cmd = [sys.executable, "-m", "streamlit", "run", dashboard_path]
+        subprocess.Popen(cmd, cwd=base_dir)
+        common_foundation.log_info("Streamlit dashboard initiated successfully.", "launch_streamlit_dashboard")
+    except Exception as e:
+        common_foundation.log_error(f"Problem initiating Streamlit dashboard: {e}", exc=e, function_name="launch_streamlit_dashboard")
 
 def ipo_entry():
     """08:30 — Scrape latest IPOs from Chittorgarh and append to General.xlsx."""
@@ -146,11 +177,14 @@ def run_now():
     """
     try:
         common_foundation.log_info("Running all tasks now in sequence...", "run_now")
+        launch_streamlit_dashboard()
         try:
             import master_excel_manager
             master_excel_manager.sync_master_with_credentials()
         except Exception as me_err:
             common_foundation.log_error(f"Error syncing Master.xlsx: {me_err}", exc=me_err, function_name="run_now")
+        
+        launch_streamlit_dashboard()
         #ipo_entry()
         #allotment_general()
         #ss_start_lc_sell()
@@ -169,6 +203,7 @@ def run_now():
         common_foundation.log_error("Problem in run_now", exc=Argument, function_name="run_now")
 
 # Setup Daily Schedule
+schedule.every().day.at("08:00").do(launch_streamlit_dashboard)
 schedule.every().day.at("08:30").do(ipo_entry)
 schedule.every().day.at("08:35").do(update_dynamic_data)
 schedule.every().day.at("08:40").do(allotment_general)
@@ -186,7 +221,7 @@ schedule.every().day.at("14:55").do(ipo_application)
 
 if __name__ == "__main__":
     try:
-        run_now()
+        #run_now()
         while True:
             schedule.run_pending()
             time.sleep(1)

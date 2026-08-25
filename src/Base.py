@@ -215,9 +215,49 @@ def get_netbanking_otp_sms(EMAIL_USER, EMAIL_PASS, search_query, retries=7, dela
 
 
 
+import zipfile
+
+def safe_load_workbook(path, retries=5, delay=0.4, **kwargs):
+    """Safely load an openpyxl workbook with retries to handle race conditions during file replacement."""
+    for attempt in range(retries):
+        try:
+            wb = openpyxl.load_workbook(path, **kwargs)
+            return wb
+        except (zipfile.BadZipFile, PermissionError, OSError) as e:
+            if attempt == retries - 1:
+                print(f"safe_load_workbook failed after {retries} attempts for {path}: {e}")
+                raise e
+            time.sleep(delay)
+    return openpyxl.load_workbook(path, **kwargs)
+
+def safe_save_workbook(wb, path, retries=5, delay=0.4):
+    """Safely save an openpyxl workbook using an atomic temporary file rename."""
+    temp_path = path + f".tmp_{os.getpid()}"
+    for attempt in range(retries):
+        try:
+            wb.save(temp_path)
+            if os.path.exists(temp_path):
+                os.replace(temp_path, path)
+            return
+        except PermissionError as pe:
+            if attempt == retries - 1:
+                print(f"Error saving {path}: Permission denied.")
+                raise pe
+            time.sleep(delay)
+        except Exception as e:
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
+            if attempt == retries - 1:
+                raise e
+            time.sleep(delay)
+
+
 def get_last_row(file,sheet):
     path = file
-    wb = openpyxl.load_workbook(path)
+    wb = safe_load_workbook(path)
     ws = wb[sheet]
     column_index = 2
     last_row = 0
@@ -225,6 +265,7 @@ def get_last_row(file,sheet):
         if ws.cell(row=row, column=column_index).value is not None:
             last_row = row
             break
+    wb.close()
     return last_row
 
 def get_excel_path(filename: str = "General.xlsx") -> str:
@@ -242,7 +283,7 @@ def get_excel_path(filename: str = "General.xlsx") -> str:
 
 def get_last_row_sme():
     path = get_excel_path()
-    wb = openpyxl.load_workbook(path)
+    wb = safe_load_workbook(path)
     ws = wb['IPOSME']
     column_index = 2
     last_row = 0
@@ -250,11 +291,12 @@ def get_last_row_sme():
         if ws.cell(row=row, column=column_index).value is not None:
             last_row = row
             break
+    wb.close()
     return last_row+1
 
 def get_last_row_mb():
     path = get_excel_path()
-    wb = openpyxl.load_workbook(path)
+    wb = safe_load_workbook(path)
     ws = wb['IPOMB']
     column_index = 2
     last_row = 0
@@ -262,6 +304,7 @@ def get_last_row_mb():
         if ws.cell(row=row, column=column_index).value is not None:
             last_row = row
             break
+    wb.close()
     return last_row+1
 
 
