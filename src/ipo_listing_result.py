@@ -43,17 +43,34 @@ def extract_listing_price(html: str) -> float | None:
 
 
 def extract_issue_price(html: str) -> float | None:
-    """Extract issue price from Chittorgarh IPO page HTML."""
+    """Extract issue price from Chittorgarh IPO page HTML.
+
+    Strategy:
+    1. Parse with BeautifulSoup, get clean text (strips HTML tags)
+    2. Find 'Issue Price' followed by rupee symbol and number + 'per share'
+       (this is the real issue price in the IPO Details table)
+    3. Skip the navigation link 'Issue price v/s Market price'
+    4. Fallback: look for 'set final issue price at Rs.XX'
+    """
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text()
+
+    # Pattern 1 (best): "Issue Price₹XXX per share" in IPO Details table
+    # We search the clean text, not raw HTML, to avoid tag interference
     patterns = [
-        r'(?:Final )?Issue Price.*?(?:₹|Rs\.?)\s*([\d,]+\.?\d*)',
-        r'set final issue price at (?:₹|Rs\.?)\s*([\d,]+\.?\d*)',
-        r'Issue Price\s*(?:₹|Rs\.?)\s*([\d,]+\.?\d*)',
+        r"Issue Price[^₹\d]*₹\s*([\d,]+\.?\d*)\s*per share",
+        r"Issue Price[^₹\d]*₹\s*([\d,]+\.?\d*)\s*(?:per equity|per share|per scrip)",
+        r"set final issue price at[^₹\d]*₹\s*([\d,]+\.?\d*)",
+        r"Issue Price[^₹\d]*Rs\.?\s*([\d,]+\.?\d*)\s*per share",
     ]
     for pat in patterns:
-        m = re.search(pat, html, re.I)
+        m = re.search(pat, text, re.I)
         if m:
             try:
-                return float(m.group(1).replace(",", ""))
+                val = float(m.group(1).replace(",", ""))
+                if val > 1:  # Sanity check: skip placeholders
+                    return val
             except ValueError:
                 continue
     return None
