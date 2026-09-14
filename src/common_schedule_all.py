@@ -9,18 +9,20 @@ loop scheduling each task at fixed times throughout the trading day.
 Scheduled Tasks:
   08:00 - launch_streamlit_dashboard(): Initiate Streamlit control hub dashboard
   08:30 - ipo_entry()                : Scrape new IPOs into General.xlsx
+  08:35 - update_dynamic_data()      : Refresh subscription, GMP, dynamic data
   08:40 - allotment_general()        : Check and record IPO allotments in allotted_holdings.xlsx
   09:00 - ss_start_lc_sell()         : Place LC sell orders for newly allotted shares today
-  09:02 - money_withdraw()           : Withdraw funds from Zerodha to Kotak for IPOs
-  09:09 - bank_to_kite()             : Transfer idle Kotak balance to Zerodha for SMWS
-  09:18 - smws_seller()              : Sell SMWS ETFs per strategy signal
-  09:18 - priority_ipo_sell_smws()   : Sell SMWS when IPO funds are required
+  09:05 - money_withdraw()           : Withdraw funds from Zerodha to Kotak for IPOs
+  09:10 - bank_to_kite()             : Transfer idle Kotak balance to Zerodha for SMWS
+  09:15 - smws_seller()              : Sell SMWS ETFs per strategy signal
+  09:20 - priority_ipo_sell_smws()   : Sell SMWS when IPO funds are required
   09:25 - smws_buyer()               : Buy SMWS ETFs per strategy signal
   09:32 - cancel_sale_order_if_loss(): Cancel pre-open LC sell orders if loss threshold exceeded
-  10:05 - update_before_close()      : Refresh IPO data in General.xlsx
-  14:50 - update_before_close()      : Pre-close 3pm data refresh
+  10:01 - regular_session_ipo_sell() : Regular session IPO selling
+  10:05 - listing_result()           : Check listing prices vs issue prices, update Pos/Neg column D
+  12:05 - update_dynamic_data()      : Mid-day data refresh
+  14:52 - update_dynamic_data()      : Pre-close data refresh
   14:55 - ipo_application()          : Apply to IPOs closing today via Kotak UPI
-  15:05 - update_before_close()      : Final post-close update
 
 Usage:
   python src/common_schedule_all.py
@@ -38,6 +40,7 @@ import fund_transfer_for_smws
 import ss_Before_session_close_cancel_sale_or_not
 import ss_sale_order_on_lc_on_start_of_ss
 import regular_session_sell
+import ipo_listing_result
 
 
 # ── Scheduled task wrappers ──────────────────────────────────────────────────
@@ -153,6 +156,16 @@ def regular_session_ipo_sell():
         common_foundation.log_error(f"Error in regular_session_ipo_sell: {e}", exc=e, function_name="regular_session_ipo_sell")
 
 
+def listing_result():
+    """10:05 — Check listing prices vs issue prices and update Pos/Neg in column D of General.xlsx."""
+    try:
+        common_foundation.log_info("Executing Listing Result task...", "listing_result")
+        ipo_listing_result.update_listing_results()
+        common_foundation.log_info("Finished Listing Result task.", "listing_result")
+    except Exception as Argument:
+        common_foundation.log_error("Problem in listing_result", exc=Argument, function_name="listing_result")
+
+
 def update_dynamic_data():
     """12:05 / 14:52 — Refresh subscription, GMP, and dynamic_data_update data in General.xlsx."""
     try:
@@ -215,6 +228,7 @@ schedule.every().day.at("09:20").do(priority_ipo_sell_smws)
 schedule.every().day.at("09:25").do(smws_buyer)
 schedule.every().day.at("09:32").do(cancel_sale_order_if_loss)
 schedule.every().day.at("10:01").do(regular_session_ipo_sell)
+schedule.every().day.at("10:05").do(listing_result)
 schedule.every().day.at("12:05").do(update_dynamic_data)
 schedule.every().day.at("14:52").do(update_dynamic_data)
 schedule.every().day.at("14:55").do(ipo_application)
