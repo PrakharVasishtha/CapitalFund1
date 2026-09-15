@@ -104,5 +104,5 @@ def dynamic_data_update():
         print("Cant send General.xls")
 
 if __name__ == "__main__":
-    latest_ipo_entry()
-    dynamic_data_update()
+    #latest_ipo_entry()
+    #dynamic_data_update()
