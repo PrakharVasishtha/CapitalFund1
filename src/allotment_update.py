@@ -34,12 +34,15 @@ Column reference for allotted_holdings.xlsx (1-indexed, Row 1 = header):
 """
 import sys
 import os
+import openpyxl
+import requests
+from logger_setup import get_logger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from allotment_fetch import fetch_allotment_holdings
-import openpyxl
-import requests
+
+logger = get_logger(__name__)
 
 
 def get_allotted_holdings_path() -> str:
@@ -191,21 +194,21 @@ def excel_holdings(usr_id: str, holding_symbol: str = None, shares_allocated: in
       - Col 6: exchange (NSE / BSE)
       - Col 7: stock_category (Mainboard / SME)
     """
-    print("excel_holdings", usr_id)
+    logger.info(f"excel_holdings: Processing UCI {usr_id}, Holding={holding_symbol}, Shares={shares_allocated}")
     path = get_allotted_holdings_path()
     if not os.path.exists(path):
-        print(f"excel_holdings Error: File not found at '{path}'")
+        logger.error(f"excel_holdings Error: File not found at '{path}'")
         return
 
     try:
         wb = openpyxl.load_workbook(path)
     except Exception as e:
-        print(f"excel_holdings Error opening workbook '{path}': {e}")
+        logger.exception(f"excel_holdings Error opening workbook '{path}': {e}")
         return
 
     sheet_name = str(usr_id)
     if sheet_name not in wb.sheetnames:
-        print(f"excel_holdings Error: Sheet '{sheet_name}' not found in '{path}'. Available sheets: {wb.sheetnames}")
+        logger.warning(f"excel_holdings: Sheet '{sheet_name}' not found in '{path}'. Available sheets: {wb.sheetnames}")
         wb.close()
         return
 
@@ -227,7 +230,7 @@ def excel_holdings(usr_id: str, holding_symbol: str = None, shares_allocated: in
             ws.cell(next_row, 8, 5)
             try:
                 wb.save(path)
-                print(f"excel_holdings: Appended new holding '{holding_symbol}' (Shares={shares_allocated}) at row {next_row}")
+                logger.info(f"excel_holdings: Appended new holding '{holding_symbol}' (Shares={shares_allocated}) at row {next_row}")
                 try:
                     from common_foundation import send_telegram_notification
                     send_telegram_notification(
@@ -289,7 +292,7 @@ def excel_holdings(usr_id: str, holding_symbol: str = None, shares_allocated: in
         if shares_allocated is not None and holding_symbol and holding_symbol.upper() == name1.upper():
             existing_shares = shares_allocated
 
-        print(f"Processing row {k}: {name1}")
+        logger.info(f"Processing row {k}: {name1}")
 
         # Fetch ONLY stock symbol, exchange, stock_category, issue_price, lot_size
         try:
@@ -297,7 +300,7 @@ def excel_holdings(usr_id: str, holding_symbol: str = None, shares_allocated: in
                 name1, existing_lot_size=existing_lot, existing_price=existing_price
             )
         except Exception as e:
-            print(f"excel_holdings: details fetch failed at row {k}: {e}")
+            logger.exception(f"excel_holdings: details fetch failed at row {k}: {e}")
             stock_type, exchange, issue_price, lot_size = "Mainboard", "NSE", existing_price, existing_lot
 
         # Calculate lots issued
@@ -314,11 +317,17 @@ def excel_holdings(usr_id: str, holding_symbol: str = None, shares_allocated: in
 
         try:
             wb.save(path)
-            print(f"excel_holdings: Successfully updated details for row {k} ({name1}): Shares={existing_shares}, Lots={lots_issued}, LotSize={lot_size}, Price={issue_price}, Exchange={exchange}, Category={stock_type}")
+            logger.info(f"excel_holdings: Successfully updated details for row {k} ({name1}): Shares={existing_shares}, Lots={lots_issued}, LotSize={lot_size}, Price={issue_price}, Exchange={exchange}, Category={stock_type}")
+            # Dual-Tier SQLite synchronization
+            try:
+                import database
+                database.import_allotted_holdings_from_excel()
+            except Exception as dberr:
+                logger.error(f"excel_holdings: SQLite sync error: {dberr}")
         except PermissionError:
-            print(f"excel_holdings Error: Permission denied. Please ensure '{path}' is closed.")
+            logger.error(f"excel_holdings Error: Permission denied. Please ensure '{path}' is closed.")
         except Exception as e:
-            print(f"excel_holdings An error occurred while saving the file: {e}")
+            logger.exception(f"excel_holdings An error occurred while saving the file: {e}")
 
     wb.close()
 

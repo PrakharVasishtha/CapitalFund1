@@ -14,38 +14,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── Centralized Logging Setup ────────────────────────────────────────────────
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOG_DIR = os.path.join(BASE_DIR, "logs")
-os.makedirs(LOG_DIR, exist_ok=True)
-ERROR_LOG_PATH = os.path.join(LOG_DIR, "error.log")
+from logger_setup import get_logger, setup_logging, AUDIT_LEVEL
+setup_logging()
 
-app_logger = logging.getLogger("CapitalFund1")
-app_logger.setLevel(logging.INFO)
-
-if not app_logger.handlers:
-    # Rotating file handler (5 MB per log file, max 5 backup logs)
-    file_handler = RotatingFileHandler(ERROR_LOG_PATH, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8")
-    file_formatter = logging.Formatter(
-        "[%(asctime)s] [%(levelname)s] [%(filename)s:%(lineno)d:%(funcName)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
-    file_handler.setFormatter(file_formatter)
-    app_logger.addHandler(file_handler)
-
-    # Console handler
-    console_handler = logging.StreamHandler()
-    console_formatter = logging.Formatter(
-        "[%(asctime)s] [%(levelname)s] %(message)s",
-        datefmt="%H:%M:%S"
-    )
-    console_handler.setFormatter(console_formatter)
-    app_logger.addHandler(console_handler)
+app_logger = get_logger("CapitalFund1")
 
 
 def log_error(msg: str, exc: Exception = None, function_name: str = ""):
     """
-    Logs an error message along with full exception traceback to logs/error.log and console.
+    Logs an error message along with full exception traceback to logs and console.
     """
     prefix = f"[{function_name}] " if function_name else ""
     full_msg = f"{prefix}{msg}"
@@ -57,10 +34,26 @@ def log_error(msg: str, exc: Exception = None, function_name: str = ""):
 
 def log_info(msg: str, function_name: str = ""):
     """
-    Logs an informational message to logs/error.log and console.
+    Logs an informational message to logs and console.
     """
     prefix = f"[{function_name}] " if function_name else ""
     app_logger.info(f"{prefix}{msg}")
+
+
+def log_warning(msg: str, function_name: str = ""):
+    """
+    Logs a warning message to logs and console.
+    """
+    prefix = f"[{function_name}] " if function_name else ""
+    app_logger.warning(f"{prefix}{msg}")
+
+
+def log_audit(msg: str, function_name: str = ""):
+    """
+    Logs an audit message (level 25) to audit.log and console.
+    """
+    prefix = f"[{function_name}] " if function_name else ""
+    app_logger.log(AUDIT_LEVEL, f"{prefix}{msg}")
 
 
 def logger(file="system.txt", StringText="OK", FunctionName="In Function"):
@@ -75,7 +68,7 @@ def logger(file="system.txt", StringText="OK", FunctionName="In Function"):
         f.close()
     except Exception:
         pass
-    app_logger.info(s)
+    app_logger.info(f"{FunctionName}: {StringText}")
     time.sleep(0.1)
 
 

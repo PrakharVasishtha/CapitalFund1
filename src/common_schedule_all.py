@@ -28,12 +28,16 @@ Usage:
   python src/common_schedule_all.py
 """
 import schedule
+from logger_setup import setup_logging
+setup_logging()
 import common_foundation
 import time
 import os
 import sys
 import subprocess
 import socket
+import threading
+import database
 import common_master_functions, allotment_application_ipo, fund_manager, trader_smws, trader_priority_ipo_smws_sell
 import allotment_general as allotment_gen
 import fund_transfer_for_smws
@@ -41,6 +45,45 @@ import ss_Before_session_close_cancel_sale_or_not
 import ss_sale_order_on_lc_on_start_of_ss
 import regular_session_sell
 import ipo_listing_result
+
+# ── Non-blocking Concurrency Controls ─────────────────────────────────────────
+_running_jobs = set()
+_job_lock = threading.Lock()
+
+
+def run_threaded(job_func):
+    """
+    Execute a scheduled task in a background daemon thread.
+    Prevents long-running network/scraping I/O from blocking the main scheduler
+    event loop, ensuring critical listing-day tasks (09:00 LC Sell, 09:32 IEP check,
+    10:01 Regular session) fire with second-level precision.
+    Includes duplicate re-entrancy protection.
+    """
+    job_name = job_func.__name__
+    with _job_lock:
+        if job_name in _running_jobs:
+            common_foundation.log_warning(
+                f"Job '{job_name}' is already executing in background. Skipping duplicate run.",
+                function_name="run_threaded"
+            )
+            return
+        _running_jobs.add(job_name)
+
+    def _worker():
+        try:
+            job_func()
+        except Exception as e:
+            common_foundation.log_error(
+                f"Unhandled exception in background thread for '{job_name}': {e}",
+                exc=e,
+                function_name="run_threaded"
+            )
+        finally:
+            with _job_lock:
+                _running_jobs.discard(job_name)
+
+    thread = threading.Thread(target=_worker, name=f"Thread-{job_name}", daemon=True)
+    thread.start()
 
 
 # ── Scheduled task wrappers ──────────────────────────────────────────────────
@@ -184,13 +227,17 @@ def ipo_application():
 
 def run_now():
     """
-    Run all tasks immediately in sequence.
-    Called once at startup before the scheduled loop begins.
-    Useful for catching up on any tasks missed if the script was restarted mid-day.
+    Run initialization tasks immediately at startup before entering the scheduled loop.
+    Initializes the Dual-Tier SQLite database and synchronizes with Excel workbooks.
     """
     try:
-        common_foundation.log_info("Running all tasks now in sequence...", "run_now")
-        launch_streamlit_dashboard()
+        common_foundation.log_info("Initializing Dual-Tier SQLite database & syncing Excel...", "run_now")
+        try:
+            database.init_db()
+            database.import_all_from_excel()
+        except Exception as db_err:
+            common_foundation.log_error(f"Error initializing SQLite dual-tier engine: {db_err}", exc=db_err, function_name="run_now")
+
         try:
             import master_excel_manager
             master_excel_manager.sync_master_with_credentials()
@@ -198,44 +245,33 @@ def run_now():
             common_foundation.log_error(f"Error syncing Master.xlsx: {me_err}", exc=me_err, function_name="run_now")
         
         launch_streamlit_dashboard()
-        #ipo_entry()
-        #allotment_general()
-        #ss_start_lc_sell()
-        #money_withdraw()
-        #bank_to_kite()
-        #smws_seller()
-        #priority_ipo_sell_smws()
-        #smws_buyer()
-        #cancel_sale_order_if_loss()
-        #update_dynamic_data()
-        #regular_session_ipo_sell()
-        #ipo_application()
-        #common_foundation.log_info("Finished running all tasks.", "run_now")
 
     except Exception as Argument:
         common_foundation.log_error("Problem in run_now", exc=Argument, function_name="run_now")
 
-# Setup Daily Schedule
-schedule.every().day.at("08:00").do(launch_streamlit_dashboard)
-schedule.every().day.at("08:30").do(ipo_entry)
-schedule.every().day.at("08:35").do(update_dynamic_data)
-schedule.every().day.at("08:40").do(allotment_general)
-schedule.every().day.at("09:00").do(ss_start_lc_sell)
-schedule.every().day.at("09:05").do(money_withdraw)
-schedule.every().day.at("09:10").do(bank_to_kite)
-schedule.every().day.at("09:15").do(smws_seller)
-schedule.every().day.at("09:20").do(priority_ipo_sell_smws)
-schedule.every().day.at("09:25").do(smws_buyer)
-schedule.every().day.at("09:32").do(cancel_sale_order_if_loss)
-schedule.every().day.at("10:01").do(regular_session_ipo_sell)
-schedule.every().day.at("10:05").do(listing_result)
-schedule.every().day.at("12:05").do(update_dynamic_data)
-schedule.every().day.at("14:52").do(update_dynamic_data)
-schedule.every().day.at("14:55").do(ipo_application)
+
+# Setup Daily Schedule (Using run_threaded to prevent blocking the main scheduler event loop)
+schedule.every().day.at("08:00").do(run_threaded, launch_streamlit_dashboard)
+schedule.every().day.at("08:30").do(run_threaded, ipo_entry)
+schedule.every().day.at("08:35").do(run_threaded, update_dynamic_data)
+schedule.every().day.at("08:40").do(run_threaded, allotment_general)
+schedule.every().day.at("09:00").do(run_threaded, ss_start_lc_sell)
+schedule.every().day.at("09:05").do(run_threaded, money_withdraw)
+schedule.every().day.at("09:10").do(run_threaded, bank_to_kite)
+schedule.every().day.at("09:15").do(run_threaded, smws_seller)
+schedule.every().day.at("09:20").do(run_threaded, priority_ipo_sell_smws)
+schedule.every().day.at("09:25").do(run_threaded, smws_buyer)
+schedule.every().day.at("09:32").do(run_threaded, cancel_sale_order_if_loss)
+schedule.every().day.at("10:01").do(run_threaded, regular_session_ipo_sell)
+schedule.every().day.at("10:05").do(run_threaded, listing_result)
+schedule.every().day.at("12:05").do(run_threaded, update_dynamic_data)
+schedule.every().day.at("14:52").do(run_threaded, update_dynamic_data)
+schedule.every().day.at("14:55").do(run_threaded, ipo_application)
 
 if __name__ == "__main__":
     try:
-        #run_now()
+        run_now()
+        common_foundation.log_info("Scheduler loop started (tick interval: 1s, non-blocking threaded execution active).", "__main__")
         while True:
             schedule.run_pending()
             time.sleep(1)

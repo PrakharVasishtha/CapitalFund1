@@ -144,6 +144,20 @@ def record_ipo_application(uci: str, ipo_name: str, type_ipo: str = "mb") -> boo
 
         wb.save(path)
         wb.close()
+
+        # Dual-Tier SQLite synchronization
+        try:
+            import database
+            database.record_ipo_application(
+                uci=sheet_name,
+                ipo_name=ipo_name.strip(),
+                shares=shares_applied,
+                price=issue_price,
+                total_amount=total_amount
+            )
+        except Exception as db_err:
+            log_error(f"Failed to record IPO application to SQLite: {db_err}", exc=db_err, function_name="record_ipo_application")
+
         return True
 
     except Exception as e:

@@ -1,86 +1,154 @@
 # CapitalFund1 — Automated IPO Research, Allocation & Trading System
 
-An enterprise automation engine for managing IPO research, fund routing, UPI applications, pre-open/regular session listing day trading, and allotment tracking across multiple Zerodha broker accounts integrated with Kotak NetBanking.
+An enterprise automation engine for IPO research, multi-account fund routing, Kotak NetBanking ASBA applications, pre-open & regular session listing day trading, and allotment tracking across multiple Zerodha broker accounts integrated with Kotak Mahindra NetBanking.
 
 ---
 
-## Table of Contents
+## 📚 Complete Documentation Index
 
-- [Overview](#overview)
-- [System Architecture](#system-architecture)
-- [Quick Setup](#quick-setup)
-- [Automated Selling Strategies](#automated-selling-strategies)
-- [Daily Trading Schedule](#daily-trading-schedule)
-- [Database & Excel Reference](#database--excel-reference)
-- [Status Code Definitions](#status-code-definitions)
-- [Streamlit Control Hub](#streamlit-control-hub)
-- [SMS & Telegram Alerts Setup](#sms--telegram-alerts-setup)
+| Guide | Description |
+| :--- | :--- |
+| **[System Architecture](docs/ARCHITECTURE.md)** | Subsystems, technology stack, security boundaries, and high-level design. |
+| **[Schedule & Workflows](docs/SCHEDULE_AND_WORKFLOWS.md)** | Chronological trading clock (08:00 – 15:30 IST) and detailed algorithmic workflows. |
+| **[Configuration & Setup Guide](docs/CONFIGURATION_AND_SETUP.md)** | Installation, `.env` schema, Zerodha 2FA TOTP, and Android SMS OTP forwarding. |
+| **[Data Dictionary & Schemas](docs/DATA_DICTIONARY_AND_SCHEMAS.md)** | Column definitions for `General.xlsx`, `allotted_holdings.xlsx`, `Master.xlsx`, and status codes. |
+| **[Module Technical Reference](docs/MODULE_REFERENCE.md)** | Catalog of every source module in `src/`, key functions, and arguments. |
+| **[Operations & Troubleshooting](docs/OPERATIONS_AND_TROUBLESHOOTING.md)** | Runbook, manual recovery triggers, OTP debugging, and Excel lock resolutions. |
 
----
-
-## Overview
-
-CapitalFund1 automates the complete lifecycle of IPO investments:
-
-1. **Scrapes & Research**: Scrapes Chittorgarh daily for GMP, analyst reviews, and live subscription metrics into `General.xlsx`.
-2. **UPI Applications**: Automates Kotak NetBanking UPI applications for shortlisted IPOs.
-3. **Fund Routing**: Dynamically withdraws funds from Zerodha to Kotak for applications, or sweeps idle bank cash into ETF strategies (SMWS).
-4. **Allotment Detection**: Scans multi-account Zerodha portfolios and records new allotments in `allotted_holdings.xlsx` and `IPO-applied.xlsx`.
-5. **Listing Day Execution**: Executes pre-open special session and regular session selling strategies (GTT & Lower Circuit orders).
-6. **Real-time Notifications**: Sends push alerts via Telegram for applications, allotments, fund routing, and listing orders.
+> [!IMPORTANT]
+> **Strict Automation Mandate: Playwright for Zerodha & Kotak**
+> We always use **Playwright** for Zerodha Kite and Kotak NetBanking automation because it gives complete, end-to-end operational control over the DOM, dynamic 2FA TOTP/SMS OTP flows, NetBanking ASBA applications, order execution, and console fund routing without external REST API rate limits, daily token authorization overhead, or third-party subscription lock-in.
 
 ---
 
-## System Architecture
+## ⚡ Core Capabilities
+
+1. **Scrapes & Researches IPOs**: Automatically scrapes Chittorgarh daily for GMP, analyst consensus reviews, and live QIB/NII/Retail subscription metrics into `General.xlsx`.
+2. **Dual-Tier Data Storage Engine**: Features a high-speed SQLite backend (`capitalfund.db` in WAL mode) for concurrent, non-blocking queries, paired with atomic Excel file synchronization (`safe_save_workbook()`), eliminating `PermissionError` file-lock conflicts.
+3. **Non-Blocking Multi-Threaded Scheduler**: Runs time-critical tasks via `run_threaded()` background daemon workers so that heavy I/O never blocks the 1-second scheduler heartbeat.
+4. **Automated ASBA Applications**: Submits ASBA IPO applications via Kotak NetBanking with dynamic HNI ($\ge \text{₹}200,001$) and Retail lot sizing.
+5. **Dynamic Fund Routing**: Determines upcoming IPO cash needs across Day 0 and Day 1, withdrawing capital from Zerodha to Kotak, or sweeping idle bank balances into Zerodha.
+6. **Allotment Detection**: Periodically inspects multi-account Zerodha portfolios, records newly allotted scrips in `allotted_holdings.xlsx`, and notifies via email and Telegram.
+7. **Listing Day Execution**:
+   - **09:00 AM Pre-Open**: Places Lower Circuit (LC) sell orders to secure queue priority.
+   - **09:32 AM Discovery Check**: Compares Indicative Equilibrium Price (IEP) from NSE/BSE against loss thresholds (Mainboard $> 11.9\%$, SME $< 0\%$) to cancel or retain orders.
+   - **10:01 AM Regular Session**: Analyzes market depth; holds locked Upper Circuit (UC) stocks, or deploys stepped Good-Till-Triggered (GTT) exit orders.
+   - **10:05 AM Result Verification**: Verifies opening listing prices against issue prices and records results in `General.xlsx`.
+8. **Tactical ETF Trading (SMWS)**: Executes systematic buy and sell orders for `NIFTYIETF`, `TATAGOLD`, and `TATSILV` based on external Google Sheet signals, with emergency preemption for IPO cash needs.
+9. **Streamlit Control Hub**: Provides real-time portfolio valuations, live IPO analytics, SMWS monitors, and one-click execution triggers.
+
+---
+
+## 📁 Repository Structure
 
 ```text
 CapitalFund1/
-├── src/
-│   ├── common_schedule_all.py              # Main 24/7 automation scheduler
-│   ├── common_foundation.py                # Logging, email, & Telegram notification engine
-│   ├── common_master_functions.py          # Data entry, 3 PM close updates
+├── docs/                                   # Detailed system documentation
+│   ├── ARCHITECTURE.md                     # System architecture & technical stack
+│   ├── SCHEDULE_AND_WORKFLOWS.md           # Daily timeline & algorithmic workflows
+│   ├── CONFIGURATION_AND_SETUP.md          # Setup, credentials, and SMS forwarding
+│   ├── DATA_DICTIONARY_AND_SCHEMAS.md      # Excel schemas & lifecycle status codes
+│   ├── MODULE_REFERENCE.md                 # Complete technical reference of src/
+│   └── OPERATIONS_AND_TROUBLESHOOTING.md   # Daily runbook & failure resolutions
+│
+├── src/                                    # Application source code
+│   ├── common_schedule_all.py              # Central 24/7 automation scheduler
+│   ├── common_foundation.py                # Telemetry, email & Telegram alert engine
+│   ├── logger_setup.py                     # Central structured logging (audit, rotating)
+│   ├── Base.py                             # Atomic Excel handlers, TOTP, OTP & VIX
 │   │
-│   ├── regular_session_sell.py             # Regular session selling strategy (Buyer/Seller ratio & GTT)
-│   ├── special_sesion_zerodha_sell.py      # Pre-open special session LC sell orders
-│   ├── ss_sale_order_on_lc_on_start_of_ss.py# Triggers pre-open LC sell orders on listing day
-│   ├── ss_Before_session_close_cancel_sale_or_not.py # Pre-open price monitoring & order cancellation
+│   ├── regular_session_sell.py             # 10:01 AM: Depth ratio & stepped GTT orders
+│   ├── special_sesion_zerodha_sell.py      # Pre-open LC sell orders & order cancellation
+│   ├── ss_sale_order_on_lc_on_start_of_ss.py# 09:00 AM: Pre-open LC sell order initiator
+│   ├── ss_Before_session_close_cancel_sale_or_not.py # 09:32 AM: IEP price monitor & cancel gate
+│   ├── special_session_indicative_price_nse.py # NSE pre-open discovery scraper
+│   ├── special_session_indicative_price_bse.py # BSE pre-open discovery scraper
 │   │
-│   ├── allotment_application_ipo.py        # Evaluates & ranks IPOs closing today
-│   ├── allotment_kotak_ipo_apply.py        # Playwright: Kotak UPI application submitter
+│   ├── allotment_application_ipo.py        # Identifies closing IPOs & triggers applications
+│   ├── allotment_kotak_ipo_apply.py        # Playwright: Kotak NetBanking ASBA submitter
 │   ├── allotment_general.py                # Multi-account allotment detector
 │   ├── allotment_fetch.py                  # Playwright: Scans Zerodha portfolio holdings
-│   ├── allotment_update.py                 # Enriches allotted holdings with GMP & subscription
+│   ├── allotment_update.py                 # Registers & enriches newly allotted holdings
 │   │
-│   ├── fund_manager.py                     # Calculates IPO funds & triggers Zerodha withdrawal
-│   ├── fund_zerodha_withdraw.py            # Playwright: Zerodha to Kotak bank withdrawal
-│   ├── fund_bank_to_kite.py                # Playwright: Kotak bank to Zerodha fund transfer
+│   ├── fund_manager.py                     # Calculates IPO funds & initiates Kite withdrawal
+│   ├── fund_zerodha_withdraw.py            # Playwright: Zerodha Console fund withdrawal
+│   ├── fund_bank_to_kite.py                # Playwright: Kotak to Zerodha fund transfer
 │   ├── fund_transfer_for_smws.py           # Sweeps idle bank funds into Zerodha
 │   ├── fund_kotak_get_balance.py           # Fetches Kotak bank balance via SMS OTP
 │   │
-│   ├── trader_smws.py                      # SMWS ETF buyer & seller (NIFTYIETF, TATAGOLD, TATSILV)
-│   ├── trader_priority_ipo_smws_sell.py    # Sells SMWS ETFs when IPO funds are required
-│   ├── trader_zerodha_buy.py               # Playwright: Places ETF buy orders on Zerodha
-│   ├── trader_zerodha_sell.py              # Playwright: Places ETF sell orders on Zerodha
-│   ├── trader_zerodha_base.py              # Playwright: Fetches Zerodha margin balance & updates Master
+│   ├── trader_smws.py                      # Systematic ETF buyer & seller
+│   ├── trader_priority_ipo_smws_sell.py    # Liquidates ETFs when IPO cash is needed
+│   ├── trader_zerodha_buy.py               # Playwright: Places ETF buy orders on Kite
+│   ├── trader_zerodha_sell.py              # Playwright: Places ETF sell orders on Kite
+│   ├── trader_zerodha_base.py              # Playwright: Margin balance & Kite session
+│   ├── strategy_sheet.py                   # Shared Google Sheet signal reader
 │   │
-│   ├── master_excel_manager.py             # Central manager for Master.xlsx synchronization
-│   ├── ipo_applied_manager.py              # Central manager for IPO-applied.xlsx logging
-│   └── Base.py                             # Shared helpers: credentials, formulas, & VIX
+│   ├── ipo_scraper.py                      # Chittorgarh web scraper
+│   ├── IpoDataExtractor.py                 # Structured IPO data parser
+│   ├── ipo_ExtractGMP.py                   # Grey Market Premium scraper
+│   ├── ipo_ExtractSubscription.py          # Subscription metrics scraper
+│   ├── ipo_ExtractReview.py                # Analyst consensus reviews
+│   ├── ipo_pe.py                           # P/E ratio calculations
+│   ├── ipo_listing_result.py               # 10:05 AM: Chittorgarh listing performance
+│   │
+│   ├── master_excel_manager.py             # Synchronizes Master.xlsx with credentials
+│   └── ipo_applied_manager.py              # Logs applications to IPO-applied.xlsx
 │
 ├── dashboard.py                            # Streamlit Control Hub web application
 ├── General.xlsx                            # Primary IPO research database
-├── allotted_holdings.xlsx                  # Allotment portfolio tracker (per-user sheets)
-├── Master.xlsx                             # Master account profiles & valuations
-├── IPO-applied.xlsx                        # History of submitted applications (sheets 1, 2)
+├── allotted_holdings.xlsx                  # Multi-account allotment tracker
+├── Master.xlsx                             # User profiles & portfolio valuations
+├── IPO-applied.xlsx                        # Historical application logs
 ├── requirements.txt                        # Python dependencies
 └── .env                                    # Environment secrets (gitignored)
 ```
 
 ---
 
-## Quick Setup
+## ⏱️ Daily Operational Schedule
 
-### 1. Install Dependencies
+| Time | Scheduled Task | Description |
+| :--- | :--- | :--- |
+| **08:00** | `launch_streamlit_dashboard` | Launches Streamlit Control Hub on port 8501 (if not running). |
+| **08:30** | `ipo_entry` | Scrapes newly announced IPO listings into `General.xlsx`. |
+| **08:35** | `update_dynamic_data` | Refreshes subscription metrics, GMP, and analyst reviews. |
+| **08:40** | `allotment_general` | Inspects Zerodha holdings for new IPO allotments across accounts. |
+| **09:00** | `ss_start_lc_sell` | Places Lower Circuit (LC) sell orders for newly allotted shares. |
+| **09:05** | `money_withdraw` | Computes Day 0/1 IPO fund requirements & withdraws Zerodha ➔ Kotak. |
+| **09:10** | `bank_to_kite` | Sweeps idle Kotak Bank funds to Zerodha Kite for SMWS trading. |
+| **09:15** | `smws_seller` | Sells SMWS ETFs (`NIFTYIETF`, `TATAGOLD`, `TATSILV`) per signals. |
+| **09:20** | `priority_ipo_sell_smws` | Liquidates SMWS ETFs if immediate IPO capital is needed. |
+| **09:25** | `smws_buyer` | Buys SMWS ETFs per strategy signals using available margin slices. |
+| **09:32** | `cancel_sale_order_if_loss` | Queries NSE/BSE indicative prices; cancels LC order if loss threshold exceeded. |
+| **10:01** | `regular_session_ipo_sell` | Regular session depth analysis (holds locked UC, or places stepped GTTs). |
+| **10:05** | `listing_result` | Verifies opening listing prices vs issue price on Chittorgarh; updates Col D. |
+| **12:05** | `update_dynamic_data` | Mid-day subscription and GMP refresh. |
+| **14:52** | `update_dynamic_data` | Pre-close subscription refresh. |
+| **14:55** | `ipo_application` | Submits Kotak ASBA applications for IPOs closing today. |
+
+---
+
+## 📊 Status Code Lifecycle (`allotted_holdings.xlsx`)
+
+### `special_session_status` (Column 8)
+- `0` : Not started
+- `1` : Special session Lower Circuit (LC) sell order placed (09:00 AM)
+- `2` : Order executed / Sold in pre-open special session
+- `3` : Order canceled due to loss threshold; transferred to regular session
+- `5` : Newly detected allotment (pending initial order placement)
+
+### `regular_session_status` (Column 11)
+- `0` : Not started / Sold in pre-open
+- `1` : Eligible for regular session selling (pre-open order was canceled)
+- `2` : Sold / Stepped GTT exit orders placed on Kite
+- `3` : Not sold during regular market hours
+- `5` : Held locked at Upper Circuit (UC)
+
+---
+
+## 🚀 Quick Start
+
+### 1. Environment Setup
 
 ```powershell
 cd d:\CapitalFund1
@@ -90,150 +158,39 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2. Configure Secrets (`.env`)
+### 2. Configure Credentials
 
 Create a `.env` file in the project root:
 
 ```env
-# Multi-Account Credentials Array
 CAPITALFUND_USERS='[
   {
     "uci": "1",
-    "name": "Account Holder 1",
+    "name": "Primary User",
     "broker_client_id": "ZR1234",
-    "password_broker": "zerodha_password",
-    "topt_broker": "TOTP_BASE32_SECRET",
-    "bank_user": "kotak_user_id",
-    "bank_password": "kotak_password",
-    "email_user": "user1@gmail.com",
-    "email_password": "gmail_app_password",
+    "password_broker": "Password",
+    "topt_broker": "BASE32SECRET",
+    "bank_user": "CRN_NUMBER",
+    "bank_password": "BankPassword",
+    "email_user": "user@gmail.com",
+    "email_password": "app_password",
     "PAN": "ABCDE1234F",
     "intraday": "0"
   }
 ]'
 
-# Telegram Push Notifications
 TELEGRAM_BOT_TOKEN="123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
 TELEGRAM_CHAT_ID="987654321"
-
-# Email Alerts
-ALERT_EMAIL_USER="user@gmail.com"
+ALERT_EMAIL_USER="alerts@gmail.com"
 ALERT_EMAIL_PASS="gmail_app_password"
 ```
 
----
-
-## Automated Selling Strategies
-
-### 1. Pre-Open Special Session (09:00 AM – 09:45 AM)
-
-- **Mainboard (MB)**:
-  - If pre-open indicative price indicates positive listing (>0%), **DO NOT SELL** during pre-open.
-  - If indicative price shows discount/loss (Loss > 11.9% or Indicative Price > -12%), place a Lower Circuit (LC) sell order immediately.
-- **SME Listings**:
-  - If depth & indicative price at BSE/NSE indicate negative listing, place a Lower Circuit (LC) sell order immediately (*sell at any cost*).
-
-### 2. Regular Trading Session (10:01 AM Onwards)
-
-Executed for all allotted shares **not sold in the special pre-open session**:
-
-| Market Condition | 30-Min Upper Circuit (UC) Check | Action Taken |
-| :--- | :--- | :--- |
-| **Buyer/Seller Ratio > 60%** (High Demand) | **UC Hit within 30 mins** | **DO NOT SELL** (Hold shares locked at UC). |
-| **Buyer/Seller Ratio > 60%** (High Demand) | **No UC after 30 mins** | Place **GTT Order 1** for 50% shares @ `LTP + 2%`<br>Place **GTT Order 2** for 50% shares @ `LTP + 5%`. |
-| **Buyer/Seller Ratio < 60%** (Selling Pressure) | *Immediate Placement* | Place **GTT Order 1** for 50% shares @ `LTP + 0.5%`<br>Place **GTT Order 2** for 50% shares @ `LTP + 1.0%`. |
-
-$$\text{Buyer Ratio \%} = \frac{\text{Total Buy Quantity}}{\text{Total Buy Quantity} + \text{Total Sell Quantity}} \times 100$$
-
----
-
-## Daily Trading Schedule
-
-| Time | Function | Description |
-| :--- | :--- | :--- |
-| **Startup** | `run_now()` | Syncs `Master.xlsx`, initiates Streamlit dashboard, and runs setup tasks on script start |
-| **08:00** | `launch_streamlit_dashboard()` | Launches Streamlit Control Hub web application (if not already running) |
-| **08:30** | `ipo_entry()` | Scrapes new IPO listings from Chittorgarh into `General.xlsx` |
-| **08:35** | `update_dynamic_data()` | Refreshes subscription, GMP, and reviews in `General.xlsx` |
-| **08:40** | `allotment_general()` | Scans Zerodha portfolio holdings for new IPO allotments |
-| **09:00** | `ss_start_lc_sell()` | Places LC sell orders for newly allotted IPO shares |
-| **09:05** | `money_withdraw()` | Calculates required IPO funds & withdraws Zerodha ➔ Kotak |
-| **09:10** | `bank_to_kite()` | Sweeps idle Kotak bank funds into Zerodha Kite for SMWS |
-| **09:15** | `smws_seller()` | Sells SMWS ETFs (`NIFTYIETF`, `TATAGOLD`, `TATSILV`) per signals |
-| **09:20** | `priority_ipo_sell_smws()`| Sells SMWS ETFs when IPO funds are required |
-| **09:25** | `smws_buyer()` | Buys SMWS ETFs per Google Sheet strategy signals |
-| **09:32** | `cancel_sale_order_if_loss()`| Cancels pre-open LC sell orders if loss threshold exceeded |
-| **10:01** | `regular_session_ipo_sell()`| Executes regular session selling strategy (Buyer Ratio & GTT) |
-| **12:05** | `update_dynamic_data()` | Mid-day subscription and GMP refresh |
-| **14:52** | `update_dynamic_data()` | Pre-close subscription refresh |
-| **14:55** | `ipo_application()` | Submits Kotak UPI applications for closing IPOs & logs to `IPO-applied.xlsx` |
-
----
-
-## Database & Excel Reference
-
-### 1. `General.xlsx` (IPO Research Database)
-- **Sheets**: `IPOMB` (Mainboard) & `IPOSME` (SME).
-- **Columns**: `Company Name` (Col 2), `ClosingDate (40)`, `Apply Priority (42)`, `Total Score`, `GMP`, `Retail Sub`.
-
-### 2. `allotted_holdings.xlsx` (Portfolio Holdings Tracker)
-- **Sheets**: Per-user sheets named by UCI (e.g. `"1"`, `"2"`).
-- **Columns**: `security_name` (Col 1), `lot_size` (Col 2), `issue_price` (Col 3), `shares_allocated` (Col 4), `exchange` (Col 6), `special_session_status` (Col 8), `regular_session_status` (Col 11).
-
-### 3. `Master.xlsx` (Master User Accounts & Valuation)
-- **Sheet**: `Users`.
-- **Columns**: `uci` (Col 1), `first_name` (Col 2), `account_email` (Col 6), `intraday` (Col 7), `zerodha_access_token` (Col 8), `current_value` (Col 9).
-
-### 4. `IPO-applied.xlsx` (Submitted Application Log)
-- **Sheets**: Per-user sheets named `1`, `2`.
-- **Columns**: `IPO-Name` (Col 1), `Shares Applied` (Col 2), `Issue price` (Col 3), `Total Application amount` (Col 4).
-
----
-
-## Status Code Definitions
-
-### `special_session_status` (Column 8 of `allotted_holdings.xlsx`)
-- `0`: Not started
-- `1`: Special session LC sell order placed
-- `2`: Sold in special pre-open session
-- `3`: Order canceled / Not sold in special session
-- `5`: Newly detected allotment (pending enrichment)
-
-### `regular_session_status` (Column 11 of `allotted_holdings.xlsx`)
-- `0`: Not started
-- `1`: Eligible for regular session strategy
-- `2`: Sold / GTT orders placed in regular session
-- `3`: Not sold in regular session
-- `5`: Held at Upper Circuit (UC)
-
----
-
-## Streamlit Control Hub
-
-Launch the web dashboard:
+### 3. Run System
 
 ```powershell
+# Start Central 24/7 Automation Scheduler
+.venv\Scripts\python.exe src\common_schedule_all.py
+
+# Launch Streamlit Control Hub (in a separate terminal)
 .venv\Scripts\python.exe -m streamlit run dashboard.py
 ```
-
-Features:
-- **Executive Summary**: Live account valuations (`Master.xlsx`), allotted securities, and IPO schedule filters.
-- **Balances & Capital Manager**: Multi-account profile cards and `Master.xlsx` database table.
-- **IPO Analytics**: Mainboard, SME, and High-Gain (>20% GMP) tabs.
-- **SMWS Strategy Monitor**: Live buy/sell ETF signals with color-coded pills.
-- **System Health & Telegram Diagnostics**: Real-time console output viewer and Telegram test push alert trigger.
-
----
-
-## SMS & Telegram Alerts Setup
-
-### 1. Telegram Push Notifications
-1. Create a bot with [@BotFather](https://t.me/BotFather) on Telegram to obtain `TELEGRAM_BOT_TOKEN`.
-2. Get your Chat ID from [@userinfobot](https://t.me/userinfobot) to obtain `TELEGRAM_CHAT_ID`.
-3. Add both to `.env`. Real-time push alerts will be sent for applications, allotments, fund routing, and sell orders.
-
-### 2. Kotak SMS OTP Forwarding
-To automate Kotak bank login OTPs:
-1. Install **Automate** (or SMS Forwarder) on the client's Android phone.
-2. Create a rule: Forward SMS containing `Kotak` to the account's `email_user`.
-3. The Playwright scripts automatically extract OTPs from Gmail inbox.

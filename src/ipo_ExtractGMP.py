@@ -3,6 +3,9 @@ import unicodedata
 from bs4 import BeautifulSoup
 import cloudscraper
 from rapidfuzz import fuzz
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def normalize_text(text: str) -> str:
@@ -29,7 +32,7 @@ def get_ipo_gmp(company_name: str, url: str = "https://www.ipopremium.in/", cuto
         response = scraper.get(url, timeout=15)
         response.raise_for_status()
     except Exception as e:
-        print(f"Error fetching GMP website: {e}")
+        logger.warning(f"Error fetching GMP website: {e}")
         return 0.0
 
     soup = BeautifulSoup(response.text, "html.parser")

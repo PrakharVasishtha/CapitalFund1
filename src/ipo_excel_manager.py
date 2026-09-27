@@ -7,6 +7,9 @@ import ipo_pe
 from ipo_formula import Formula
 from Base import get_vix, get_excel_path
 from common_foundation import dprint
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def safe_get(d: Any, *keys: str, default: Any = None) -> Any:
@@ -215,14 +218,12 @@ class ExcelManager:
         
         try:
             self.wb.save(self.path)
-            #print(f"write_details: Successfully updated details {B}for row {row}")
         except PermissionError:
-            print(f"write_details Error: Permission denied. Please ensure '{self.path}' is closed.")
+            logger.error(f"write_details Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:
-            print(f"write_details An error occurred while saving the file: {e}")
+            logger.error(f"write_details An error occurred while saving the file: {e}", exc_info=True)
             
     def write_details_GSR(self, row: int,gmp: float, sub: list, review: int, type1: str,industry_score: float):
-        #print("write_details_GSR")
         ws = self.sme_ws if type1 == "SME" else self.main_ws
         time.sleep(.5)
         try:
@@ -237,7 +238,7 @@ class ExcelManager:
             AQ = industry_score
             AI = get_vix()
         except Exception as e:
-            print(f"write_details_GSR An error occurred while assigning data for row {row}: {e}")
+            logger.error(f"write_details_GSR An error occurred while assigning data for row {row}: {e}", exc_info=True)
             return  # Skip save on error
         time.sleep(.5)
         # Write to cells (using cell(row, col) for reliability)
@@ -251,11 +252,10 @@ class ExcelManager:
 
         try:
             self.wb.save(self.path)
-            #print(f"write_details_GSR: Successfully updated details for row {row}")
         except PermissionError:
-            print(f"write_details_GSR Error: Permission denied. Please ensure '{self.path}' is closed.")
+            logger.error(f"write_details_GSR Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:
-            print(f"write_details_GSR An error occurred while saving the file: {e}")
+            logger.error(f"write_details_GSR An error occurred while saving the file: {e}", exc_info=True)
 
     def write_formula_sme(self, row: int, type1: str):
         ws = self.sme_ws if type1 == "SME" else self.main_ws
@@ -298,11 +298,10 @@ class ExcelManager:
 
         try:
             self.wb.save(self.path)
-            #print(f"write_formula_sme Successfully updated details for row {row}")
         except PermissionError:
-            print(f"write_formula_sme Error: Permission denied. Please ensure '{self.path}' is closed.")
+            logger.error(f"write_formula_sme Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:
-            print(f"write_formula_sme An error occurred while saving the file: {e}")
+            logger.error(f"write_formula_sme An error occurred while saving the file: {e}", exc_info=True)
 
     def write_formula_mb(self, row: int, type1: str):
         ws = self.sme_ws if type1 == "SME" else self.main_ws
@@ -347,7 +346,7 @@ class ExcelManager:
             AI = fr.total_mb(AG, AH)
 
         except Exception as e:
-            print(f"write_formula MB An error occurred while assigning data for row {row}: {e}")
+            logger.error(f"write_formula MB An error occurred while assigning data for row {row}: {e}", exc_info=True)
             return  # Skip save on error
 
         # Write to cells (using cell(row, col) for reliability)
@@ -363,9 +362,9 @@ class ExcelManager:
             self.wb.save(self.path)
             dprint(f"write_formula MB Successfully updated details for row {row}")
         except PermissionError:
-            print(f"write_formula MB Error: Permission denied. Please ensure '{self.path}' is closed.")
+            logger.error(f"write_formula MB Error: Permission denied. Please ensure '{self.path}' is closed.")
         except Exception as e:
-            print(f"write_formula MB An error occurred while saving the file: {e}")
+            logger.error(f"write_formula MB An error occurred while saving the file: {e}", exc_info=True)
 
 
 #print(ExcelManager().exists("SME","Adisoft Technologies"))

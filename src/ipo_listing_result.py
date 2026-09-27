@@ -4,6 +4,9 @@ import openpyxl
 import cloudscraper
 from bs4 import BeautifulSoup
 from Base import get_excel_path
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def fetch_page(url: str) -> str | None:
@@ -16,7 +19,7 @@ def fetch_page(url: str) -> str | None:
         response.raise_for_status()
         return response.text
     except Exception as e:
-        print(f"  Error fetching page: {e}")
+        logger.error(f"Error fetching page {url}: {e}", exc_info=True)
         return None
 
 
@@ -85,7 +88,7 @@ def update_listing_results():
 
     for sheet_name in sheets:
         ws = wb[sheet_name]
-        print(f"\nProcessing sheet: {sheet_name}")
+        logger.info(f"Processing sheet: {sheet_name}")
         updated = 0
 
         for row in range(2, ws.max_row + 1):
@@ -99,7 +102,7 @@ def update_listing_results():
             if d_val in (0, 1):
                 continue
 
-            print(f"Row {row}: {company}")
+            logger.debug(f"Row {row}: {company}")
 
             # Try reading issue price from Excel first (col 45)
             issue_price = None
@@ -116,7 +119,7 @@ def update_listing_results():
             time.sleep(1)
 
             if html is None:
-                print(f"  Skipped: could not fetch page")
+                logger.warning(f"  Skipped {company}: could not fetch page")
                 total_skipped += 1
                 continue
 
@@ -128,20 +131,29 @@ def update_listing_results():
                 issue_price = extract_issue_price(html)
 
             if listing_price is None or issue_price is None:
-                print(f"  Skipped: listing={listing_price}, issue={issue_price}")
+                logger.debug(f"  Skipped {company}: listing={listing_price}, issue={issue_price}")
                 total_skipped += 1
                 continue
 
             result = 1 if listing_price >= issue_price else 0
             ws.cell(row, 4, result)
             updated += 1
-            print(f"  listing={listing_price}, issue={issue_price} => {result}")
+            logger.info(f"  {company}: listing=₹{listing_price}, issue=₹{issue_price} => Result={result}")
 
         wb.save(path)
         total_updated += updated
-        print(f"Sheet {sheet_name}: {updated} rows updated")
+        logger.info(f"Sheet {sheet_name}: {updated} rows updated")
 
-    print(f"\nDone. Total rows updated: {total_updated}, Skipped: {total_skipped}")
+    # Dual-Tier SQLite synchronization
+    if total_updated > 0:
+        try:
+            import database
+            database.import_ipo_research_from_excel()
+            logger.info("Successfully synced IPO research results to SQLite")
+        except Exception as dberr:
+            logger.error(f"Error syncing IPO research to SQLite: {dberr}", exc_info=True)
+
+    logger.info(f"update_listing_results complete. Total rows updated: {total_updated}, Skipped: {total_skipped}")
 
 
 if __name__ == "__main__":

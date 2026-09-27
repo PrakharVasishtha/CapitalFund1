@@ -17,9 +17,12 @@ Functions:
 """
 import time
 import Base
-from common_foundation import logger
+from common_foundation import logger as legacy_logger
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 DEFAULT_HOLDINGS = {"NIFTYIETF", "TATAGOLD", "TATSILV"}
 INDEX_SYMBOLS = {
@@ -43,9 +46,9 @@ def fetch_allotment_holdings(
     and returns the symbol(s) of any other holdings found.
     """
     def run(playwright: Playwright):
-        print("______fetch_allotment_holdings___", user_id)
+        logger.info(f"fetch_allotment_holdings: Checking holdings for user {user_id}")
         if not user_id or not password or not totp_secret:
-            print(f"Error: Missing credentials for fetch_allotment_holdings (user_id={user_id})")
+            logger.error(f"Missing credentials for fetch_allotment_holdings (user_id={user_id})")
             return None
 
         file_path = f"{user_id}.txt"
@@ -140,7 +143,7 @@ def fetch_allotment_holdings(
                         seen_symbols.add(sym)
                         cleaned_holdings.append({"symbol": sym, "quantity": qty})
 
-            print(f"Other holdings found for {user_id}: {cleaned_holdings}")
+            logger.info(f"Holdings found for {user_id}: {cleaned_holdings}")
 
             # If specific security_symbol requested, check quantity
             if security_symbol:
@@ -153,11 +156,11 @@ def fetch_allotment_holdings(
                     try:
                         holdings_qty = page.get_by_role("spinbutton", name=security_nse).input_value()
                     except Exception as e:
-                        print(e)
+                        logger.warning(f"Could not read NSE spinbutton for {security_symbol}: {e}")
                         holdings_qty = page.get_by_role("spinbutton", name=security_bse).input_value()
                     page.get_by_role("button", name="Cancel").click()
                 except Exception as e:
-                    print(e)
+                    logger.warning(f"Could not read holdings qty for {security_symbol}: {e}")
                     holdings_qty = 0
                 return holdings_qty
 
@@ -169,9 +172,8 @@ def fetch_allotment_holdings(
                 return cleaned_holdings
 
         except Exception as e:
-            logger(file_path, amt_symbl, f"Exception in fetch_allotment_holdings: {e}")
-            import traceback
-            print(traceback.format_exc())
+            logger.exception(f"Exception in fetch_allotment_holdings for {user_id}: {e}")
+            legacy_logger(file_path, amt_symbl, f"Exception in fetch_allotment_holdings: {e}")
             return None
 
         finally:

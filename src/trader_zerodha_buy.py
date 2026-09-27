@@ -1,8 +1,11 @@
 import time
 import Base
-from common_foundation import logger
+from common_foundation import logger as legacy_logger
+from logger_setup import get_logger
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
+
+logger = get_logger(__name__)
 
 
 def zerodha_buy(
@@ -18,7 +21,7 @@ def zerodha_buy(
     amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
 
     def run(playwright: Playwright) -> tuple[bool, str]:
-        print("-----",user_id,amount,security_symbol,"-----")
+        logger.info(f"Initiating Zerodha Buy: User={user_id}, Amount={amount}, Symbol={security_symbol}")
         try:
             browser = playwright.chromium.launch(headless=headless)
             context = browser.new_context(
@@ -91,7 +94,7 @@ def zerodha_buy(
                 time.sleep(1)
                 
             time.sleep(1)
-            print(price)
+            logger.info(f"Retrieved price for {security_symbol}: {price}")
             p = Base.parse_float(price)
             q = str(int((amount/5 - 1) / p))
             p1 = str(round(Base.parse_float(p * .9975),2))
@@ -99,8 +102,8 @@ def zerodha_buy(
             p3 = str(round(Base.parse_float(p * .9925),2))
             p4 = str(round(Base.parse_float(p * .99),2))
             p5 = str(round(Base.parse_float(p * .9875),2))
-            print(p, p1, p2, p3, p4, p5)
             target_prices = [p1, p2, p3, p4, p5]
+            logger.info(f"Target prices for {security_symbol}: {target_prices}, Qty per order: {q}")
 
             # Buy 5 orders
             for k in target_prices:
@@ -118,7 +121,6 @@ def zerodha_buy(
                     page.get_by_role("button", name="Buy").click()
                     time.sleep(1)
                 except Exception as e:
-                    print(e)
                     page.keyboard.press('B')
                     page.get_by_text("Regular").click()
 
@@ -132,13 +134,13 @@ def zerodha_buy(
                     page.get_by_role("button", name="Buy").click()
                     time.sleep(1)
             
-            logger(file_path,amt_symbl,"Baught")
-
+            logger.audit(f"AUDIT: Buy order placed | User: {user_id} | Symbol: {security_symbol} | Qty: {q} x 5 | Target prices: {target_prices}")
+            legacy_logger(file_path, amt_symbl, "Bought")
             return 1
 
         except Exception as e:
-            logger(file_path,amt_symbl,"not baught for some Exception")
-            import traceback
+            logger.exception(f"Buy orders failed for {security_symbol} (User: {user_id}): {e}")
+            legacy_logger(file_path, amt_symbl, "not bought for some Exception")
             return 0
         
         finally:

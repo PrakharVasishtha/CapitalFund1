@@ -5,6 +5,9 @@ from ipo_ExtractGMP import get_ipo_gmp
 from ipo_ExtractReview import has_dicey_word
 from ipo_ExtractSubscription import get_ipo_subscription_live
 from common_foundation import dprint
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def update_row_3pm(row: int, type1: str):
@@ -102,17 +105,17 @@ def update_row_3pm(row: int, type1: str):
                         ws.cell(row, 34, AH)
                         ws.cell(row, 35, AI_tot)
                 except Exception as f_err:
-                    print(f"Formula calculation notice for row {row}: {f_err}")
+                    logger.debug(f"Formula calculation notice for row {row}: {f_err}")
 
                 try:
                     safe_save_workbook(wb, path)
-                    print(f"update_3pm Successfully updated details for row {row} ({name1})")
+                    logger.info(f"update_3pm Successfully updated details for row {row} ({name1})")
                 except PermissionError:
-                    print(f"update_3pm Error: Permission denied. Please ensure '{path}' is closed.")
+                    logger.error(f"update_3pm Error: Permission denied. Please ensure '{path}' is closed.")
                 except Exception as e:
-                    print(f"update_3pm An error occurred while saving the file: {e}")
+                    logger.error(f"update_3pm An error occurred while saving the file: {e}", exc_info=True)
             else:
-                print("name is empty in sheet at:", row)
+                logger.warning(f"Name is empty in sheet at row: {row}")
     finally:
         wb.close()
 

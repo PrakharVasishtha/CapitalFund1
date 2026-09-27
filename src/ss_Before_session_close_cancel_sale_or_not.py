@@ -26,10 +26,20 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+import Base
 from Base import load_credentials
 from allotment_update import get_allotted_holdings_path
 from special_session_indicative_price_nse import get_ipo_indicative_price
 from special_sesion_zerodha_sell import zerodha_cancel_order
+from config import (
+    MAINBOARD_LOSS_CANCEL_THRESHOLD_PCT,
+    SME_DISCOUNT_CANCEL_THRESHOLD_PCT,
+    SpecialSessionStatus,
+    RegularSessionStatus,
+)
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -41,22 +51,22 @@ def sale_order_cancel_or_not():
     Updates special_session_status and regular_session_status in allotted_holdings.xlsx
     according to action taken based on README.md status code definitions.
     """
-    print("-----------special_session_monitor (09:32 AM Cancel Check)---------")
+    logger.info("-----------special_session_monitor (09:32 AM Cancel Check)---------")
 
     users = load_credentials(CREDENTIALS_FILE)
     if not users:
-        print("special_session_monitor: No user credentials found.")
+        logger.warning("special_session_monitor: No user credentials found.")
         return
 
     excel_path = get_allotted_holdings_path()
     if not os.path.exists(excel_path):
-        print(f"special_session_monitor: Excel file not found at '{excel_path}'")
+        logger.error(f"special_session_monitor: Excel file not found at '{excel_path}'")
         return
 
     try:
-        wb = openpyxl.load_workbook(excel_path)
+        wb = Base.safe_load_workbook(excel_path)
     except Exception as e:
-        print(f"special_session_monitor: Error loading workbook '{excel_path}': {e}")
+        logger.error(f"special_session_monitor: Error loading workbook '{excel_path}': {e}", exc_info=True)
         return
 
     file_changed = False
@@ -108,34 +118,34 @@ def sale_order_cancel_or_not():
 
             category = "sme" if lot_size >= 100 else "mb"
 
-            print(f"\nChecking [{uci_user}] Symbol: '{security_symbol}' | Exchange: {exchange} | Issue Price: {issue_price} | Category: {category}")
+            logger.info(f"Checking [{uci_user}] Symbol: '{security_symbol}' | Exchange: {exchange} | Issue Price: {issue_price} | Category: {category}")
 
             # Fetch pre-open indicative price (IEP)
             try:
                 price_info = get_ipo_indicative_price(symbol=security_symbol, exchange=exchange)
             except Exception as e:
-                print(f"Error fetching indicative price for {security_symbol}: {e}")
+                logger.error(f"Error fetching indicative price for {security_symbol}: {e}", exc_info=True)
                 price_info = {"indicative_price": 0.0}
 
             indicative_price = price_info.get("indicative_price", 0.0) if isinstance(price_info, dict) else float(price_info or 0.0)
-            print(f"Result for {security_symbol}: IEP = {indicative_price}")
+            logger.info(f"Result for {security_symbol}: IEP = {indicative_price}")
 
             loss_percent = 0.0
             if issue_price > 0 and indicative_price > 0 and issue_price > indicative_price:
                 loss_percent = ((issue_price - indicative_price) / issue_price) * 100.0
 
-            print(f"Calculated discount/loss %: {loss_percent:.2f}%")
+            logger.info(f"Calculated discount/loss %: {loss_percent:.2f}%")
 
             # Decision rules to CANCEL order per README:
             # SME loss_percent > 0  OR  Mainboard loss_percent > 11.9
             should_cancel = False
-            if category == "sme" and loss_percent > 0:
+            if category == "sme" and loss_percent > SME_DISCOUNT_CANCEL_THRESHOLD_PCT:
                 should_cancel = True
-            elif category == "mb" and loss_percent > 11.9:
+            elif category == "mb" and loss_percent > MAINBOARD_LOSS_CANCEL_THRESHOLD_PCT:
                 should_cancel = True
 
             if should_cancel:
-                print(f"Triggering order CANCEL for {security_symbol} (User: {uci_user}, Loss %: {loss_percent:.2f}%)...")
+                logger.info(f"Triggering order CANCEL for {security_symbol} (User: {uci_user}, Loss %: {loss_percent:.2f}%)...")
                 if client_id and password_user and totp_broker:
                     try:
                         success, msg = zerodha_cancel_order(
@@ -144,37 +154,46 @@ def sale_order_cancel_or_not():
                             totp_secret=totp_broker,
                             security_symbol=security_symbol
                         )
-                        print(f"Cancel execution output: {msg}")
+                        logger.info(f"Cancel execution output: {msg}")
                         if success:
-                            # Per README.md:
-                            # special_session_status = 3 ("Not sold in special session")
-                            # regular_session_status = 1 ("Regular session sell started if not sold in special session")
-                            ws.cell(r, spl_status_col, 3)
-                            ws.cell(r, reg_status_col, 1)
+                            logger.audit(
+                                f"[AUDIT] Pre-Open Order CANCELED: Symbol={security_symbol}, User={uci_user}, Category={category}, "
+                                f"IEP=₹{indicative_price}, Loss%={loss_percent:.2f}%"
+                            )
+                            ws.cell(r, spl_status_col, SpecialSessionStatus.CANCELED)
+                            ws.cell(r, reg_status_col, RegularSessionStatus.ELIGIBLE)
                             file_changed = True
+                        else:
+                            logger.warning(f"Failed to cancel order for {security_symbol}: {msg}")
                     except Exception as e:
-                        print(f"Failed to cancel order for {security_symbol}: {e}")
+                        logger.error(f"Failed to cancel order for {security_symbol}: {e}", exc_info=True)
                 else:
-                    print(f"Missing credentials for {uci_user}, cannot cancel sell order.")
+                    logger.warning(f"Missing credentials for {uci_user}, cannot cancel sell order.")
             else:
-                # Order NOT canceled -> allowed to execute in special pre-open session
-                # Per README.md:
-                # special_session_status = 2 ("Sold in special pre-open session")
-                # regular_session_status = 0 ("Not started")
-                print(f"Keeping LC sell order active for {security_symbol} (Sold in special session).")
-                ws.cell(r, spl_status_col, 2)
-                ws.cell(r, reg_status_col, 0)
+                logger.info(f"Keeping LC sell order active for {security_symbol} (Sold in special session).")
+                logger.audit(
+                    f"[AUDIT] Pre-Open Order RETAINED (Sold): Symbol={security_symbol}, User={uci_user}, Category={category}, "
+                    f"IEP=₹{indicative_price}, Loss%={loss_percent:.2f}%"
+                )
+                ws.cell(r, spl_status_col, SpecialSessionStatus.SOLD)
+                ws.cell(r, reg_status_col, RegularSessionStatus.NOT_STARTED)
                 file_changed = True
 
     if file_changed:
         try:
-            wb.save(excel_path)
-            print("\nspecial_session_monitor: Successfully saved status updates to allotted_holdings.xlsx per README.md")
+            Base.safe_save_workbook(wb, excel_path)
+            logger.info("special_session_monitor: Successfully saved status updates to allotted_holdings.xlsx")
+            # Dual-Tier SQLite synchronization
+            try:
+                import database
+                database.import_allotted_holdings_from_excel()
+            except Exception as dberr:
+                logger.error(f"special_session_monitor: SQLite sync error: {dberr}", exc_info=True)
         except Exception as e:
-            print(f"special_session_monitor: Error saving workbook: {e}")
+            logger.error(f"special_session_monitor: Error saving workbook: {e}", exc_info=True)
 
     wb.close()
-    print("special_session_monitor pass completed.")
+    logger.info("special_session_monitor pass completed.")
 
 
 if __name__ == "__main__":

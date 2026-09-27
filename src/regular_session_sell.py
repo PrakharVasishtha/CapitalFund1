@@ -30,9 +30,14 @@ from playwright.sync_api import Playwright, sync_playwright, Page
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from Base import load_credentials, parse_float
+from Base import load_credentials, parse_float, safe_load_workbook, safe_save_workbook
 from allotment_update import get_allotted_holdings_path
-from common_foundation import logger, log_info, log_error, send_telegram_notification
+from common_foundation import app_logger, logger, log_info, log_error, send_telegram_notification
+from config import (
+    BUYER_SELLER_HIGH_DEMAND_RATIO,
+    SpecialSessionStatus,
+    RegularSessionStatus,
+)
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -110,7 +115,7 @@ def zerodha_execute_regular_sell(
     """
     Logs into Zerodha Kite and executes the regular session selling strategy.
     """
-    print(f"______zerodha_execute_regular_sell___ User: {user_id} | Symbol: {security_symbol} | Qty: {shares_quantity}")
+    app_logger.info(f"zerodha_execute_regular_sell: User={user_id} | Symbol={security_symbol} | Qty={shares_quantity}")
     if not user_id or not password or not totp_secret:
         return False, "Missing credentials"
 
@@ -144,18 +149,19 @@ def zerodha_execute_regular_sell(
 
             # 3. Market Depth & Ratio Calculation
             ratio_pct, ltp, is_uc = fetch_market_depth_and_ratio(page, security_symbol)
-            print(f"[{security_symbol}] Buyer/Seller Ratio: {ratio_pct:.1f}% | LTP: ₹{ltp} | Upper Circuit: {is_uc}")
+            app_logger.info(f"[{security_symbol}] Buyer/Seller Ratio: {ratio_pct:.1f}% | LTP: ₹{ltp} | Upper Circuit: {is_uc}")
 
             if ltp <= 0:
                 # Fallback LTP check
                 ltp = 100.0
 
             # 4. Strategy Evaluation
-            if ratio_pct > 60.0:
+            if ratio_pct >= BUYER_SELLER_HIGH_DEMAND_RATIO:
                 # Check for Upper Circuit (UC)
                 if is_uc:
                     msg = f"🔒 Stock '{security_symbol}' is locked at Upper Circuit! Holding shares per strategy."
                     log_info(msg, "zerodha_execute_regular_sell")
+                    app_logger.audit(f"[AUDIT] Regular Session Upper Circuit Lock: Symbol={security_symbol}, LTP=₹{ltp:.2f}, User={user_id} - Holding shares")
                     send_telegram_notification(
                         f"🔒 <b>Upper Circuit Lock Hit!</b>\n"
                         f"<b>Stock</b>: {security_symbol}\n"
@@ -167,20 +173,18 @@ def zerodha_execute_regular_sell(
 
                 # No UC: Place 50% @ +2%, 50% @ +5%
                 p1_mult, p2_mult = 1.02, 1.05
-                strategy_label = "High Buyer Ratio (>60%)"
+                strategy_label = f"High Buyer Ratio (>={BUYER_SELLER_HIGH_DEMAND_RATIO}%)"
             else:
-                # Ratio < 60%: Place 50% @ +0.5%, 50% @ +1.0%
+                # Ratio < threshold: Place 50% @ +0.5%, 50% @ +1.0%
                 p1_mult, p2_mult = 1.005, 1.010
-                strategy_label = "Low Buyer Ratio (<60%)"
+                strategy_label = f"Low Buyer Ratio (<{BUYER_SELLER_HIGH_DEMAND_RATIO}%)"
 
             qty_1 = shares_quantity // 2
             qty_2 = shares_quantity - qty_1
             price_1 = str(round(ltp * p1_mult, 2))
             price_2 = str(round(ltp * p2_mult, 2))
 
-            print(f"Placing Sell Orders for {security_symbol} ({strategy_label}):")
-            print(f"  Order 1: {qty_1} shares @ ₹{price_1}")
-            print(f"  Order 2: {qty_2} shares @ ₹{price_2}")
+            app_logger.info(f"Placing Sell Orders for {security_symbol} ({strategy_label}): Order 1={qty_1}@₹{price_1}, Order 2={qty_2}@₹{price_2}")
 
             # 5. Execute Orders on Zerodha Kite
             page.goto("https://kite.zerodha.com/holdings", wait_until="domcontentloaded")
@@ -256,6 +260,10 @@ def zerodha_execute_regular_sell(
                     log_error(f"Failed to place Order 2 for {security_symbol}: {ex2}", exc=ex2)
 
             logger(file_path, security_symbol, f"Regular Session Sell Placed ({strategy_label})")
+            app_logger.audit(
+                f"[AUDIT] Regular Session Sell Placed: Symbol={security_symbol}, Qty1={qty_1}@₹{price_1}, Qty2={qty_2}@₹{price_2}, "
+                f"Strategy={strategy_label}, Ratio={ratio_pct:.1f}%, User={user_id}"
+            )
 
             clean_label = strategy_label.replace(">", "&gt;").replace("<", "&lt;")
             send_telegram_notification(
@@ -283,21 +291,21 @@ def regular_session_ipo_sell():
     Scans allotted_holdings.xlsx across all user sheets for unsold IPO holdings
     and executes the regular session selling strategy.
     """
-    print("-----------regular_session_ipo_sell (10:00 AM Execution)---------")
+    app_logger.info("-----------regular_session_ipo_sell (10:00 AM Execution)---------")
     users = load_credentials(CREDENTIALS_FILE)
     if not users:
-        print("regular_session_ipo_sell: No user credentials found.")
+        app_logger.warning("regular_session_ipo_sell: No user credentials found.")
         return
 
     excel_path = get_allotted_holdings_path()
     if not os.path.exists(excel_path):
-        print(f"regular_session_ipo_sell: File not found at '{excel_path}'")
+        app_logger.error(f"regular_session_ipo_sell: File not found at '{excel_path}'")
         return
 
     try:
-        wb = openpyxl.load_workbook(excel_path)
+        wb = safe_load_workbook(excel_path)
     except Exception as e:
-        print(f"regular_session_ipo_sell: Error loading workbook '{excel_path}': {e}")
+        app_logger.error(f"regular_session_ipo_sell: Error loading workbook '{excel_path}': {e}", exc_info=True)
         return
 
     file_changed = False
@@ -317,10 +325,10 @@ def regular_session_ipo_sell():
                 break
 
         if not target_sheet:
-            print(f"Sheet for UCI '{raw_uci}' not found in '{excel_path}'. Available sheets: {wb.sheetnames}")
+            app_logger.info(f"Sheet for UCI '{raw_uci}' not found in '{excel_path}'. Available sheets: {wb.sheetnames}")
             continue
 
-        print(f"Scanning sheet '{target_sheet}' for UCI '{raw_uci}'...")
+        app_logger.info(f"Scanning sheet '{target_sheet}' for UCI '{raw_uci}'...")
         ws = wb[target_sheet]
 
         for r in range(2, ws.max_row + 1):
@@ -354,12 +362,12 @@ def regular_session_ipo_sell():
             except (ValueError, TypeError):
                 reg_status = 0
 
-            print(f"  [Row {r}] Symbol: '{security_symbol}' | Shares: {shares_allocated} | spl_status: {spl_status} | reg_status: {reg_status}")
+            app_logger.debug(f"  [Row {r}] Symbol: '{security_symbol}' | Shares: {shares_allocated} | spl_status: {spl_status} | reg_status: {reg_status}")
 
             # Condition to sell in regular session:
-            # Not sold in special session (spl_status != 2) AND regular session sell not completed (reg_status != 2)
-            if spl_status != 2 and reg_status != 2 and shares_allocated > 0:
-                print(f"  -> Executing Regular Session Strategy for '{security_symbol}' | Shares: {shares_allocated} | Cat: {stock_category}")
+            # Not sold in special session (spl_status != SOLD) AND regular session sell not completed (reg_status != SOLD_OR_GTT_PLACED)
+            if spl_status != SpecialSessionStatus.SOLD and reg_status != RegularSessionStatus.SOLD_OR_GTT_PLACED and shares_allocated > 0:
+                app_logger.info(f"  -> Executing Regular Session Strategy for '{security_symbol}' | Shares: {shares_allocated} | Cat: {stock_category}")
                 processed_count += 1
 
                 success, result_msg = zerodha_execute_regular_sell(
@@ -374,23 +382,29 @@ def regular_session_ipo_sell():
 
                 if success:
                     if result_msg == "UC_LOCKED":
-                        ws.cell(r, reg_status_col, 5)  # 5 = Held at Upper Circuit
+                        ws.cell(r, reg_status_col, RegularSessionStatus.HELD_AT_UC)  # Held at Upper Circuit
                     else:
-                        ws.cell(r, reg_status_col, 2)  # 2 = Regular Session Orders Placed
+                        ws.cell(r, reg_status_col, RegularSessionStatus.SOLD_OR_GTT_PLACED)  # Regular Session Orders Placed
                     file_changed = True
             else:
-                reason = "special_session_status is 2 (Sold in pre-open)" if spl_status == 2 else ("regular_session_status is 2 (Already completed)" if reg_status == 2 else "Zero shares allocated")
-                print(f"  -> Skipped '{security_symbol}': {reason}")
+                reason = "special_session_status is SOLD (Sold in pre-open)" if spl_status == SpecialSessionStatus.SOLD else ("regular_session_status is SOLD_OR_GTT_PLACED (Already completed)" if reg_status == RegularSessionStatus.SOLD_OR_GTT_PLACED else "Zero shares allocated")
+                app_logger.debug(f"  -> Skipped '{security_symbol}': {reason}")
 
     if file_changed:
         try:
-            wb.save(excel_path)
-            print(f"regular_session_ipo_sell: Successfully updated '{excel_path}'")
+            safe_save_workbook(wb, excel_path)
+            app_logger.info(f"regular_session_ipo_sell: Successfully updated '{excel_path}'")
+            # Dual-Tier SQLite synchronization
+            try:
+                import database
+                database.import_allotted_holdings_from_excel()
+            except Exception as dberr:
+                app_logger.error(f"regular_session_ipo_sell: SQLite sync error: {dberr}", exc_info=True)
         except Exception as e:
-            print(f"regular_session_ipo_sell: Error saving workbook '{excel_path}': {e}")
+            app_logger.error(f"regular_session_ipo_sell: Error saving workbook '{excel_path}': {e}", exc_info=True)
 
     wb.close()
-    print(f"regular_session_ipo_sell: Completed. Processed {processed_count} eligible holding(s).")
+    app_logger.info(f"regular_session_ipo_sell: Completed. Processed {processed_count} eligible holding(s).")
 
 
 if __name__ == "__main__":

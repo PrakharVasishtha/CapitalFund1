@@ -1,0 +1,123 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# === CapitalFund1 Specific ===
+# Credentials and secrets
+credentials.json
+
+# Excel data files (generated at runtime)
+*.xlsx
+*.xls
+
+# Temporary files
+*.tmp_*
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Debug and test files
+scratch/
+*.txt
+logs/
+*.log
+
+# Images and media
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+
+# Backup files
+*~
+*.bak
+*.tmp
+
+# Python bytecode
+*.pyc
+
+# Specific files to ignore
+1.txt
+2.txt
+code.txt
+system.txt
+MFB802.txt
+PUT824.txt
+kotak_error.png
+
+# Empty Excel templates (keep structure but not data)
+General.xlsx
+Master.xlsx
+allotted_holdings.xlsx
+IPO-applied.xlsx
+lc_uc_holdings.xlsx
+uc_lc_holdings.xlsx
+
+# __pycache__
+src/__pycache__/
+src/**/__pycache__/

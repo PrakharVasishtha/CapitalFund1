@@ -3,7 +3,11 @@ import time
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 from Base import get_netbanking_otp, load_credentials
 import difflib
-from common_foundation import logger
+from common_foundation import logger as legacy_logger
+from config import HNI_MINIMUM_THRESHOLD
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def calculate_lot_minimum_hni(min_shares_str: str, higher_price_str: str, type_ipo: str):
@@ -14,7 +18,7 @@ def calculate_lot_minimum_hni(min_shares_str: str, higher_price_str: str, type_i
             higher_price = float(higher_price_str.replace('₹', '').replace(',', '').strip())
             lot_value = min_shares * higher_price
             import math
-            lots_needed = math.ceil(200001 / lot_value)
+            lots_needed = math.ceil(HNI_MINIMUM_THRESHOLD / lot_value)
             total_shares = lots_needed * min_shares
             return total_shares
 
@@ -106,8 +110,11 @@ async def apply_to_ipo(
             sub1 = '(SUBJECT "Net Banking login" UNSEEN)'
             otp1 = get_netbanking_otp(EMAIL_USR, EMAIL_PSS, sub1)
             print("OTP 1:", otp1)
+            if not otp1:
+                print("❌ OTP 1 not received for Kotak login")
+                return "OTP not received"
             time.sleep(1)
-            await page.keyboard.type(otp1, delay=100)
+            await page.keyboard.type(str(otp1), delay=100)
 
             # ─── LOGIN BUTTON ────────────────────────────────────────
             print("Clicking Login...")
@@ -531,15 +538,16 @@ async def apply_to_ipo(
             await page.screenshot(path="error-screenshot.png")
             print("Error screenshot saved.")
             return "Error in Applying"
-        time.sleep(1)
-
-        await context.close()
-        await browser.close()
+        finally:
+            if 'context' in locals():
+                await context.close()
+            if 'browser' in locals():
+                await browser.close()
 
 def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
     credentials_file = "credentials.json"
     users = load_credentials(credentials_file)
-    # Users
+    logger.info(f"Applying to IPO '{ipo_name}' ({type_ipo.upper()}) for {len(users)} user(s)")
     for user in users:
         uci = user.get("uci")
         bank_user = user.get("bank_user")
@@ -547,17 +555,26 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
         email_user = user.get("email_user")
         email_password = user.get("email_password")
 
-        result = asyncio.run(apply_to_ipo(ipo_name=ipo_name,USER_ID=bank_user,PASSWORD=bank_password,EMAIL_USR=email_user,EMAIL_PSS= email_password,type_ipo=type_ipo))
-        print("IPO",ipo_name,"result:",result)
-        file_path=uci+".txt"
-        logger(file_path,ipo_name,result)
+        result = asyncio.run(apply_to_ipo(
+            ipo_name=ipo_name,
+            USER_ID=bank_user,
+            PASSWORD=bank_password,
+            EMAIL_USR=email_user,
+            EMAIL_PSS=email_password,
+            type_ipo=type_ipo
+        ))
+        logger.info(f"IPO '{ipo_name}' application result for UCI {uci}: {result}")
+        file_path = f"{uci}.txt"
+        legacy_logger(file_path, ipo_name, result)
 
-        # Record application in IPO-applied.xlsx
+        logger.audit(f"AUDIT: IPO applied | UCI: {uci} | IPO: {ipo_name} | Category: {type_ipo} | Result: {result or 'Applied Successfully'}")
+
+        # Record application in IPO-applied.xlsx and SQLite
         try:
             from ipo_applied_manager import record_ipo_application
             record_ipo_application(uci=uci, ipo_name=ipo_name, type_ipo=type_ipo)
         except Exception as err:
-            print(f"Error recording IPO application in IPO-applied.xlsx: {err}")
+            logger.exception(f"Error recording IPO application in database/Excel: {err}")
 
         try:
             from common_foundation import send_telegram_notification

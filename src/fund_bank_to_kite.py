@@ -3,6 +3,9 @@ import openpyxl
 import Base
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 def withdraw_bank_to_kite(
         user_uci: int,
@@ -19,7 +22,7 @@ def withdraw_bank_to_kite(
 ) -> tuple[bool, str]:
 
     def run(playwright: Playwright) -> tuple[bool, str]:
-        print(user_uci, "reqrd to withdrw frm zerodha", amount)
+        logger.info(f"User UCI {user_uci}: Initiating fund transfer from Kotak to Kite for ₹{amount}")
         amount_str = str(amount)
         msg_log = "e"
         try:
@@ -70,23 +73,29 @@ def withdraw_bank_to_kite(
             page1.get_by_role("link", name="SECURE LOGIN").click()
             sub = '(SUBJECT "SMS2EMAIL" UNSEEN)'
             otp1 = Base.get_netbanking_otp_sms(EMAIL_USR, EMAIL_PSS, sub)
+            if not otp1:
+                logger.warning(f"User {user_uci}: OTP not received via SMS forwarder")
+                page1.close()
+                return False, "OTP not received"
+
             page1.locator("#dynamic-access").click()
-            page1.locator("#dynamic-access").click()
-            page1.locator("#dynamic-access").click()
-            page1.locator("#dynamic-access").fill(otp1)
+            page1.locator("#dynamic-access").fill(str(otp1))
             page1.get_by_role("link", name="Verify").click()
             page1.get_by_role("link", name="CONFIRM").dblclick()
             page1.get_by_role("button", name="Close").click()
             page1.close()
-            return True, f"Success"
+            logger.audit(f"AUDIT: Bank to Kite fund transfer successful | UCI: {user_uci} | Amount: ₹{amount}")
+            return True, "Success"
 
         except Exception as e:
-            print(f"❌ Error: {e}")
-            return False, f"Withdrawal failed"
+            logger.exception(f"Bank to Kite fund transfer failed for UCI {user_uci}: {e}")
+            return False, f"Withdrawal failed: {e}"
 
         finally:
-            context.close()
-            browser.close()
+            if 'context' in locals():
+                context.close()
+            if 'browser' in locals():
+                browser.close()
 
     # ── Execute ─────────────────────────────────────────────────────
     with sync_playwright() as playwright:

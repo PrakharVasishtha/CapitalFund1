@@ -2,6 +2,9 @@ import asyncio
 import time
 import re
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 async def get_kotak_balance(
@@ -11,7 +14,7 @@ async def get_kotak_balance(
     EMAIL_PSS= "fds"):
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False, slow_mo=500)
+        browser = await p.chromium.launch(headless=True, slow_mo=500)
         context = await browser.new_context(
             viewport={'width': 1366, 'height': 768},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -19,7 +22,7 @@ async def get_kotak_balance(
         page = await context.new_page()
 
         try:
-            print("🚀 Navigating to Kotak Net Banking...")
+            logger.info(f"Navigating to Kotak Net Banking for User {USER_ID}...")
             await page.goto("https://netbanking.kotak.bank.in/knb2/",
                             wait_until="networkidle", timeout=60000)
 
@@ -39,68 +42,60 @@ async def get_kotak_balance(
 
             sub1 = '(SUBJECT "Net Banking login" UNSEEN)'
 
-            from Base import get_netbanking_otp  # assuming this exists
+            from Base import get_netbanking_otp
             otp1 = get_netbanking_otp(EMAIL_USR, EMAIL_PSS, sub1)
-            print("OTP received:", otp1)
+            logger.info(f"OTP received for Kotak login: {bool(otp1)}")
+            if not otp1:
+                logger.error("OTP not received for Kotak login")
+                return 0
 
-            await page.get_by_role("textbox", name=re.compile("otp|OTP", re.I)).fill(otp1)
+            await page.get_by_role("textbox", name=re.compile("otp|OTP", re.I)).fill(str(otp1))
             await page.get_by_role("button", name=re.compile("Secure login|Login", re.I)).click()
 
             # Wait for dashboard to fully load
             await page.wait_for_load_state("networkidle", timeout=30000)
-            await page.wait_for_timeout(3000)  # extra safety
+            await page.wait_for_timeout(3000)
 
             # ─── Extract Balance ─────────────────────────────
-            print("\n🔍 Trying to extract balance...")
-
+            logger.info("Extracting Kotak balance from dashboard...")
             balance_texts = []
 
-
-
-            # Method 4: Click on "View balance" / "Accounts" if needed
             try:
                 await page.get_by_text("View balance", exact=False).first.click()
                 await page.wait_for_timeout(2000)
                 b4 = await page.locator("text=₹").first.inner_text()
                 balance_texts.append(b4.strip())
-            except:
+            except Exception:
                 pass
-            print("Balance texts:", balance_texts)
-            # ─── Print all found balances ─────────────────────
-            print("\n=== BALANCE RESULTS ===")
-            for i, txt in enumerate(balance_texts, 1):
-                print(f"Found {i}: {txt}")
 
-            # Clean and parse the best one (remove ₹, commas, etc.)
             if balance_texts:
                 raw = balance_texts[0]
-                # Extract numbers only
                 cleaned = re.sub(r'[^\d.]', '', raw.replace(',', ''))
                 try:
                     balance = int(float(cleaned))
-                    print(f"\n✅ Parsed Balance: ₹ {balance}")
+                    logger.info(f"Parsed Kotak Balance for {USER_ID}: ₹{balance}")
                     return balance
-                except:
-                    print(f"\nRaw balance (could not parse): {raw}")
+                except Exception:
+                    logger.warning(f"Could not parse raw balance: {raw}")
                     return 0
             else:
-                print("❌ No balance text found. Taking screenshot...")
+                logger.warning("No balance text found on Kotak dashboard.")
                 await page.screenshot(path="kotak_balance_not_found.png")
                 return 0
 
-            # Optional: Navigate to full account overview
-            await page.get_by_text("Accounts/Deposits", exact=False).click()
-            await page.wait_for_timeout(2000)
-
         except Exception as e:
-            print(f"❌ Error: {e}")
-            await page.screenshot(path="kotak_error.png")
-            print("Screenshot saved: kotak_error.png")
+            logger.exception(f"Error fetching Kotak balance for {USER_ID}: {e}")
+            try:
+                await page.screenshot(path="kotak_error.png")
+            except Exception:
+                pass
+            return 0
 
-
-        await context.close()
-        await browser.close()
-        return 0
+        finally:
+            if 'context' in locals():
+                await context.close()
+            if 'browser' in locals():
+                await browser.close()
 
 
 # Run the script

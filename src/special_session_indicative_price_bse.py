@@ -9,6 +9,9 @@ import re
 import time
 import requests
 from playwright.sync_api import Playwright, sync_playwright
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_bse_price_api(scripcode: str) -> float:
@@ -39,7 +42,7 @@ def get_bse_price_api(scripcode: str) -> float:
                 if cleaned:
                     return float(cleaned)
     except Exception as e:
-        print(f"BSE API error for scripcode {scripcode}: {e}")
+        logger.error(f"BSE API error for scripcode {scripcode}: {e}", exc_info=True)
     return 0.0
 
 
@@ -95,12 +98,12 @@ def ipo_indicative_price_bse(
             time.sleep(2)
 
             raw_text = page.locator("#idcrval").inner_text(timeout=5000)
-            print(f"BSE rate text for {ipo_name_clean}: {raw_text}")
+            logger.info(f"BSE rate text for {ipo_name_clean}: {raw_text}")
             cleaned = re.sub(r"[^\d.]", "", raw_text)
             if cleaned:
                 price_val = float(cleaned)
         except Exception as e:
-            print(f"ipo_indicative_price_bse Error for {ipo_name_clean}: {e}")
+            logger.error(f"ipo_indicative_price_bse Error for {ipo_name_clean}: {e}", exc_info=True)
         finally:
             context.close()
             browser.close()

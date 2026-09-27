@@ -22,6 +22,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from allotment_update import excel_holdings
 from Base import load_credentials
 from allotment_fetch import fetch_allotment_holdings
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -32,10 +35,9 @@ def ipo_allotment_manager():
       - Fetches Zerodha Holdings, filtering out default SMWS ETFs and market indices.
       - If a new allotment symbol is detected, registers and enriches it in
         allotted_holdings.xlsx via excel_holdings().
-      - Prints a summary message for each user.
+      - Logs audit events and sends summary notifications.
     """
-    print(
-        "-----------ipo_allotment_manager----------")
+    logger.info("-----------ipo_allotment_manager: Checking Zerodha portfolios for new allotments----------")
     users = load_credentials(CREDENTIALS_FILE)
     for user in users:
         uci_user = user.get("uci")
@@ -51,9 +53,9 @@ def ipo_allotment_manager():
                 totp_secret=topt_broker,
             )
             if holdings:
-                print(f"Allotment found for {uci_user}: {holdings}")
+                logger.info(f"Allotment found for UCI {uci_user}: {holdings}")
         except Exception as e:
-            print(f"ipo_allotment_manager: fetch_allotment_holdings failed for {uci_user}: {e}")
+            logger.exception(f"ipo_allotment_manager: fetch_allotment_holdings failed for {uci_user}: {e}")
 
         if holdings:
             try:
@@ -69,16 +71,17 @@ def ipo_allotment_manager():
                         sym = str(sym_entry)
                         qty = 0
 
-                    print(f"Processing allotment for {uci_user}: Symbol={sym}, Quantity={qty}")
+                    logger.info(f"Processing allotment for UCI {uci_user}: Symbol={sym}, Quantity={qty}")
+                    logger.audit(f"AUDIT: Allotment detected | UCI: {uci_user} | Symbol: {sym} | Quantity: {qty}")
                     excel_holdings(uci_user, holding_symbol=sym, shares_allocated=qty)
             except Exception as e:
-                print(f"ipo_allotment_manager: excel_holdings failed for {uci_user}: {e}")
+                logger.exception(f"ipo_allotment_manager: excel_holdings failed for {uci_user}: {e}")
         else:
-            print("No allotment found for user:", uci_user)
+            logger.info(f"No new allotment found for user: {uci_user}")
     try:
-        send_email_with_excel(mail_subject="IPO Data Updated",mail_content="IPO Data Updated",path_of_file='allotted_holdings.xlsx')
+        send_email_with_excel(mail_subject="IPO Data Updated", mail_content="IPO Data Updated", path_of_file='allotted_holdings.xlsx')
     except Exception as e:
-        print("Cant send allotted_holdings.xlsx")
+        logger.warning(f"Could not send allotted_holdings.xlsx via email: {e}")
 
 
 if __name__ == "__main__":

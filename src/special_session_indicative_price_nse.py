@@ -11,6 +11,9 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from special_session_indicative_price_bse import ipo_indicative_price_bse
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
@@ -59,7 +62,7 @@ def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
                     if meta.get("symbol", "").upper() == symbol_upper:
                         detail = item.get("detail", {}).get("preOpenMarket", {})
                         iep = detail.get("IEP") or meta.get("iep") or meta.get("lastPrice")
-                        return {
+                        res_val = {
                             "exchange": "NSE",
                             "symbol": symbol_upper,
                             "indicative_price": float(iep) if iep is not None else 0.0,
@@ -71,6 +74,8 @@ def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
                             "last_update_time": detail.get("lastUpdateTime"),
                             "error": None
                         }
+                        logger.info(f"NSE Pre-open IEP fetched for {symbol_upper}: ₹{res_val['indicative_price']}")
+                        return res_val
 
             # 3. Fallback attempt using curl_cffi for direct quote API
             try:
@@ -83,7 +88,7 @@ def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
                     qdata = res2.json()
                     preopen = qdata.get("preOpenMarket", {})
                     iep = preopen.get("IEP")
-                    return {
+                    res_val = {
                         "exchange": "NSE",
                         "symbol": symbol_upper,
                         "indicative_price": float(iep) if iep is not None else 0.0,
@@ -95,9 +100,12 @@ def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
                         "last_update_time": preopen.get("lastUpdateTime"),
                         "error": None
                     }
-            except Exception:
-                pass
+                    logger.info(f"NSE Fallback Pre-open IEP fetched for {symbol_upper}: ₹{res_val['indicative_price']}")
+                    return res_val
+            except Exception as c_err:
+                logger.debug(f"NSE curl_cffi fallback error: {c_err}")
 
+            logger.warning(f"Symbol '{symbol_upper}' not found in NSE pre-open data")
             return {
                 "exchange": "NSE",
                 "symbol": symbol_upper,
@@ -106,6 +114,7 @@ def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
             }
 
         except Exception as e:
+            logger.error(f"Error querying NSE pre-open data for {symbol_upper}: {e}", exc_info=True)
             return {
                 "exchange": "NSE",
                 "symbol": symbol_upper,
@@ -116,6 +125,7 @@ def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
     elif exchange_upper == "BSE":
         try:
             bse_price = ipo_indicative_price_bse(symbol, exchange="BSE")
+            logger.info(f"BSE Pre-open IEP fetched for {symbol_upper}: ₹{bse_price}")
             return {
                 "exchange": "BSE",
                 "symbol": symbol_upper,
@@ -123,6 +133,7 @@ def get_ipo_indicative_price(symbol: str, exchange: str = "NSE") -> dict:
                 "error": None
             }
         except Exception as e:
+            logger.error(f"Error querying BSE pre-open data for {symbol_upper}: {e}", exc_info=True)
             return {
                 "exchange": "BSE",
                 "symbol": symbol_upper,

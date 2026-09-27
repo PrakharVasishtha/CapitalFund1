@@ -18,8 +18,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import openpyxl
 import Base
+from config import SpecialSessionStatus
 from allotment_update import get_allotted_holdings_path
 from special_sesion_zerodha_sell import zerodha_sell_lc
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 CREDENTIALS_FILE = "credentials.json"
 
@@ -29,18 +33,18 @@ def place_lc_sell_orders_for_allotted_today():
     Scans allotted_holdings.xlsx for rows with special_session_status == 5 (allotted today)
     across all user sheets and triggers lower circuit sell orders on Zerodha Kite via zerodha_sell_lc().
     """
-    print("-----------place_lc_sell_orders_for_allotted_today----------")
+    logger.info("-----------place_lc_sell_orders_for_allotted_today----------")
     users = Base.load_credentials(CREDENTIALS_FILE)
     excel_path = get_allotted_holdings_path()
 
     if not os.path.exists(excel_path):
-        print(f"Error: File not found at '{excel_path}'")
+        logger.error(f"File not found at '{excel_path}'")
         return
 
     try:
-        wb = openpyxl.load_workbook(excel_path)
+        wb = Base.safe_load_workbook(excel_path)
     except Exception as e:
-        print(f"Error loading workbook '{excel_path}': {e}")
+        logger.error(f"Error loading workbook '{excel_path}': {e}", exc_info=True)
         return
 
     file_changed = False
@@ -69,8 +73,8 @@ def place_lc_sell_orders_for_allotted_today():
             except (ValueError, TypeError):
                 spl_status = 0
 
-            # Only process rows with special_session_status == 5 (allotted today / pending order placement)
-            if spl_status != 5:
+            # Only process rows with special_session_status == NEWLY_ALLOTTED (allotted today / pending order placement)
+            if spl_status != SpecialSessionStatus.NEWLY_ALLOTTED:
                 continue
 
             lot_size = ws.cell(r, 2).value or 1
@@ -88,7 +92,7 @@ def place_lc_sell_orders_for_allotted_today():
             except (ValueError, TypeError):
                 issue_price = 0.0
 
-            print(f"\n[User: {uci_user}] Triggering LC Sell Order for '{security_symbol}' | Shares: {shares_allocated} | Exchange: {exchange} | Issue Price: {issue_price}")
+            logger.info(f"[User: {uci_user}] Triggering LC Sell Order for '{security_symbol}' | Shares: {shares_allocated} | Exchange: {exchange} | Issue Price: {issue_price}")
 
             if client_id and password_user and totp_broker:
                 try:
@@ -101,23 +105,35 @@ def place_lc_sell_orders_for_allotted_today():
                         exchange=exchange,
                         issue_price=issue_price,
                     )
-                    print(f"Execution Output for {security_symbol}: {msg}")
+                    logger.info(f"Execution Output for {security_symbol}: {msg}")
                     if success:
-                        # Update status to 1 (order placed for special session)
+                        logger.audit(
+                            f"[AUDIT] Pre-Open LC Sell Placed: Symbol={security_symbol}, Qty={shares_allocated}, Exchange={exchange}, "
+                            f"Issue Price=₹{issue_price}, User={uci_user}"
+                        )
+                        # Update status to LC_ORDER_PLACED (order placed for special session)
                         status_col = 8 if ws.cell(r, 8).value is not None else 7
-                        ws.cell(r, status_col, 1)
+                        ws.cell(r, status_col, SpecialSessionStatus.LC_ORDER_PLACED)
                         file_changed = True
+                    else:
+                        logger.warning(f"LC sell order failed for {security_symbol} ({uci_user}): {msg}")
                 except Exception as e:
-                    print(f"Error executing LC sell order for {security_symbol} ({uci_user}): {e}")
+                    logger.error(f"Error executing LC sell order for {security_symbol} ({uci_user}): {e}", exc_info=True)
             else:
-                print(f"Missing Zerodha credentials for user {uci_user}, cannot place sell order.")
+                logger.warning(f"Missing Zerodha credentials for user {uci_user}, cannot place sell order.")
 
     if file_changed:
         try:
-            wb.save(excel_path)
-            print("\nSuccessfully updated special_session_status to 1 in allotted_holdings.xlsx")
+            Base.safe_save_workbook(wb, excel_path)
+            logger.info("Successfully updated special_session_status in allotted_holdings.xlsx")
+            # Dual-Tier SQLite synchronization
+            try:
+                import database
+                database.import_allotted_holdings_from_excel()
+            except Exception as dberr:
+                logger.error(f"Error syncing allotted holdings to SQLite: {dberr}", exc_info=True)
         except Exception as e:
-            print(f"Error saving workbook '{excel_path}': {e}")
+            logger.error(f"Error saving workbook '{excel_path}': {e}", exc_info=True)
 
     wb.close()
 

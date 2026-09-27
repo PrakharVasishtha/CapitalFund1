@@ -1,17 +1,21 @@
 import time
-from common_foundation import logger
+from common_foundation import logger as legacy_logger
+from logger_setup import get_logger
 import openpyxl
 import Base
+from config import INSTANT_WITHDRAWAL_LIMIT
 from playwright.sync_api import Playwright, sync_playwright, expect, Page
 import pyotp
+
+logger = get_logger(__name__)
 
 def update_excel(uci_target: int, amount_needed: int):
     try:
         from master_excel_manager import update_master_user
         update_master_user(uci=str(uci_target), amount_needed=abs(amount_needed))
-        print(f"Successfully updated details for uci_target {uci_target} in Master.xlsx")
+        logger.info(f"Successfully updated details for uci_target {uci_target} in Master.xlsx")
     except Exception as e:
-        print(f"An error occurred while updating Master.xlsx: {e}")
+        logger.exception(f"An error occurred while updating Master.xlsx: {e}")
 
 def withdraw_from_zerodha(
         user_uci: int,
@@ -26,11 +30,11 @@ def withdraw_from_zerodha(
     #amount_str = str(int(float(amount)))  # Zerodha usually wants whole numbers
 
     def run(playwright: Playwright) -> tuple[bool, str]:
-        print(user_id,"reqrd to withdrw frm zerodha",amount)
+        logger.info(f"User {user_id} required to withdraw from Zerodha: ₹{amount}")
         amount_str = "0"
         msg_log = "e"
         try:
-            browser = playwright.chromium.launch(headless=False)
+            browser = playwright.chromium.launch(headless=headless)
             context = browser.new_context(
                 viewport={"width": 1280, "height": 800},
                 user_agent=(
@@ -45,7 +49,6 @@ def withdraw_from_zerodha(
             # ── Login ───────────────────────────────────────────────
             page.goto("https://kite.zerodha.com/", wait_until="domcontentloaded")
             time.sleep(1)
-
 
             page.get_by_role("textbox", name="Phone number or User ID").fill(user_id)
             page.get_by_role("textbox", name="Password").fill(password)
@@ -71,31 +74,26 @@ def withdraw_from_zerodha(
                 withdraw_page.goto("https://console.zerodha.com/funds/overview?src=kiteweb")
             time.sleep(1)
             wihtdrawable = withdraw_page.get_by_text("₹").nth(5).inner_text()
-            print(wihtdrawable)
             clean_wihtdrawable = wihtdrawable.replace("₹", "").split(".")[0]
             clean_wihtdrawable = Base.parse_float(clean_wihtdrawable)
-            print("clean_wihtdrawable",clean_wihtdrawable)
-            print("required amount", amount)
-            #print("Type", type(amount))
+            logger.info(f"Clean withdrawable: {clean_wihtdrawable}, Required amount: {amount}")
             amount_float = float(amount)
-            print("amount_float", amount_float)
-            #final_amount = 1.0
-            #zerodha balance limit
+
             if clean_wihtdrawable < amount_float:
                 final_amount = clean_wihtdrawable
             else:
                 final_amount = amount_float
 
-            # zerodha 2 lakh instant limit
-            if final_amount > 200000:
-                final_amount = 200000
+            # zerodha instant withdrawal ceiling
+            if final_amount > INSTANT_WITHDRAWAL_LIMIT:
+                final_amount = INSTANT_WITHDRAWAL_LIMIT
             else:
-                print("final_amount within limit")
+                logger.info("final_amount within instant withdrawal ceiling")
 
-            print("final_amount",final_amount)
+            logger.info(f"Final withdrawal amount: {final_amount}")
             still_needed_amount = int(final_amount - amount)
-            print("still_needed_amount",still_needed_amount)
-            update_excel(uci_target =user_uci, amount_needed = still_needed_amount)
+            logger.info(f"Still needed amount: {still_needed_amount}")
+            update_excel(uci_target=user_uci, amount_needed=still_needed_amount)
             time.sleep(1)
             # ── Enter amount & confirm ──────────────────────────────
             if final_amount >= 1:
@@ -103,29 +101,26 @@ def withdraw_from_zerodha(
                 eq_input.wait_for(state="visible", timeout=15000)
                 eq_input.click()
                 amount_str = str(int(float(final_amount)))
-                print("amount_str",amount_str)
+                logger.info(f"Entering amount string: {amount_str}")
                 eq_input.fill(amount_str)
                 withdraw_page.get_by_role("button", name="Continue").click()
                 withdraw_page.get_by_role("button", name="Confirm").click()
                 msg_log = "withdrawal initiated on broker"
-                print(msg_log)
-                # Give some time for confirmation (you can improve this)
+                logger.audit(f"AUDIT: Fund withdrawal | User UCI: {user_uci} | Client ID: {user_id} | Amount: {final_amount} | Status: success")
                 withdraw_page.wait_for_timeout(4000)
             else:
                 msg_log = "less than 1 amount, so no withdrawal"
-                print(msg_log)
-            return True, f"."
+                logger.info(msg_log)
+            return True, "."
 
         except Exception as e:
-            msg_log = e
-            print(msg_log)
-            import traceback
-            return False, f"Withdrawal failed: {str(e)}\n{traceback.format_exc()}"
+            msg_log = str(e)
+            logger.exception(f"Withdrawal failed for User {user_id} (UCI: {user_uci}): {e}")
+            return False, f"Withdrawal failed: {str(e)}"
         
-
         finally:
-            file_path = user_uci + ".txt"
-            logger(file_path, amount_str, msg_log)
+            file_path = f"{user_uci}.txt"
+            legacy_logger(file_path, amount_str, msg_log)
             if 'context' in locals():
                 context.close()
             if 'browser' in locals():

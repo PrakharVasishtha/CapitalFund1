@@ -103,6 +103,14 @@ def sync_master_with_credentials() -> bool:
 
         wb.save(path)
         wb.close()
+
+        # Dual-Tier SQLite synchronization
+        try:
+            import database
+            database.import_master_from_excel()
+        except Exception as db_err:
+            log_error(f"Failed to sync master users to SQLite: {db_err}", exc=db_err, function_name="sync_master_with_credentials")
+
         log_info(f"Master.xlsx synced successfully with {len(users)} user profiles.", "sync_master_with_credentials")
         return True
 
@@ -160,6 +168,17 @@ def update_master_user(
 
         wb.save(path)
         wb.close()
+
+        # Dual-Tier SQLite synchronization
+        try:
+            import database
+            if current_value is not None:
+                database.update_user_valuation(raw_uci, float(current_value), auto_sync_excel=False)
+            else:
+                database.import_master_from_excel()
+        except Exception as db_err:
+            log_error(f"Failed to update user in SQLite: {db_err}", exc=db_err, function_name="update_master_user")
+
         log_info(f"Updated Master.xlsx for UCI '{raw_uci}' (CurrentVal: {current_value}, Token: {'Set' if zerodha_access_token else 'N/A'})", "update_master_user")
         return True
 

@@ -7,6 +7,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from ipo_base import categorize_ipo_industry, get_industry_score
 import platform
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_latest_ipos():
@@ -38,7 +41,7 @@ def get_latest_ipos():
         ipos = []
         table = soup.find('table')
         if not table:
-            print("No table found on the page.")
+            logger.warning("No table found on the page.")
             return []
 
         rows = table.find_all('tr')[1:]  # Skip header row
@@ -88,12 +91,12 @@ def get_latest_ipos():
                 'industry_score': industry_score,
             })
 
-        print(f"Fetched {len(ipos)} IPOs from Chittorgarh. "
-              f"Mainboard: {sum(1 for i in ipos if i['category'] == 'Mainboard')}, "
-              f"SME: {sum(1 for i in ipos if i['category'] == 'SME')}")
+        logger.info(f"Fetched {len(ipos)} IPOs from Chittorgarh. "
+                    f"Mainboard: {sum(1 for i in ipos if i['category'] == 'Mainboard')}, "
+                    f"SME: {sum(1 for i in ipos if i['category'] == 'SME')}")
 
         return ipos
 
     except Exception as e:
-        print(f"Error scraping IPO list: {e}")
+        logger.error(f"Error scraping IPO list: {e}", exc_info=True)
         return []

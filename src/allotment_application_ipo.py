@@ -1,13 +1,15 @@
 from datetime import date
-
 import openpyxl
 
 from Base import get_last_row_sme, get_last_row_mb, get_excel_path
 from allotment_kotak_ipo_apply import apply_to_ipo, apply_to_ipo_all_users
+from logger_setup import get_logger
+
+logger = get_logger(__name__)
 
 
 def IPO_to_apply():
-    print("--------IPO to Apply-------")
+    logger.info("--------IPO_to_apply: Scanning closing IPOs-------")
     IPO_sme_1 = []
     IPO_sme_2 = []
     IPO_sme_3 = []
@@ -69,72 +71,58 @@ def IPO_to_apply():
             today = date.today().day
             if today == close_date:
                 IPO_mb_3.append(name)
-    return IPO_mb_3,IPO_sme_3,IPO_mb_2, IPO_sme_2, IPO_mb_1, IPO_sme_1,
+    return IPO_mb_3, IPO_sme_3, IPO_mb_2, IPO_sme_2, IPO_mb_1, IPO_sme_1
 
-def apply_ipo_sme(ipo):
-    print("Appling IPO:", ipo)
-
-def apply_ipo_mb(ipo):
-    print("Appling IPO:", ipo)
-    #mb first try in snii category if not sufficient funds, it will try in retail.
 
 def ipo_application():
-    print(
-        "*************************************-----------ipo_application----------************************************")
-    print(
-        "##############################################################################################################")
-    all=IPO_to_apply()
-    #print(all)
-    IPO_mb_3 = all[0]
-    IPO_sme_3 = all[1]
-    IPO_mb_2 = all[2]
-    IPO_sme_2 = all[3]
-    IPO_sme_1 = all[4]
-    IPO_mb_1 = all[5]
+    logger.info("-----------ipo_application: Executing scheduled IPO applications----------")
+    all_ipos = IPO_to_apply()
+    IPO_mb_3 = all_ipos[0]
+    IPO_sme_3 = all_ipos[1]
+    IPO_mb_2 = all_ipos[2]
+    IPO_sme_2 = all_ipos[3]
+    IPO_sme_1 = all_ipos[4]
+    IPO_mb_1 = all_ipos[5]
 
-    print("applying for ipos:",all)
+    logger.info(f"Applying for IPOs: MB3={IPO_mb_3}, SME3={IPO_sme_3}, MB2={IPO_mb_2}, SME2={IPO_sme_2}, MB1={IPO_mb_1}, SME1={IPO_sme_1}")
     for ipo in IPO_mb_3:
-        print(ipo)
+        logger.info(f"Processing Priority 3 Mainboard IPO: {ipo}")
         try:
-            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "mb")
+            apply_to_ipo_all_users(ipo_name=ipo, type_ipo="mb")
         except Exception as e:
-            print(e)
-
+            logger.exception(f"Error applying to MB3 IPO {ipo}: {e}")
 
     for ipo in IPO_sme_3:
-        print(ipo)
+        logger.info(f"Processing Priority 3 SME IPO: {ipo}")
         try:
-            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "sme")
+            apply_to_ipo_all_users(ipo_name=ipo, type_ipo="sme")
         except Exception as e:
-            print(e)
+            logger.exception(f"Error applying to SME3 IPO {ipo}: {e}")
     
     for ipo in IPO_mb_2:
-        print(ipo)
+        logger.info(f"Processing Priority 2 Mainboard IPO: {ipo}")
         try:
-            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "mb")
+            apply_to_ipo_all_users(ipo_name=ipo, type_ipo="mb")
         except Exception as e:
-            print(e)
+            logger.exception(f"Error applying to MB2 IPO {ipo}: {e}")
         
     for ipo in IPO_sme_2:
-        print(ipo)
+        logger.info(f"Processing Priority 2 SME IPO: {ipo}")
         try:
-            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "sme")
+            apply_to_ipo_all_users(ipo_name=ipo, type_ipo="sme")
         except Exception as e:
-            print(e)
+            logger.exception(f"Error applying to SME2 IPO {ipo}: {e}")
 
     for ipo in IPO_mb_1:
-        print(ipo)
+        logger.info(f"Processing Priority 1 Mainboard IPO: {ipo}")
         try:
-            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "mb")
+            apply_to_ipo_all_users(ipo_name=ipo, type_ipo="mb")
         except Exception as e:
-            print(e)
+            logger.exception(f"Error applying to MB1 IPO {ipo}: {e}")
 
     for ipo in IPO_sme_1:
-        print(ipo)
+        logger.info(f"Processing Priority 1 SME IPO: {ipo}")
         try:
-            apply_to_ipo_all_users(ipo_name = ipo,type_ipo = "sme")
+            apply_to_ipo_all_users(ipo_name=ipo, type_ipo="sme")
         except Exception as e:
-            print(e)
-
-#print(IPO_to_apply())
-#ipo_application()
+            logger.exception(f"Error applying to SME1 IPO {ipo}: {e}")
