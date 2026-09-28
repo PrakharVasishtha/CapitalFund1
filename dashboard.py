@@ -249,24 +249,140 @@ def load_master_database():
 
 @st.cache_data(ttl=15)
 def fetch_smws_signals():
-    url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?gid=614695683&single=true&output=csv"
-    try:
-        df = pd.read_csv(url_csv)
-        buy_nifty = str(df.iloc[23, 4]).strip() if len(df) > 23 else "Loading..."
-        buy_gold = str(df.iloc[26, 4]).strip() if len(df) > 26 else "Loading..."
-        buy_silver = str(df.iloc[29, 4]).strip() if len(df) > 29 else "Loading..."
-        
-        sell_nifty = str(df.iloc[24, 4]).strip() if len(df) > 24 else "Loading..."
-        sell_gold = str(df.iloc[27, 4]).strip() if len(df) > 27 else "Loading..."
-        sell_silver = str(df.iloc[30, 4]).strip() if len(df) > 30 else "Loading..."
-        
+    """
+    Fetch SMWS signals from the Google Sheet strategy tab.
+
+    Strategy for resolving "Loading..." values caused by un-recalculated
+    GOOGLEFINANCE / cross-sheet IMPORTRANGE formulas:
+      1. Attempt to read the CSV directly (fast path).
+      2. If any signal value contains "Loading...", trigger the Playwright
+         sheet warmer to force Google's server-side recalculation.
+      3. Wait ~5 s, then retry the CSV read (up to 5 total attempts).
+      4. Cache successful signals to SQLite smws_signals table.
+      5. If all attempts still show "Loading...", fall back to the most
+         recent cached values from SQLite (never show raw "Loading...").
+    """
+    import time as _time
+
+    url_csv = (
+        "https://docs.google.com/spreadsheets/d/e/"
+        "2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-"
+        "BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?gid=614695683&single=true&output=csv"
+    )
+
+    def _read_signals(df: "pd.DataFrame") -> dict:
+        """Extract the six signal cells from a DataFrame row."""
         return {
-            "buy_nifty": buy_nifty, "buy_gold": buy_gold, "buy_silver": buy_silver,
-            "sell_nifty": sell_nifty, "sell_gold": sell_gold, "sell_silver": sell_silver,
-            "raw_df": df
+            "buy_nifty": str(df.iloc[23, 4]).strip() if len(df) > 23 else "Loading...",
+            "buy_gold": str(df.iloc[26, 4]).strip() if len(df) > 26 else "Loading...",
+            "buy_silver": str(df.iloc[29, 4]).strip() if len(df) > 29 else "Loading...",
+            "sell_nifty": str(df.iloc[24, 4]).strip() if len(df) > 24 else "Loading...",
+            "sell_gold": str(df.iloc[27, 4]).strip() if len(df) > 27 else "Loading...",
+            "sell_silver": str(df.iloc[30, 4]).strip() if len(df) > 30 else "Loading...",
         }
-    except Exception as e:
-        return {"error": str(e)}
+
+    def _has_loading(signals: dict) -> bool:
+        return any("loading" in str(v).lower() for v in signals.values())
+
+    def _save_to_sqlite(signals: dict) -> None:
+        """Persist clean signals to SQLite for fallback use."""
+        try:
+            import sys as _sys
+            if SRC_DIR not in _sys.path:
+                _sys.path.insert(0, SRC_DIR)
+            from database import get_connection, init_db
+            init_db()
+            conn = get_connection()
+            conn.execute(
+                """INSERT INTO smws_signals
+                   (buy_nifty, buy_gold, buy_silver, sell_nifty, sell_gold, sell_silver, source)
+                   VALUES (?, ?, ?, ?, ?, ?, 'GOOGLE_SHEET')""",
+                (
+                    signals["buy_nifty"], signals["buy_gold"], signals["buy_silver"],
+                    signals["sell_nifty"], signals["sell_gold"], signals["sell_silver"],
+                ),
+            )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    def _load_from_sqlite() -> dict:
+        """Return the most recently cached SMWS signals from SQLite, or empty dict."""
+        try:
+            import sys as _sys
+            if SRC_DIR not in _sys.path:
+                _sys.path.insert(0, SRC_DIR)
+            from database import get_connection, init_db
+            init_db()
+            conn = get_connection()
+            row = conn.execute(
+                "SELECT buy_nifty, buy_gold, buy_silver, sell_nifty, sell_gold, sell_silver, updated_at "
+                "FROM smws_signals ORDER BY updated_at DESC LIMIT 1"
+            ).fetchone()
+            conn.close()
+            if row:
+                return {
+                    "buy_nifty": row["buy_nifty"] or "0",
+                    "buy_gold": row["buy_gold"] or "0",
+                    "buy_silver": row["buy_silver"] or "0",
+                    "sell_nifty": row["sell_nifty"] or "0",
+                    "sell_gold": row["sell_gold"] or "0",
+                    "sell_silver": row["sell_silver"] or "0",
+                    "_from_cache": True,
+                    "_cache_time": str(row["updated_at"]),
+                }
+        except Exception:
+            pass
+        return {}
+
+    warmed = False
+    signals = {}
+    raw_df = None
+
+    for attempt in range(1, 6):
+        try:
+            raw_df = pd.read_csv(url_csv, timeout=20)
+            signals = _read_signals(raw_df)
+
+            if not _has_loading(signals):
+                # ✅ Clean signals — cache and return
+                _save_to_sqlite(signals)
+                signals["raw_df"] = raw_df
+                return signals
+
+            # Signals have "Loading..." — warm sheet on first detection
+            if not warmed:
+                try:
+                    import sys as _sys
+                    if SRC_DIR not in _sys.path:
+                        _sys.path.insert(0, SRC_DIR)
+                    from smws_sheet_warmer import recalculate_smws_sheet
+                    recalculate_smws_sheet(force=True)
+                except Exception:
+                    pass
+                warmed = True
+
+            if attempt < 5:
+                _time.sleep(5)
+
+        except Exception as e:
+            if attempt == 5:
+                return {"error": str(e)}
+            _time.sleep(3)
+
+    # All attempts exhausted — try SQLite cache
+    cached = _load_from_sqlite()
+    if cached:
+        cached["raw_df"] = raw_df
+        return cached
+
+    # Absolute last resort — return whatever we have (might still show Loading)
+    if signals:
+        signals["raw_df"] = raw_df
+        return signals
+
+    return {"error": "Unable to load SMWS signals after 5 attempts"}
 
 def read_logs(log_type="error"):
     if log_type == "error":
@@ -1504,26 +1620,35 @@ with main_col:
         elif nav == "📈 Live SMWS Strategy Monitor":
             st.markdown("<div class='section-head'>📈 Systematic Market & Withdrawal Strategy (SMWS) Monitor</div>", unsafe_allow_html=True)
 
-            st.info("📡 Live SMWS Signals fetched directly from Strategy Google Sheet.")
-
             signals = fetch_smws_signals()
 
             if "error" in signals:
-                st.error(f"Error fetching Google Sheet: {signals['error']}")
+                st.error(f"❌ Error fetching Google Sheet: {signals['error']}")
+                st.info("💡 Tip: Ensure the sheet is published to web and your internet connection is stable.")
             else:
+                # Show data-source badge
+                if signals.get("_from_cache"):
+                    st.warning(
+                        f"🗄️ **Showing cached signals** (Google Sheet returned Loading... and warmer couldn't resolve it). "
+                        f"Last good data: `{signals.get('_cache_time', 'unknown')}`"
+                    )
+                else:
+                    st.success("📡 Live SMWS Signals fetched directly from Strategy Google Sheet.")
+
                 sig_c1, sig_c2, sig_c3 = st.columns(3)
 
-                def format_signal(val, label):
+                def format_signal(val, label):  # noqa: F811
                     val_str = str(val).strip()
-                    if "Loading" in val_str:
-                        return f'<span class="pill pill-amber">⏳ Sheet Recalculating ({val_str})</span>'
+                    if "loading" in val_str.lower() or val_str in ("nan", ""):
+                        # Warmer ran but sheet still not ready — show soft amber pill
+                        return '<span class="pill pill-amber">⏳ Recalculating…</span>'
                     elif val_str == "1":
                         if label.lower() == "sell":
-                            return f'<span class="pill pill-red">🔴 SELL SIGNAL (1)</span>'
+                            return '<span class="pill pill-red">🔴 SELL SIGNAL</span>'
                         else:
-                            return f'<span class="pill pill-green">🟢 BUY SIGNAL (1)</span>'
+                            return '<span class="pill pill-green">🟢 BUY SIGNAL</span>'
                     elif val_str == "0":
-                        return f'<span class="pill pill-purple">⚪ HOLD / NO SIGNAL (0)</span>'
+                        return '<span class="pill pill-purple">⚪ HOLD / NO SIGNAL</span>'
                     else:
                         return f'<span class="pill pill-blue">SIGNAL: {val_str}</span>'
 

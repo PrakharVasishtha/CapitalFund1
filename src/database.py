@@ -142,10 +142,25 @@ def init_db():
         except Exception:
             pass
 
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS smws_signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                buy_nifty TEXT,
+                buy_gold TEXT,
+                buy_silver TEXT,
+                sell_nifty TEXT,
+                sell_gold TEXT,
+                sell_silver TEXT,
+                source TEXT DEFAULT 'GOOGLE_SHEET',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_holdings_uci ON allotted_holdings(uci);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_holdings_statuses ON allotted_holdings(special_session_status, regular_session_status);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_category ON ipo_research(category);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_applied_uci ON ipo_applied(uci);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_smws_time ON smws_signals(updated_at);")
 
         conn.commit()
         log_info("SQLite database schema initialized successfully (WAL mode enabled).", "init_db")

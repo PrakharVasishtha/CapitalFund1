@@ -16,6 +16,16 @@ CREDENTIALS_FILE = "credentials.json"
 def smws_buyer():
     logger.info("-----------smws_buyer: Starting ETF Buy Evaluation----------")
 
+    # Warm the Google Sheet to force GOOGLEFINANCE/IMPORTRANGE recalculation
+    try:
+        from smws_sheet_warmer import recalculate_smws_sheet
+        result = recalculate_smws_sheet(force=True)
+        logger.info(f"Sheet warmer result: {result.get('status')} ({result.get('duration', '?')}s)")
+        if result.get("status") == "success":
+            time.sleep(5)   # Allow Google backend to propagate recalculated values
+    except Exception as _e:
+        logger.warning(f"Sheet warmer unavailable (non-fatal): {_e}")
+
     x = "Loading..."
     i = 0
     df = None
@@ -27,7 +37,7 @@ def smws_buyer():
                 x = df.iloc[23, 4]
         except Exception as e:
             logger.error(f"Error reading Google Sheet CSV: {e}")
-        time.sleep(1)
+        time.sleep(2)
         i = i + 1
 
     if df is None or "loading" in str(x).lower() or "nan" in str(x).lower():
@@ -80,6 +90,17 @@ def smws_buyer():
 
 def smws_seller():
     logger.info("-----------smws_seller: Starting ETF Sell Evaluation----------")
+
+    # Warm the Google Sheet to force GOOGLEFINANCE/IMPORTRANGE recalculation
+    try:
+        from smws_sheet_warmer import recalculate_smws_sheet
+        result = recalculate_smws_sheet(force=True)
+        logger.info(f"Sheet warmer result: {result.get('status')} ({result.get('duration', '?')}s)")
+        if result.get("status") == "success":
+            time.sleep(5)   # Allow Google backend to propagate recalculated values
+    except Exception as _e:
+        logger.warning(f"Sheet warmer unavailable (non-fatal): {_e}")
+
     x = "Loading..."
     i = 0
     df = None
@@ -91,7 +112,7 @@ def smws_seller():
                 x = df.iloc[24, 4]
         except Exception as e:
             logger.error(f"Error reading Google Sheet CSV: {e}")
-        time.sleep(1)
+        time.sleep(2)
         i = i + 1
 
     if df is None or "loading" in str(x).lower() or "nan" in str(x).lower():
