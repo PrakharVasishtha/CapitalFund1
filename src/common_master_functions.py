@@ -126,5 +126,6 @@ def dynamic_data_update():
 
 
 if __name__ == "__main__":
+    pass
     #latest_ipo_entry()
     #dynamic_data_update()
