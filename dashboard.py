@@ -165,14 +165,32 @@ CUSTOM_CSS = """
         align-items: center;
         gap: 10px;
     }
+
+    /* Right Side Panel Styling */
+    .side-panel-box {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.88) 0%, rgba(8, 13, 26, 0.96) 100%);
+        border: 1px solid rgba(56, 189, 248, 0.28);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        margin-bottom: 16px;
+    }
+    .side-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+    }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Data Loaders with Caching
+# Data Loaders with Caching (Short TTL for responsive auto-refresh)
 # -----------------------------------------------------------------------------
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=10)
 def load_ipo_database():
     excel_path = os.path.join(BASE_DIR, "General.xlsx")
     if not os.path.exists(excel_path):
@@ -189,7 +207,7 @@ def load_ipo_database():
             time.sleep(0.3)
     return pd.DataFrame(), pd.DataFrame()
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=10)
 def load_allotted_holdings():
     path = os.path.join(BASE_DIR, "allotted_holdings.xlsx")
     if not os.path.exists(path):
@@ -210,7 +228,7 @@ def load_allotted_holdings():
         st.error(f"Error reading allotted_holdings.xlsx: {e}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=10)
 def load_master_database():
     try:
         from master_excel_manager import get_master_excel_path
@@ -222,7 +240,7 @@ def load_master_database():
         print(f"load_master_database error: {e}")
     return pd.DataFrame()
 
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=15)
 def fetch_smws_signals():
     url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?gid=614695683&single=true&output=csv"
     try:
@@ -355,8 +373,35 @@ nav = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Quick Operations")
-if st.sidebar.button("🔄 Refresh All Data"):
+st.sidebar.subheader("⚡ Live Operations & Display")
+show_right_panel = st.sidebar.checkbox(
+    "📌 Show Jobs Log Panel",
+    value=True,
+    help="Display the real-time jobs log table and execution controls in the right-hand panel."
+)
+
+auto_refresh_choice = st.sidebar.selectbox(
+    "🔄 Auto-Refresh Rate",
+    ["Every 5s", "Every 10s", "Every 30s", "Every 60s", "Paused"],
+    index=1,
+    help="Interval for automatically refreshing dashboard metrics and data."
+)
+
+refresh_sec_map = {
+    "Every 5s": 5,
+    "Every 10s": 10,
+    "Every 30s": 30,
+    "Every 60s": 60,
+    "Paused": None
+}
+auto_refresh_sec = refresh_sec_map.get(auto_refresh_choice, 10)
+
+if auto_refresh_sec:
+    st.sidebar.markdown(f'<span class="pill pill-green"><span class="pulse-dot"></span>Auto-Refresh: {auto_refresh_choice}</span>', unsafe_allow_html=True)
+else:
+    st.sidebar.markdown('<span class="pill pill-purple">⚪ Auto-Refresh Paused</span>', unsafe_allow_html=True)
+
+if st.sidebar.button("🔄 Refresh All Data Now", use_container_width=True):
     st.cache_data.clear()
     st.rerun()
 
@@ -391,19 +436,27 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Load global datasets
-users = load_credentials()
-df_sme_raw, df_mb_raw = load_ipo_database()
-df_sme_clean = clean_ipo_dataframe(df_sme_raw, "SME")
-df_mb_clean = clean_ipo_dataframe(df_mb_raw, "Mainboard")
-df_all_ipos = pd.concat([df_mb_clean, df_sme_clean], ignore_index=True)
-df_allotments = load_allotted_holdings()
-df_master = load_master_database()
+# -----------------------------------------------------------------------------
+# Global Data Fetching Helper
+# -----------------------------------------------------------------------------
+def load_all_dashboard_data():
+    """Load fresh instances of all core datasets."""
+    users = load_credentials()
+    df_sme_raw, df_mb_raw = load_ipo_database()
+    df_sme_clean = clean_ipo_dataframe(df_sme_raw, "SME")
+    df_mb_clean = clean_ipo_dataframe(df_mb_raw, "Mainboard")
+    df_all_ipos = pd.concat([df_mb_clean, df_sme_clean], ignore_index=True)
+    df_allotments = load_allotted_holdings()
+    df_master = load_master_database()
 
-# Extract active recent IPOs (strictly last 10 records of each category in General.xlsx)
-df_sme_last10 = clean_ipo_dataframe(df_sme_raw.tail(10), "SME") if not df_sme_raw.empty else pd.DataFrame()
-df_mb_last10 = clean_ipo_dataframe(df_mb_raw.tail(10), "Mainboard") if not df_mb_raw.empty else pd.DataFrame()
-df_recent_active = pd.concat([df_mb_last10, df_sme_last10], ignore_index=True) if (not df_sme_last10.empty or not df_mb_last10.empty) else df_all_ipos
+    df_sme_last10 = clean_ipo_dataframe(df_sme_raw.tail(10), "SME") if not df_sme_raw.empty else pd.DataFrame()
+    df_mb_last10 = clean_ipo_dataframe(df_mb_raw.tail(10), "Mainboard") if not df_mb_raw.empty else pd.DataFrame()
+    df_recent_active = pd.concat([df_mb_last10, df_sme_last10], ignore_index=True) if (not df_sme_last10.empty or not df_mb_last10.empty) else df_all_ipos
+
+    return users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active
+
+# Initial load for global context
+users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active = load_all_dashboard_data()
 
 # -----------------------------------------------------------------------------
 # Real-Time Job Scheduler & On-Demand Controller Components
@@ -495,6 +548,114 @@ def render_live_job_status_and_output(show_output_box: bool = True):
             st.markdown(f"<div class='console-box' style='max-height: 280px;'>{html.escape(current_output)}</div>", unsafe_allow_html=True)
 
     _fragment_view()
+
+
+def render_jobs_log_side_panel():
+    """
+    Renders the dedicated live Jobs Log Table, running task monitor, and output/audit viewer
+    in the right-hand panel of the dashboard.
+    Decorated with @st.fragment(run_every=3) for automatic real-time updates every 3 seconds.
+    """
+    @st.fragment(run_every=3)
+    def _fragment_side_panel():
+        st.markdown("""
+        <div class="side-panel-header">
+            <div>
+                <span style="color:#38bdf8; font-weight:800; font-size:1.05rem;">⚡ Jobs Operations Panel</span>
+                <div style="font-size:0.75rem; color:#94a3b8;">Real-time task telemetry & control</div>
+            </div>
+            <span class="pill pill-green"><span class="pulse-dot"></span>LIVE (3s)</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # 1. Active Running Job or Next Scheduled Job Card
+        running_jobs = job_manager.get_currently_running_jobs()
+        if running_jobs:
+            for rj in running_jobs:
+                st.markdown(f"""
+                <div class="glass-card" style="border-left: 4px solid #10b981; padding: 14px; margin-bottom: 12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="pill pill-green"><span class="pulse-dot"></span>RUNNING NOW</span>
+                        <span class="pill pill-amber">⏳ {rj.get('elapsed_str', '0s')}</span>
+                    </div>
+                    <div style="font-weight:700; color:#ffffff; margin:6px 0 2px 0; font-size:0.95rem;">{html.escape(str(rj.get('name', rj.get('job_key', 'Job'))))}</div>
+                    <div style="font-size:0.78rem; color:#94a3b8;">
+                        Started: <code style="color:#38bdf8;">{rj.get('started_at', 'N/A')}</code> &bull; By: <b>{html.escape(str(rj.get('triggered_by', 'Scheduler')))}</b>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            next_job = job_manager.get_next_scheduled_job()
+            st.markdown(f"""
+            <div class="glass-card" style="border-left: 4px solid #38bdf8; padding: 14px; margin-bottom: 12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="pill pill-blue">⚪ IDLE</span>
+                    <span class="pill pill-amber">⏳ {next_job['countdown_str']}</span>
+                </div>
+                <div style="font-weight:700; color:#ffffff; margin:6px 0 2px 0; font-size:0.95rem;">Next: {next_job['icon']} {html.escape(str(next_job['name']))}</div>
+                <div style="font-size:0.78rem; color:#94a3b8;">
+                    Scheduled: <code style="color:#38bdf8;">{next_job['scheduled_time']}</code>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # 2. Jobs Execution Log Table
+        st.markdown("<div style='font-size:0.9rem; font-weight:700; color:#cbd5e1; margin-bottom:6px;'>📋 Jobs Execution Log Table</div>", unsafe_allow_html=True)
+        df_history = job_manager.get_job_history_df(limit=25)
+        st.dataframe(df_history, use_container_width=True, hide_index=True, height=220)
+
+        # 3. Live Console Stream & System Logs Tabs
+        panel_tabs = st.tabs(["💻 Job Output", "📜 System Logs"])
+        with panel_tabs[0]:
+            h_c1, h_c2 = st.columns([2.5, 1])
+            with h_c1:
+                st.caption("Logs from `current_job.log`")
+            with h_c2:
+                if st.button("🗑️ Clear", key="btn_side_clear_out", use_container_width=True):
+                    try:
+                        open(job_manager.CURRENT_JOB_LOG, "w").close()
+                    except Exception:
+                        pass
+                    st.rerun()
+            out_txt = job_manager.get_current_job_output(max_lines=80)
+            st.markdown(f"<div class='console-box' style='max-height: 200px; font-size:0.78rem;'>{html.escape(out_txt)}</div>", unsafe_allow_html=True)
+
+        with panel_tabs[1]:
+            st.caption("Logs from `capitalfund.log`")
+            sys_log_txt = job_manager.get_recent_system_logs(max_lines=40)
+            st.markdown(f"<div class='console-box' style='max-height: 200px; font-size:0.78rem;'>{html.escape(sys_log_txt)}</div>", unsafe_allow_html=True)
+
+        # 4. Quick Action Triggers
+        st.markdown("<div style='font-size:0.9rem; font-weight:700; color:#cbd5e1; margin:12px 0 6px 0;'>⚡ Quick Actions</div>", unsafe_allow_html=True)
+        q1, q2 = st.columns(2)
+        with q1:
+            if st.button("🗄️ Sync DB", key="side_btn_sync_db", use_container_width=True, help="Synchronize SQLite WAL database & Excel sheets"):
+                if job_manager.run_job("sync_database", triggered_by="Side Panel (On-Demand)"):
+                    st.toast("🗄️ Started Dual-Tier SQLite Sync!")
+                    st.rerun()
+                else:
+                    st.warning("Job already running")
+            if st.button("🚀 Scrape IPOs", key="side_btn_scrape_ipo", use_container_width=True, help="Scrape latest IPOs from Chittorgarh"):
+                if job_manager.run_job("ipo_entry", triggered_by="Side Panel (On-Demand)"):
+                    st.toast("🚀 Started IPO Scraper!")
+                    st.rerun()
+                else:
+                    st.warning("Job already running")
+        with q2:
+            if st.button("📊 Dynamic Data", key="side_btn_dyn_data", use_container_width=True, help="Refresh subscription & GMP"):
+                if job_manager.run_job("update_dynamic_data", triggered_by="Side Panel (On-Demand)"):
+                    st.toast("📊 Started Dynamic Data Update!")
+                    st.rerun()
+                else:
+                    st.warning("Job already running")
+            if st.button("📋 Allotments", key="side_btn_allotments", use_container_width=True, help="Check Zerodha holdings for allotments"):
+                if job_manager.run_job("allotment_general", triggered_by="Side Panel (On-Demand)"):
+                    st.toast("📋 Checking Allotments!")
+                    st.rerun()
+                else:
+                    st.warning("Job already running")
+
+    _fragment_side_panel()
 
 
 def render_on_demand_buttons():
@@ -626,454 +787,475 @@ def render_on_demand_buttons():
             st.info("💡 Synchronizes `master_users`, `allotted_holdings`, `ipo_research`, and `ipo_applied` between SQLite and Excel workbooks.")
 
 # -----------------------------------------------------------------------------
-# TAB 1: Executive Dashboard
+# Main Application Layout: Split between Main Content & Right-Side Jobs Log Panel
 # -----------------------------------------------------------------------------
-if nav == "📊 Executive Dashboard":
-    st.markdown("<div class='section-head'>📊 Executive Summary & System Overview</div>", unsafe_allow_html=True)
-    
-    kpi1, kpi2, kpi3 = st.columns(3)
-    
-    with kpi1:
-        total_valuation = df_master['current_value'].dropna().sum() if not df_master.empty and 'current_value' in df_master.columns else 0.0
-        st.markdown(f"""
-        <div class="glass-card">
-            <div class="kpi-title">Total Account Valuation</div>
-            <div class="kpi-value text-emerald">₹{total_valuation:,.2f}</div>
-            <div class="kpi-footer">Synced from Master.xlsx</div>
-        </div>
-        """, unsafe_allow_html=True)
+if show_right_panel:
+    main_col, right_col = st.columns([2.55, 1.45], gap="large")
+else:
+    main_col = st.container()
+    right_col = None
 
-    with kpi2:
-        allotment_cnt = len(df_allotments) if not df_allotments.empty else 0
-        st.markdown(f"""
-        <div class="glass-card">
-            <div class="kpi-title">Allotted Securities</div>
-            <div class="kpi-value text-amber">{allotment_cnt}</div>
-            <div class="kpi-footer">Active Allotment Portfolio</div>
-        </div>
-        """, unsafe_allow_html=True)
+with main_col:
+    @st.fragment(run_every=auto_refresh_sec)
+    def render_active_view():
+        users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active = load_all_dashboard_data()
 
-    with kpi3:
-        total_ipos = len(df_all_ipos)
-        st.markdown(f"""
-        <div class="glass-card">
-            <div class="kpi-title">IPOs Tracked in DB</div>
-            <div class="kpi-value text-cyan">{total_ipos}</div>
-            <div class="kpi-footer">{len(df_mb_clean)} MB / {len(df_sme_clean)} SME</div>
-        </div>
-        """, unsafe_allow_html=True)
+        # -----------------------------------------------------------------------------
+        # TAB 1: Executive Dashboard
+        # -----------------------------------------------------------------------------
+        if nav == "📊 Executive Dashboard":
+            st.markdown("<div class='section-head'>📊 Executive Summary & System Overview</div>", unsafe_allow_html=True)
 
-    # Section: Real-Time Job Scheduler & On-Demand Controller
-    st.markdown("<div class='section-head'>⚡ Real-Time Job Scheduler & On-Demand Controls</div>", unsafe_allow_html=True)
-    render_live_job_status_and_output(show_output_box=True)
-    st.markdown("<br>", unsafe_allow_html=True)
-    render_on_demand_buttons()
-    st.markdown("---")
+            kpi1, kpi2, kpi3 = st.columns(3)
 
-    # Section: IPOs Closing Today & Schedule
-    today_day = datetime.date.today().day
-    st.markdown(f"<div class='section-head'>⏰ Active IPO Schedule & Closing Filter (Today: Day {today_day})</div>", unsafe_allow_html=True)
-
-    recent_days = sorted([int(d) for d in df_recent_active['Close Day'].unique() if d > 0])
-    upcoming_days = [d for d in recent_days if d >= today_day]
-    
-    fcol1, fcol2 = st.columns([1, 2])
-    with fcol1:
-        opts = [f"Today (Day {today_day})", "Active Recent IPOs (Last 10)", "All Database Records"] + [f"Day {d}" for d in recent_days]
-        selected_view = st.selectbox("Select Closing View", opts, index=0, key="closing_view_select")
-
-    if selected_view.startswith("Today"):
-        df_closing_show = df_recent_active[df_recent_active['Close Day'] == today_day]
-        if df_closing_show.empty:
-            next_day_str = f"Day {upcoming_days[0]}" if upcoming_days else "N/A"
-            st.info(f"ℹ️ No active IPOs scheduled to close on exact Day {today_day} in the last 10 entries of General.xlsx. Next upcoming active closing date is **{next_day_str}**:")
-            if upcoming_days:
-                df_closing_show = df_recent_active[df_recent_active['Close Day'] == upcoming_days[0]]
-    elif selected_view == "Active Recent IPOs (Last 10)":
-        df_closing_show = df_recent_active[df_recent_active['Close Day'] > 0]
-    elif selected_view == "All Database Records":
-        df_closing_show = df_all_ipos
-    else:
-        target_day = int(selected_view.replace("Day ", ""))
-        df_closing_show = df_recent_active[df_recent_active['Close Day'] == target_day]
-
-    if not df_closing_show.empty:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.metric("Total IPOs Displayed", len(df_closing_show))
-        with c2:
-            apply_recs = len(df_closing_show[df_closing_show['Apply Recommendation'].str.contains('Apply')])
-            st.metric("Apply Recommended", f"{apply_recs} / {len(df_closing_show)}")
-        with c3:
-            max_gmp = df_closing_show['GMP (₹)'].max()
-            st.metric("Max GMP", f"₹{max_gmp:.2f}")
-
-        st.dataframe(
-            df_closing_show[['Company Name', 'Category', 'Total Score', 'Apply Recommendation', 'GMP (₹)', 'Listing Gain %', 'Retail Sub (x)', 'Close Date']],
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info("No IPO records found matching the selected filter.")
-
-
-
-# -----------------------------------------------------------------------------
-# TAB: Job Scheduler & Live Controls
-# -----------------------------------------------------------------------------
-elif nav == "⚡ Job Scheduler & Live Controls":
-    st.markdown("<div class='section-head'>⚡ Real-Time Job Scheduler & On-Demand Controller</div>", unsafe_allow_html=True)
-    st.markdown("""
-    Monitor live executing jobs with start timestamps and elapsed duration, track upcoming schedule countdowns,
-    inspect real-time job execution logs, and trigger automation workflows on-demand.
-    """)
-
-    # 1. Live Status & Output Stream (auto-refreshes every 3 seconds via @st.fragment)
-    render_live_job_status_and_output(show_output_box=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # 2. On-Demand Job Execution Controller
-    render_on_demand_buttons()
-
-    st.markdown("---")
-
-    # 3. Daily Automation Schedule Reference
-    st.markdown("<div class='section-head'>📅 Complete Daily Automation Schedule (16 Tasks)</div>", unsafe_allow_html=True)
-
-    schedule_data = [
-        {"Time (IST)": "08:00", "Task": "Streamlit Dashboard", "Job Key": "launch_streamlit_dashboard", "Category": "System", "Description": "Initiate Streamlit control hub dashboard"},
-        {"Time (IST)": "08:30", "Task": "Scrape Latest IPOs", "Job Key": "ipo_entry", "Category": "IPO & Research", "Description": "Scrape latest Chittorgarh IPO listings into General.xlsx"},
-        {"Time (IST)": "08:35", "Task": "Update Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Morning refresh of subscription, GMP & formula scores"},
-        {"Time (IST)": "08:40", "Task": "Check IPO Allotments", "Job Key": "allotment_general", "Category": "Trading & Listing Day", "Description": "Check Zerodha holdings for newly discovered allotments"},
-        {"Time (IST)": "09:00", "Task": "Pre-Open LC Sell Order", "Job Key": "ss_start_lc_sell", "Category": "Trading & Listing Day", "Description": "Place Lower Circuit sell orders for newly allotted shares today"},
-        {"Time (IST)": "09:05", "Task": "Money Withdraw to Bank", "Job Key": "money_withdraw", "Category": "Funds & Banking", "Description": "Calculate IPO fund requirements and withdraw from Kite to Kotak bank"},
-        {"Time (IST)": "09:10", "Task": "Bank to Kite Transfer", "Job Key": "bank_to_kite", "Category": "Funds & Banking", "Description": "Transfer excess Kotak bank balance to Zerodha Kite for SMWS"},
-        {"Time (IST)": "09:15", "Task": "SMWS ETF Sell", "Job Key": "smws_seller", "Category": "Funds & Banking", "Description": "Sell SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on signal"},
-        {"Time (IST)": "09:20", "Task": "Priority IPO Sell SMWS", "Job Key": "priority_ipo_sell_smws", "Category": "Funds & Banking", "Description": "Liquidate SMWS ETFs when IPO application funds are required"},
-        {"Time (IST)": "09:25", "Task": "SMWS ETF Buy", "Job Key": "smws_buyer", "Category": "Funds & Banking", "Description": "Buy SMWS ETFs based on strategy sheet signal"},
-        {"Time (IST)": "09:32", "Task": "Pre-Open IEP Loss Check", "Job Key": "cancel_sale_order_if_loss", "Category": "Trading & Listing Day", "Description": "Cancel pre-open LC sell orders if IEP indicates discount/loss limit exceeded"},
-        {"Time (IST)": "10:01", "Task": "Regular Session Sell", "Job Key": "regular_session_ipo_sell", "Category": "Trading & Listing Day", "Description": "Execute regular session IPO selling (buyer/seller ratio & UC check)"},
-        {"Time (IST)": "10:05", "Task": "Check Listing Results", "Job Key": "listing_result", "Category": "IPO & Research", "Description": "Check listing prices vs issue prices and update column D in General.xlsx"},
-        {"Time (IST)": "12:05", "Task": "Mid-Day Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Mid-day refresh of GMP and subscription figures"},
-        {"Time (IST)": "14:47", "Task": "Pre-Close Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Final pre-close subscription refresh before 3:00 PM cutoff"},
-        {"Time (IST)": "14:50", "Task": "Apply Closing IPOs", "Job Key": "ipo_application", "Category": "IPO & Research", "Description": "Submit UPI IPO applications via Kotak for IPOs closing today"}
-    ]
-    df_sched = pd.DataFrame(schedule_data)
-    st.dataframe(df_sched, use_container_width=True, hide_index=True)
-
-
-
-# -----------------------------------------------------------------------------
-# TAB 2: Balances & Account Manager
-# -----------------------------------------------------------------------------
-elif nav == "💰 Balances & Account Manager":
-    st.markdown("<div class='section-head'>💰 Multi-Account Profiles & Capital Allocation</div>", unsafe_allow_html=True)
-    
-    if users:
-        cols = st.columns(len(users))
-        for idx, u in enumerate(users):
-            with cols[idx]:
-                name = u.get("name", f"User {idx+1}")
-                client_id = u.get("broker_client_id", "N/A")
-                bank_id = u.get("bank_user", "N/A")
-                pan = u.get("PAN", "N/A")
-                intraday = "Enabled" if u.get("intraday") == "1" else "Disabled"
-                
-                # Find matching row in df_master
-                curr_val_str = "N/A"
-                if not df_master.empty and 'uci' in df_master.columns and 'current_value' in df_master.columns:
-                    match_row = df_master[df_master['uci'].astype(str) == str(u.get('uci'))]
-                    if not match_row.empty:
-                        val = match_row.iloc[0]['current_value']
-                        if pd.notnull(val):
-                            curr_val_str = f"₹{float(val):,.2f}"
-
+            with kpi1:
+                total_valuation = df_master['current_value'].dropna().sum() if not df_master.empty and 'current_value' in df_master.columns else 0.0
                 st.markdown(f"""
-                <div class="glass-card" style="border-top: 4px solid #38bdf8;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3 style="margin:0; color:#f8fafc;">{name}</h3>
-                        <span class="pill pill-blue">UCI: {u.get('uci')}</span>
-                    </div>
-                    <hr style="border-color: rgba(255,255,255,0.08); margin: 12px 0;">
-                    <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Broker Client ID: <b style="color:#f8fafc;">{client_id}</b></p>
-                    <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">PAN Reference: <b style="color:#f8fafc;">{pan}</b></p>
-                    <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Intraday Mode: <b style="color:#34d399;">{intraday}</b></p>
-                    <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Current Value (Master.xlsx): <b style="color:#34d399;">{curr_val_str}</b></p>
+                <div class="glass-card">
+                    <div class="kpi-title">Total Account Valuation</div>
+                    <div class="kpi-value text-emerald">₹{total_valuation:,.2f}</div>
+                    <div class="kpi-footer">Synced from Master.xlsx</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-    if not df_master.empty:
-        st.markdown("<div class='section-head'>📋 Master User Database (Master.xlsx)</div>", unsafe_allow_html=True)
-        st.dataframe(df_master, use_container_width=True, hide_index=True)
+            with kpi2:
+                allotment_cnt = len(df_allotments) if not df_allotments.empty else 0
+                st.markdown(f"""
+                <div class="glass-card">
+                    <div class="kpi-title">Allotted Securities</div>
+                    <div class="kpi-value text-amber">{allotment_cnt}</div>
+                    <div class="kpi-footer">Active Allotment Portfolio</div>
+                </div>
+                """, unsafe_allow_html=True)
 
-    st.markdown("<div class='section-head'>⚙️ Automated Capital Routing Rules</div>", unsafe_allow_html=True)
-    
-    r1, r2 = st.columns(2)
-    with r1:
-        st.markdown("""
-        <div class="glass-card">
-            <h4 style="margin-top:0; color:#fbbf24;">📥 IPO Application Withdrawal Policy</h4>
-            <ul style="color:#cbd5e1; font-size:0.9rem; padding-left: 20px; line-height: 1.7;">
-                <li><b>Mainboard Budget</b>: ~₹2,09,000 required per account for closing IPOs</li>
-                <li><b>SME Budget</b>: ~₹2,80,000 required per account for closing IPOs</li>
-                <li><b>Execution Trigger</b>: Triggered daily at <b>09:05 AM</b> via Playwright script <code>fund_manager.py</code>.</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-        
-    with r2:
-        st.markdown("""
-        <div class="glass-card">
-            <h4 style="margin-top:0; color:#38bdf8;">📤 Idle Bank Fund Sweeping Policy (SMWS)</h4>
-            <ul style="color:#cbd5e1; font-size:0.9rem; padding-left: 20px; line-height: 1.7;">
-                <li>Idle cash in Kotak Bank is swept automatically into Zerodha Kite.</li>
-                <li>Transfers occur daily at <b>09:10 AM</b> via <code>fund_transfer_for_smws.py</code>.</li>
-                <li>Swept funds trade high-liquidity ETFs (<code>NIFTYIETF</code>, <code>TATAGOLD</code>, <code>TATSILV</code>).</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+            with kpi3:
+                total_ipos = len(df_all_ipos)
+                st.markdown(f"""
+                <div class="glass-card">
+                    <div class="kpi-title">IPOs Tracked in DB</div>
+                    <div class="kpi-value text-cyan">{total_ipos}</div>
+                    <div class="kpi-footer">{len(df_mb_clean)} MB / {len(df_sme_clean)} SME</div>
+                </div>
+                """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# TAB 3: IPO Funding & Margin Calculator
-# -----------------------------------------------------------------------------
-elif nav == "🧮 IPO Funding & Margin Calculator":
-    st.markdown("<div class='section-head'>🧮 Interactive Application Funding Calculator</div>", unsafe_allow_html=True)
-    
-    calc_col1, calc_col2 = st.columns([1, 1.2])
-    
-    with calc_col1:
-        st.markdown("#### Input Parameters")
-        num_accounts = st.slider("Number of Account Applications", min_value=1, max_value=max(len(users), 10), value=len(users))
-        mb_count = st.number_input("Mainboard IPOs Closing Today", min_value=0, max_value=10, value=1)
-        sme_count = st.number_input("SME IPOs Closing Today", min_value=0, max_value=10, value=0)
-        
-        custom_kotak_bal = st.number_input("Estimated Current Kotak Bank Balance per Account (₹)", value=50000, step=10000)
-        
-    with calc_col2:
-        mb_cost_per_app = 209000
-        sme_cost_per_app = 280000
-        
-        req_per_account = (mb_count * mb_cost_per_app) + (sme_count * sme_cost_per_app)
-        total_req_all_accounts = req_per_account * num_accounts
-        
-        total_kotak_avail = custom_kotak_bal * num_accounts
-        shortfall_per_account = max(0, req_per_account - custom_kotak_bal)
-        total_withdrawal_needed = shortfall_per_account * num_accounts
-        
-        st.markdown(f"""
-        <div class="glass-card" style="border: 1px solid rgba(56, 189, 248, 0.4);">
-            <h4 style="margin-top:0; color:#38bdf8;">Fund Requirement Calculation</h4>
-            <hr style="border-color: rgba(255,255,255,0.08);">
-            <p style="font-size:1.05rem;">Required per Account: <b style="color:#f8fafc;">₹{req_per_account:,.2f}</b></p>
-            <p style="font-size:1.25rem;">Total Required Across ({num_accounts} Accounts): <b class="text-amber">₹{total_req_all_accounts:,.2f}</b></p>
-            <hr style="border-color: rgba(255,255,255,0.08);">
-            <p style="font-size:1.05rem;">Est. Total Kotak Bank Balance: <b style="color:#34d399;">₹{total_kotak_avail:,.2f}</b></p>
-            <p style="font-size:1.3rem;">Zerodha -> Kotak Withdrawal Needed: <b class="text-rose">₹{total_withdrawal_needed:,.2f}</b></p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if total_withdrawal_needed > 0:
-            st.warning(f"⚠️ Action Required: Initiate withdrawal of ₹{shortfall_per_account:,.2f} per account from Zerodha to Kotak Bank before 02:50 PM.")
-        else:
-            st.success("✅ Sufficient Kotak Bank balance available for today's IPO applications!")
+            # Section: Real-Time Job Scheduler & On-Demand Controller
+            st.markdown("<div class='section-head'>⚡ On-Demand Controls & Job Execution</div>", unsafe_allow_html=True)
+            if not show_right_panel:
+                render_live_job_status_and_output(show_output_box=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+            render_on_demand_buttons()
+            st.markdown("---")
 
-# -----------------------------------------------------------------------------
-# TAB 4: IPO Analytics & Predictions
-# -----------------------------------------------------------------------------
-elif nav == "🚀 IPO Analytics & Predictions":
-    st.markdown("<div class='section-head'>🚀 Comprehensive IPO Analytics & Predictions</div>", unsafe_allow_html=True)
-    
-    subtab0, subtab1, subtab2, subtab3 = st.tabs(["⏰ Closing Today", "🏛️ Mainboard IPOs", "🏢 SME IPOs", "🔥 High Gain (>20% GMP)"])
-    
-    display_cols = ['Company Name', 'Category', 'Total Score', 'Apply Recommendation', 'GMP (₹)', 'Listing Gain %', 'Retail Sub (x)', 'Close Date']
-    
-    with subtab0:
-        st.subheader(f"IPOs Closing Today (Day {datetime.date.today().day}) - Last 10 Entries")
-        df_today_show = df_recent_active[df_recent_active['Is Closing Today']] if not df_recent_active.empty else pd.DataFrame()
-        if not df_today_show.empty:
-            st.dataframe(df_today_show[display_cols], use_container_width=True, hide_index=True)
-        else:
-            st.info(f"No active IPOs closing today (Day {datetime.date.today().day}) found in the last 10 entries of General.xlsx.")
+            # Section: IPOs Closing Today & Schedule
+            today_day = datetime.date.today().day
+            st.markdown(f"<div class='section-head'>⏰ Active IPO Schedule & Closing Filter (Today: Day {today_day})</div>", unsafe_allow_html=True)
 
-    with subtab1:
-        st.subheader("Mainboard IPO Listings")
-        search_mb = st.text_input("Search Mainboard IPO Name", key="search_mb_main")
-        df_mb_show = df_mb_clean
-        if search_mb and not df_mb_show.empty:
-            df_mb_show = df_mb_show[df_mb_show['Company Name'].str.contains(search_mb, case=False)]
-        st.dataframe(df_mb_show[display_cols] if not df_mb_show.empty else df_mb_show, use_container_width=True, hide_index=True)
-        
-    with subtab2:
-        st.subheader("SME IPO Listings")
-        search_sme = st.text_input("Search SME IPO Name", key="search_sme_main")
-        df_sme_show = df_sme_clean
-        if search_sme and not df_sme_show.empty:
-            df_sme_show = df_sme_show[df_sme_show['Company Name'].str.contains(search_sme, case=False)]
-        st.dataframe(df_sme_show[display_cols] if not df_sme_show.empty else df_sme_show, use_container_width=True, hide_index=True)
-        
-    with subtab3:
-        st.subheader("High Premium IPOs (>20% Listing Gain)")
-        df_hot = df_all_ipos[df_all_ipos['Listing Gain %'] >= 20.0] if not df_all_ipos.empty else pd.DataFrame()
-        if not df_hot.empty:
-            st.dataframe(df_hot[display_cols], use_container_width=True, hide_index=True)
-        else:
-            st.info("No IPOs currently meeting the >20% listing gain threshold.")
+            recent_days = sorted([int(d) for d in df_recent_active['Close Day'].unique() if d > 0])
+            upcoming_days = [d for d in recent_days if d >= today_day]
 
-# -----------------------------------------------------------------------------
-# TAB 5: Live SMWS Strategy Monitor
-# -----------------------------------------------------------------------------
-elif nav == "📈 Live SMWS Strategy Monitor":
-    st.markdown("<div class='section-head'>📈 Systematic Market & Withdrawal Strategy (SMWS) Monitor</div>", unsafe_allow_html=True)
-    
-    st.info("📡 Live SMWS Signals fetched directly from Strategy Google Sheet.")
-    
-    signals = fetch_smws_signals()
-    
-    if "error" in signals:
-        st.error(f"Error fetching Google Sheet: {signals['error']}")
-    else:
-        sig_c1, sig_c2, sig_c3 = st.columns(3)
-        
-        def format_signal(val, label):
-            val_str = str(val).strip()
-            if "Loading" in val_str:
-                return f'<span class="pill pill-amber">⏳ Sheet Recalculating ({val_str})</span>'
-            elif val_str == "1":
-                if label.lower() == "sell":
-                    return f'<span class="pill pill-red">🔴 SELL SIGNAL (1)</span>'
+            fcol1, fcol2 = st.columns([1, 2])
+            with fcol1:
+                opts = [f"Today (Day {today_day})", "Active Recent IPOs (Last 10)", "All Database Records"] + [f"Day {d}" for d in recent_days]
+                selected_view = st.selectbox("Select Closing View", opts, index=0, key="closing_view_select")
+
+            if selected_view.startswith("Today"):
+                df_closing_show = df_recent_active[df_recent_active['Close Day'] == today_day]
+                if df_closing_show.empty:
+                    next_day_str = f"Day {upcoming_days[0]}" if upcoming_days else "N/A"
+                    st.info(f"ℹ️ No active IPOs scheduled to close on exact Day {today_day} in the last 10 entries of General.xlsx. Next upcoming active closing date is **{next_day_str}**:")
+                    if upcoming_days:
+                        df_closing_show = df_recent_active[df_recent_active['Close Day'] == upcoming_days[0]]
+            elif selected_view == "Active Recent IPOs (Last 10)":
+                df_closing_show = df_recent_active[df_recent_active['Close Day'] > 0]
+            elif selected_view == "All Database Records":
+                df_closing_show = df_all_ipos
+            else:
+                target_day = int(selected_view.replace("Day ", ""))
+                df_closing_show = df_recent_active[df_recent_active['Close Day'] == target_day]
+
+            if not df_closing_show.empty:
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    st.metric("Total IPOs Displayed", len(df_closing_show))
+                with c2:
+                    apply_recs = len(df_closing_show[df_closing_show['Apply Recommendation'].str.contains('Apply')])
+                    st.metric("Apply Recommended", f"{apply_recs} / {len(df_closing_show)}")
+                with c3:
+                    max_gmp = df_closing_show['GMP (₹)'].max()
+                    st.metric("Max GMP", f"₹{max_gmp:.2f}")
+
+                st.dataframe(
+                    df_closing_show[['Company Name', 'Category', 'Total Score', 'Apply Recommendation', 'GMP (₹)', 'Listing Gain %', 'Retail Sub (x)', 'Close Date']],
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("No IPO records found matching the selected filter.")
+
+
+
+        # -----------------------------------------------------------------------------
+        # TAB: Job Scheduler & Live Controls
+        # -----------------------------------------------------------------------------
+        elif nav == "⚡ Job Scheduler & Live Controls":
+            st.markdown("<div class='section-head'>⚡ Real-Time Job Scheduler & On-Demand Controller</div>", unsafe_allow_html=True)
+            st.markdown("""
+            Monitor live executing jobs with start timestamps and elapsed duration, track upcoming schedule countdowns,
+            inspect real-time job execution logs, and trigger automation workflows on-demand.
+            """)
+
+            # 1. Live Status & Output Stream (auto-refreshes every 3 seconds via @st.fragment)
+            render_live_job_status_and_output(show_output_box=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            # 2. On-Demand Job Execution Controller
+            render_on_demand_buttons()
+
+            st.markdown("---")
+
+            # 3. Daily Automation Schedule Reference
+            st.markdown("<div class='section-head'>📅 Complete Daily Automation Schedule (16 Tasks)</div>", unsafe_allow_html=True)
+
+            schedule_data = [
+                {"Time (IST)": "08:00", "Task": "Streamlit Dashboard", "Job Key": "launch_streamlit_dashboard", "Category": "System", "Description": "Initiate Streamlit control hub dashboard"},
+                {"Time (IST)": "08:30", "Task": "Scrape Latest IPOs", "Job Key": "ipo_entry", "Category": "IPO & Research", "Description": "Scrape latest Chittorgarh IPO listings into General.xlsx"},
+                {"Time (IST)": "08:35", "Task": "Update Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Morning refresh of subscription, GMP & formula scores"},
+                {"Time (IST)": "08:40", "Task": "Check IPO Allotments", "Job Key": "allotment_general", "Category": "Trading & Listing Day", "Description": "Check Zerodha holdings for newly discovered allotments"},
+                {"Time (IST)": "09:00", "Task": "Pre-Open LC Sell Order", "Job Key": "ss_start_lc_sell", "Category": "Trading & Listing Day", "Description": "Place Lower Circuit sell orders for newly allotted shares today"},
+                {"Time (IST)": "09:05", "Task": "Money Withdraw to Bank", "Job Key": "money_withdraw", "Category": "Funds & Banking", "Description": "Calculate IPO fund requirements and withdraw from Kite to Kotak bank"},
+                {"Time (IST)": "09:10", "Task": "Bank to Kite Transfer", "Job Key": "bank_to_kite", "Category": "Funds & Banking", "Description": "Transfer excess Kotak bank balance to Zerodha Kite for SMWS"},
+                {"Time (IST)": "09:15", "Task": "SMWS ETF Sell", "Job Key": "smws_seller", "Category": "Funds & Banking", "Description": "Sell SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on signal"},
+                {"Time (IST)": "09:20", "Task": "Priority IPO Sell SMWS", "Job Key": "priority_ipo_sell_smws", "Category": "Funds & Banking", "Description": "Liquidate SMWS ETFs when IPO application funds are required"},
+                {"Time (IST)": "09:25", "Task": "SMWS ETF Buy", "Job Key": "smws_buyer", "Category": "Funds & Banking", "Description": "Buy SMWS ETFs based on strategy sheet signal"},
+                {"Time (IST)": "09:32", "Task": "Pre-Open IEP Loss Check", "Job Key": "cancel_sale_order_if_loss", "Category": "Trading & Listing Day", "Description": "Cancel pre-open LC sell orders if IEP indicates discount/loss limit exceeded"},
+                {"Time (IST)": "10:01", "Task": "Regular Session Sell", "Job Key": "regular_session_ipo_sell", "Category": "Trading & Listing Day", "Description": "Execute regular session IPO selling (buyer/seller ratio & UC check)"},
+                {"Time (IST)": "10:05", "Task": "Check Listing Results", "Job Key": "listing_result", "Category": "IPO & Research", "Description": "Check listing prices vs issue prices and update column D in General.xlsx"},
+                {"Time (IST)": "12:05", "Task": "Mid-Day Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Mid-day refresh of GMP and subscription figures"},
+                {"Time (IST)": "14:47", "Task": "Pre-Close Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Final pre-close subscription refresh before 3:00 PM cutoff"},
+                {"Time (IST)": "14:50", "Task": "Apply Closing IPOs", "Job Key": "ipo_application", "Category": "IPO & Research", "Description": "Submit UPI IPO applications via Kotak for IPOs closing today"}
+            ]
+            df_sched = pd.DataFrame(schedule_data)
+            st.dataframe(df_sched, use_container_width=True, hide_index=True)
+
+
+
+        # -----------------------------------------------------------------------------
+        # TAB 2: Balances & Account Manager
+        # -----------------------------------------------------------------------------
+        elif nav == "💰 Balances & Account Manager":
+            st.markdown("<div class='section-head'>💰 Multi-Account Profiles & Capital Allocation</div>", unsafe_allow_html=True)
+
+            if users:
+                cols = st.columns(len(users))
+                for idx, u in enumerate(users):
+                    with cols[idx]:
+                        name = u.get("name", f"User {idx+1}")
+                        client_id = u.get("broker_client_id", "N/A")
+                        bank_id = u.get("bank_user", "N/A")
+                        pan = u.get("PAN", "N/A")
+                        intraday = "Enabled" if u.get("intraday") == "1" else "Disabled"
+
+                        # Find matching row in df_master
+                        curr_val_str = "N/A"
+                        if not df_master.empty and 'uci' in df_master.columns and 'current_value' in df_master.columns:
+                            match_row = df_master[df_master['uci'].astype(str) == str(u.get('uci'))]
+                            if not match_row.empty:
+                                val = match_row.iloc[0]['current_value']
+                                if pd.notnull(val):
+                                    curr_val_str = f"₹{float(val):,.2f}"
+
+                        st.markdown(f"""
+                        <div class="glass-card" style="border-top: 4px solid #38bdf8;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3 style="margin:0; color:#f8fafc;">{name}</h3>
+                                <span class="pill pill-blue">UCI: {u.get('uci')}</span>
+                            </div>
+                            <hr style="border-color: rgba(255,255,255,0.08); margin: 12px 0;">
+                            <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Broker Client ID: <b style="color:#f8fafc;">{client_id}</b></p>
+                            <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">PAN Reference: <b style="color:#f8fafc;">{pan}</b></p>
+                            <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Intraday Mode: <b style="color:#34d399;">{intraday}</b></p>
+                            <p style="margin: 6px 0; font-size: 0.9rem; color:#94a3b8;">Current Value (Master.xlsx): <b style="color:#34d399;">{curr_val_str}</b></p>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+            if not df_master.empty:
+                st.markdown("<div class='section-head'>📋 Master User Database (Master.xlsx)</div>", unsafe_allow_html=True)
+                st.dataframe(df_master, use_container_width=True, hide_index=True)
+
+            st.markdown("<div class='section-head'>⚙️ Automated Capital Routing Rules</div>", unsafe_allow_html=True)
+
+            r1, r2 = st.columns(2)
+            with r1:
+                st.markdown("""
+                <div class="glass-card">
+                    <h4 style="margin-top:0; color:#fbbf24;">📥 IPO Application Withdrawal Policy</h4>
+                    <ul style="color:#cbd5e1; font-size:0.9rem; padding-left: 20px; line-height: 1.7;">
+                        <li><b>Mainboard Budget</b>: ~₹2,09,000 required per account for closing IPOs</li>
+                        <li><b>SME Budget</b>: ~₹2,80,000 required per account for closing IPOs</li>
+                        <li><b>Execution Trigger</b>: Triggered daily at <b>09:05 AM</b> via Playwright script <code>fund_manager.py</code>.</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with r2:
+                st.markdown("""
+                <div class="glass-card">
+                    <h4 style="margin-top:0; color:#38bdf8;">📤 Idle Bank Fund Sweeping Policy (SMWS)</h4>
+                    <ul style="color:#cbd5e1; font-size:0.9rem; padding-left: 20px; line-height: 1.7;">
+                        <li>Idle cash in Kotak Bank is swept automatically into Zerodha Kite.</li>
+                        <li>Transfers occur daily at <b>09:10 AM</b> via <code>fund_transfer_for_smws.py</code>.</li>
+                        <li>Swept funds trade high-liquidity ETFs (<code>NIFTYIETF</code>, <code>TATAGOLD</code>, <code>TATSILV</code>).</li>
+                    </ul>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # -----------------------------------------------------------------------------
+        # TAB 3: IPO Funding & Margin Calculator
+        # -----------------------------------------------------------------------------
+        elif nav == "🧮 IPO Funding & Margin Calculator":
+            st.markdown("<div class='section-head'>🧮 Interactive Application Funding Calculator</div>", unsafe_allow_html=True)
+
+            calc_col1, calc_col2 = st.columns([1, 1.2])
+
+            with calc_col1:
+                st.markdown("#### Input Parameters")
+                num_accounts = st.slider("Number of Account Applications", min_value=1, max_value=max(len(users), 10), value=len(users))
+                mb_count = st.number_input("Mainboard IPOs Closing Today", min_value=0, max_value=10, value=1)
+                sme_count = st.number_input("SME IPOs Closing Today", min_value=0, max_value=10, value=0)
+
+                custom_kotak_bal = st.number_input("Estimated Current Kotak Bank Balance per Account (₹)", value=50000, step=10000)
+
+            with calc_col2:
+                mb_cost_per_app = 209000
+                sme_cost_per_app = 280000
+
+                req_per_account = (mb_count * mb_cost_per_app) + (sme_count * sme_cost_per_app)
+                total_req_all_accounts = req_per_account * num_accounts
+
+                total_kotak_avail = custom_kotak_bal * num_accounts
+                shortfall_per_account = max(0, req_per_account - custom_kotak_bal)
+                total_withdrawal_needed = shortfall_per_account * num_accounts
+
+                st.markdown(f"""
+                <div class="glass-card" style="border: 1px solid rgba(56, 189, 248, 0.4);">
+                    <h4 style="margin-top:0; color:#38bdf8;">Fund Requirement Calculation</h4>
+                    <hr style="border-color: rgba(255,255,255,0.08);">
+                    <p style="font-size:1.05rem;">Required per Account: <b style="color:#f8fafc;">₹{req_per_account:,.2f}</b></p>
+                    <p style="font-size:1.25rem;">Total Required Across ({num_accounts} Accounts): <b class="text-amber">₹{total_req_all_accounts:,.2f}</b></p>
+                    <hr style="border-color: rgba(255,255,255,0.08);">
+                    <p style="font-size:1.05rem;">Est. Total Kotak Bank Balance: <b style="color:#34d399;">₹{total_kotak_avail:,.2f}</b></p>
+                    <p style="font-size:1.3rem;">Zerodha -> Kotak Withdrawal Needed: <b class="text-rose">₹{total_withdrawal_needed:,.2f}</b></p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if total_withdrawal_needed > 0:
+                    st.warning(f"⚠️ Action Required: Initiate withdrawal of ₹{shortfall_per_account:,.2f} per account from Zerodha to Kotak Bank before 02:50 PM.")
                 else:
-                    return f'<span class="pill pill-green">🟢 BUY SIGNAL (1)</span>'
-            elif val_str == "0":
-                return f'<span class="pill pill-purple">⚪ HOLD / NO SIGNAL (0)</span>'
+                    st.success("✅ Sufficient Kotak Bank balance available for today's IPO applications!")
+
+        # -----------------------------------------------------------------------------
+        # TAB 4: IPO Analytics & Predictions
+        # -----------------------------------------------------------------------------
+        elif nav == "🚀 IPO Analytics & Predictions":
+            st.markdown("<div class='section-head'>🚀 Comprehensive IPO Analytics & Predictions</div>", unsafe_allow_html=True)
+
+            subtab0, subtab1, subtab2, subtab3 = st.tabs(["⏰ Closing Today", "🏛️ Mainboard IPOs", "🏢 SME IPOs", "🔥 High Gain (>20% GMP)"])
+
+            display_cols = ['Company Name', 'Category', 'Total Score', 'Apply Recommendation', 'GMP (₹)', 'Listing Gain %', 'Retail Sub (x)', 'Close Date']
+
+            with subtab0:
+                st.subheader(f"IPOs Closing Today (Day {datetime.date.today().day}) - Last 10 Entries")
+                df_today_show = df_recent_active[df_recent_active['Is Closing Today']] if not df_recent_active.empty else pd.DataFrame()
+                if not df_today_show.empty:
+                    st.dataframe(df_today_show[display_cols], use_container_width=True, hide_index=True)
+                else:
+                    st.info(f"No active IPOs closing today (Day {datetime.date.today().day}) found in the last 10 entries of General.xlsx.")
+
+            with subtab1:
+                st.subheader("Mainboard IPO Listings")
+                search_mb = st.text_input("Search Mainboard IPO Name", key="search_mb_main")
+                df_mb_show = df_mb_clean
+                if search_mb and not df_mb_show.empty:
+                    df_mb_show = df_mb_show[df_mb_show['Company Name'].str.contains(search_mb, case=False)]
+                st.dataframe(df_mb_show[display_cols] if not df_mb_show.empty else df_mb_show, use_container_width=True, hide_index=True)
+
+            with subtab2:
+                st.subheader("SME IPO Listings")
+                search_sme = st.text_input("Search SME IPO Name", key="search_sme_main")
+                df_sme_show = df_sme_clean
+                if search_sme and not df_sme_show.empty:
+                    df_sme_show = df_sme_show[df_sme_show['Company Name'].str.contains(search_sme, case=False)]
+                st.dataframe(df_sme_show[display_cols] if not df_sme_show.empty else df_sme_show, use_container_width=True, hide_index=True)
+
+            with subtab3:
+                st.subheader("High Premium IPOs (>20% Listing Gain)")
+                df_hot = df_all_ipos[df_all_ipos['Listing Gain %'] >= 20.0] if not df_all_ipos.empty else pd.DataFrame()
+                if not df_hot.empty:
+                    st.dataframe(df_hot[display_cols], use_container_width=True, hide_index=True)
+                else:
+                    st.info("No IPOs currently meeting the >20% listing gain threshold.")
+
+        # -----------------------------------------------------------------------------
+        # TAB 5: Live SMWS Strategy Monitor
+        # -----------------------------------------------------------------------------
+        elif nav == "📈 Live SMWS Strategy Monitor":
+            st.markdown("<div class='section-head'>📈 Systematic Market & Withdrawal Strategy (SMWS) Monitor</div>", unsafe_allow_html=True)
+
+            st.info("📡 Live SMWS Signals fetched directly from Strategy Google Sheet.")
+
+            signals = fetch_smws_signals()
+
+            if "error" in signals:
+                st.error(f"Error fetching Google Sheet: {signals['error']}")
             else:
-                return f'<span class="pill pill-blue">SIGNAL: {val_str}</span>'
+                sig_c1, sig_c2, sig_c3 = st.columns(3)
 
-        with sig_c1:
-            st.markdown(f"""
-            <div class="glass-card">
-                <h4 style="margin-top:0; color:#38bdf8;">NIFTYIETF</h4>
-                <p>Buy Signal: {format_signal(signals.get('buy_nifty'), 'Buy')}</p>
-                <p>Sell Signal: {format_signal(signals.get('sell_nifty'), 'Sell')}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with sig_c2:
-            st.markdown(f"""
-            <div class="glass-card">
-                <h4 style="margin-top:0; color:#fbbf24;">TATAGOLD</h4>
-                <p>Buy Signal: {format_signal(signals.get('buy_gold'), 'Buy')}</p>
-                <p>Sell Signal: {format_signal(signals.get('sell_gold'), 'Sell')}</p>
-            </div>
-            """, unsafe_allow_html=True)
+                def format_signal(val, label):
+                    val_str = str(val).strip()
+                    if "Loading" in val_str:
+                        return f'<span class="pill pill-amber">⏳ Sheet Recalculating ({val_str})</span>'
+                    elif val_str == "1":
+                        if label.lower() == "sell":
+                            return f'<span class="pill pill-red">🔴 SELL SIGNAL (1)</span>'
+                        else:
+                            return f'<span class="pill pill-green">🟢 BUY SIGNAL (1)</span>'
+                    elif val_str == "0":
+                        return f'<span class="pill pill-purple">⚪ HOLD / NO SIGNAL (0)</span>'
+                    else:
+                        return f'<span class="pill pill-blue">SIGNAL: {val_str}</span>'
 
-        with sig_c3:
-            st.markdown(f"""
-            <div class="glass-card">
-                <h4 style="margin-top:0; color:#c084fc;">TATSILV</h4>
-                <p>Buy Signal: {format_signal(signals.get('buy_silver'), 'Buy')}</p>
-                <p>Sell Signal: {format_signal(signals.get('sell_silver'), 'Sell')}</p>
-            </div>
-            """, unsafe_allow_html=True)
+                with sig_c1:
+                    st.markdown(f"""
+                    <div class="glass-card">
+                        <h4 style="margin-top:0; color:#38bdf8;">NIFTYIETF</h4>
+                        <p>Buy Signal: {format_signal(signals.get('buy_nifty'), 'Buy')}</p>
+                        <p>Sell Signal: {format_signal(signals.get('sell_nifty'), 'Sell')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# TAB 6: Allotted Holdings Tracker
-# -----------------------------------------------------------------------------
-elif nav == "📦 Allotted Holdings Tracker":
-    st.markdown("<div class='section-head'>📦 Detected IPO Allotment Portfolio</div>", unsafe_allow_html=True)
-    
-    if not df_allotments.empty:
-        cnt = len(df_allotments)
-        st.metric("Total Active Allotments Recorded", cnt)
-        
-        st.dataframe(
-            df_allotments[['uci', 'security_name', 'lot_size', 'issue_price', 'shares_allocated', 'stock_category', 'special_session_status']],
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.info("No active holdings found in allotted_holdings.xlsx.")
+                with sig_c2:
+                    st.markdown(f"""
+                    <div class="glass-card">
+                        <h4 style="margin-top:0; color:#fbbf24;">TATAGOLD</h4>
+                        <p>Buy Signal: {format_signal(signals.get('buy_gold'), 'Buy')}</p>
+                        <p>Sell Signal: {format_signal(signals.get('sell_gold'), 'Sell')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# TAB 7: System Health & Activity Logs
-# -----------------------------------------------------------------------------
-elif nav == "📜 System Health & Activity Logs":
-    st.markdown("<div class='section-head'>📜 System Health Diagnostics & Real-time Logs</div>", unsafe_allow_html=True)
-    
-    st.markdown("#### System Component Health Checks")
-    h1, h2, h3, h4 = st.columns(4)
-    
-    env_exists = os.path.exists(os.path.join(BASE_DIR, ".env"))
-    gen_exists = os.path.exists(os.path.join(BASE_DIR, "General.xlsx"))
-    master_exists = os.path.exists(os.path.join(BASE_DIR, "Master.xlsx"))
-    allot_exists = os.path.exists(os.path.join(BASE_DIR, "allotted_holdings.xlsx"))
-    
-    env_badge = '<span class="pill pill-green">Found</span>' if env_exists else '<span class="pill pill-amber">Missing</span>'
-    gen_badge = '<span class="pill pill-green">Found</span>' if gen_exists else '<span class="pill pill-amber">Missing</span>'
-    master_badge = '<span class="pill pill-green">Found</span>' if master_exists else '<span class="pill pill-amber">Missing</span>'
-    allot_badge = '<span class="pill pill-green">Found</span>' if allot_exists else '<span class="pill pill-amber">Missing</span>'
-    net_badge = '<span class="pill pill-green">Online</span>' if internet_ok else '<span class="pill pill-amber">Offline</span>'
+                with sig_c3:
+                    st.markdown(f"""
+                    <div class="glass-card">
+                        <h4 style="margin-top:0; color:#c084fc;">TATSILV</h4>
+                        <p>Buy Signal: {format_signal(signals.get('buy_silver'), 'Buy')}</p>
+                        <p>Sell Signal: {format_signal(signals.get('sell_silver'), 'Sell')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-    with h1:
-        st.markdown(f"<b>.env Credentials File</b>: {env_badge}", unsafe_allow_html=True)
-    with h2:
-        st.markdown(f"<b>General.xlsx Database</b>: {gen_badge}<br><b>Master.xlsx Database</b>: {master_badge}", unsafe_allow_html=True)
-    with h3:
-        st.markdown(f"<b>Allotted Holdings File</b>: {allot_badge}", unsafe_allow_html=True)
-    with h4:
-        st.markdown(f"<b>Internet Connection</b>: {net_badge}", unsafe_allow_html=True)
-        
-    # ── Telegram Push Notification Health & Tester ──
-    st.markdown("---")
-    st.markdown("#### 📲 Telegram Push Notification Control & Diagnostics")
-    
-    tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    tg_chat = os.environ.get("TELEGRAM_CHAT_ID")
-    tg_configured = bool(tg_token and tg_chat)
-    
-    tg_status_badge = '<span class="pill pill-green">Configured</span>' if tg_configured else '<span class="pill pill-amber">Not Configured</span>'
-    
-    tg_col1, tg_col2 = st.columns([2, 1])
-    with tg_col1:
-        st.markdown(f"<b>Telegram Bot Status</b>: {tg_status_badge}", unsafe_allow_html=True)
-        if tg_configured:
-            masked_token = tg_token[:6] + "..." + tg_token[-4:] if len(tg_token) > 10 else "***"
-            st.caption(f"Bot Token: `{masked_token}` | Chat ID: `{tg_chat}`")
-        else:
-            st.info("💡 To enable push notifications on your phone, add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file.")
-            
-    with tg_col2:
-        if st.button("🧪 Send Test Telegram Alert"):
-            from common_foundation import send_telegram_notification
-            test_msg = (
-                "🧪 <b>CapitalFund1 Test Push Notification</b>\n\n"
-                "✅ Your Telegram Bot integration is working perfectly!\n"
-                f"⏰ <b>Timestamp</b>: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}"
+        # -----------------------------------------------------------------------------
+        # TAB 6: Allotted Holdings Tracker
+        # -----------------------------------------------------------------------------
+        elif nav == "📦 Allotted Holdings Tracker":
+            st.markdown("<div class='section-head'>📦 Detected IPO Allotment Portfolio</div>", unsafe_allow_html=True)
+
+            if not df_allotments.empty:
+                cnt = len(df_allotments)
+                st.metric("Total Active Allotments Recorded", cnt)
+
+                st.dataframe(
+                    df_allotments[['uci', 'security_name', 'lot_size', 'issue_price', 'shares_allocated', 'stock_category', 'special_session_status']],
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("No active holdings found in allotted_holdings.xlsx.")
+
+        # -----------------------------------------------------------------------------
+        # TAB 7: System Health & Activity Logs
+        # -----------------------------------------------------------------------------
+        elif nav == "📜 System Health & Activity Logs":
+            st.markdown("<div class='section-head'>📜 System Health Diagnostics & Real-time Logs</div>", unsafe_allow_html=True)
+
+            st.markdown("#### System Component Health Checks")
+            h1, h2, h3, h4 = st.columns(4)
+
+            env_exists = os.path.exists(os.path.join(BASE_DIR, ".env"))
+            gen_exists = os.path.exists(os.path.join(BASE_DIR, "General.xlsx"))
+            master_exists = os.path.exists(os.path.join(BASE_DIR, "Master.xlsx"))
+            allot_exists = os.path.exists(os.path.join(BASE_DIR, "allotted_holdings.xlsx"))
+
+            env_badge = '<span class="pill pill-green">Found</span>' if env_exists else '<span class="pill pill-amber">Missing</span>'
+            gen_badge = '<span class="pill pill-green">Found</span>' if gen_exists else '<span class="pill pill-amber">Missing</span>'
+            master_badge = '<span class="pill pill-green">Found</span>' if master_exists else '<span class="pill pill-amber">Missing</span>'
+            allot_badge = '<span class="pill pill-green">Found</span>' if allot_exists else '<span class="pill pill-amber">Missing</span>'
+            net_badge = '<span class="pill pill-green">Online</span>' if internet_ok else '<span class="pill pill-amber">Offline</span>'
+
+            with h1:
+                st.markdown(f"<b>.env Credentials File</b>: {env_badge}", unsafe_allow_html=True)
+            with h2:
+                st.markdown(f"<b>General.xlsx Database</b>: {gen_badge}<br><b>Master.xlsx Database</b>: {master_badge}", unsafe_allow_html=True)
+            with h3:
+                st.markdown(f"<b>Allotted Holdings File</b>: {allot_badge}", unsafe_allow_html=True)
+            with h4:
+                st.markdown(f"<b>Internet Connection</b>: {net_badge}", unsafe_allow_html=True)
+
+            # ── Telegram Push Notification Health & Tester ──
+            st.markdown("---")
+            st.markdown("#### 📲 Telegram Push Notification Control & Diagnostics")
+
+            tg_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+            tg_chat = os.environ.get("TELEGRAM_CHAT_ID")
+            tg_configured = bool(tg_token and tg_chat)
+
+            tg_status_badge = '<span class="pill pill-green">Configured</span>' if tg_configured else '<span class="pill pill-amber">Not Configured</span>'
+
+            tg_col1, tg_col2 = st.columns([2, 1])
+            with tg_col1:
+                st.markdown(f"<b>Telegram Bot Status</b>: {tg_status_badge}", unsafe_allow_html=True)
+                if tg_configured:
+                    masked_token = tg_token[:6] + "..." + tg_token[-4:] if len(tg_token) > 10 else "***"
+                    st.caption(f"Bot Token: `{masked_token}` | Chat ID: `{tg_chat}`")
+                else:
+                    st.info("💡 To enable push notifications on your phone, add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file.")
+
+            with tg_col2:
+                if st.button("🧪 Send Test Telegram Alert"):
+                    from common_foundation import send_telegram_notification
+                    test_msg = (
+                        "🧪 <b>CapitalFund1 Test Push Notification</b>\n\n"
+                        "✅ Your Telegram Bot integration is working perfectly!\n"
+                        f"⏰ <b>Timestamp</b>: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}"
+                    )
+                    success = send_telegram_notification(test_msg)
+                    if success:
+                        st.success("✅ Test notification sent! Check your Telegram app.")
+                    else:
+                        st.error("❌ Failed to send. Please check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env.")
+
+            st.markdown("---")
+            st.markdown("#### Live Console Output Viewer")
+
+            l_source = st.radio("Log Source File", ["logs/error.log", "system.txt"], horizontal=True)
+            l_type = "error" if "error" in l_source else "system"
+
+            lines = read_logs(l_type)
+
+            filter_txt = st.text_input("Filter Log Line Keyword", "")
+            if filter_txt:
+                lines = [line for line in lines if filter_txt.lower() in line.lower()]
+
+            log_body = "".join(lines)
+            st.markdown(f"<div class='console-box'>{log_body}</div>", unsafe_allow_html=True)
+
+            st.download_button(
+                label="📥 Download Current Log File",
+                data=log_body,
+                file_name=f"capitalfund1_{l_type}_log.txt",
+                mime="text/plain"
             )
-            success = send_telegram_notification(test_msg)
-            if success:
-                st.success("✅ Test notification sent! Check your Telegram app.")
-            else:
-                st.error("❌ Failed to send. Please check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env.")
 
-    st.markdown("---")
-    st.markdown("#### Live Console Output Viewer")
-    
-    l_source = st.radio("Log Source File", ["logs/error.log", "system.txt"], horizontal=True)
-    l_type = "error" if "error" in l_source else "system"
-    
-    lines = read_logs(l_type)
-    
-    filter_txt = st.text_input("Filter Log Line Keyword", "")
-    if filter_txt:
-        lines = [line for line in lines if filter_txt.lower() in line.lower()]
-        
-    log_body = "".join(lines)
-    st.markdown(f"<div class='console-box'>{log_body}</div>", unsafe_allow_html=True)
-    
-    st.download_button(
-        label="📥 Download Current Log File",
-        data=log_body,
-        file_name=f"capitalfund1_{l_type}_log.txt",
-        mime="text/plain"
-    )
+    render_active_view()
+
+if right_col is not None:
+    with right_col:
+        render_jobs_log_side_panel()

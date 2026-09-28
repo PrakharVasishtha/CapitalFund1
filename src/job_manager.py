@@ -21,6 +21,7 @@ import datetime
 from typing import Dict, Any, List, Optional
 import io
 import contextlib
+import pandas as pd
 
 # Ensure src in sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -146,12 +147,16 @@ def get_job_state() -> Dict[str, Any]:
         if os.path.exists(STATE_FILE):
             try:
                 with open(STATE_FILE, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    if "history" not in data or not isinstance(data["history"], list):
+                        data["history"] = [data["last_completed"]] if data.get("last_completed") else []
+                    return data
             except Exception:
                 pass
         return {
             "running_jobs": {},
             "last_completed": None,
+            "history": [],
             "last_updated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S IST")
         }
 
@@ -221,9 +226,14 @@ def record_job_finish(job_key: str, status: str = "SUCCESS", error_msg: Optional
         "finished_at": now_str,
         "duration_seconds": duration_sec,
         "status": status,
-        "error_message": error_msg
+        "error_message": error_msg,
+        "triggered_by": job_record.get("triggered_by", "Scheduler") if job_record else "Scheduler"
     }
     state["last_completed"] = completed_record
+    if "history" not in state or not isinstance(state["history"], list):
+        state["history"] = []
+    state["history"].insert(0, completed_record)
+    state["history"] = state["history"][:50]
     save_job_state(state)
 
     # Append job finish footer to current_job.log
@@ -259,7 +269,95 @@ def get_current_job_output(max_lines: int = 150) -> str:
             lines = f.readlines()
             return "".join(lines[-max_lines:])
     except Exception as e:
-        return f"Error reading execution log: {e}"
+        return f"Error reading current_job.log: {e}"
+
+
+def get_job_history(limit: int = 25) -> List[Dict[str, Any]]:
+    """
+    Returns a unified list of active running jobs followed by past completed jobs.
+    """
+    state = get_job_state()
+    results = []
+
+    # 1. Add currently running jobs first
+    for k, rj in state.get("running_jobs", {}).items():
+        started_ts = rj.get("started_ts", time.time())
+        elapsed_sec = max(0.0, round(time.time() - started_ts, 1))
+        started_raw = str(rj.get("started_at", "Now"))
+        time_part = started_raw.split()[1] if " " in started_raw else started_raw
+        results.append({
+            "job_key": k,
+            "name": rj.get("name", k),
+            "status": "RUNNING",
+            "time": time_part,
+            "full_time": started_raw,
+            "duration": f"{elapsed_sec}s",
+            "triggered_by": rj.get("triggered_by", "Scheduler"),
+            "icon": JOB_REGISTRY.get(k, {}).get("icon", "⚡"),
+            "category": JOB_REGISTRY.get(k, {}).get("category", "General")
+        })
+
+    # 2. Add past completed jobs
+    for entry in state.get("history", []):
+        fin_at = str(entry.get("finished_at", entry.get("started_at", "N/A")))
+        time_part = fin_at.split()[1] if " " in fin_at else fin_at
+        dur = entry.get("duration_seconds", 0.0)
+        dur_str = f"{dur}s" if dur is not None else "N/A"
+        k = entry.get("job_key", "")
+        results.append({
+            "job_key": k,
+            "name": entry.get("name", k),
+            "status": entry.get("status", "SUCCESS"),
+            "time": time_part,
+            "full_time": fin_at,
+            "duration": dur_str,
+            "triggered_by": entry.get("triggered_by", "Scheduler"),
+            "icon": JOB_REGISTRY.get(k, {}).get("icon", "⚡"),
+            "category": JOB_REGISTRY.get(k, {}).get("category", "General")
+        })
+
+    return results[:limit]
+
+
+def get_job_history_df(limit: int = 25) -> pd.DataFrame:
+    """
+    Returns a pandas DataFrame formatted for table display on the dashboard.
+    """
+    history = get_job_history(limit=limit)
+    if not history:
+        return pd.DataFrame(columns=["Time (IST)", "Job Name", "Status", "Duration", "Trigger"])
+
+    rows = []
+    for item in history:
+        stat = item["status"]
+        if stat == "RUNNING":
+            stat_badge = "⏳ RUNNING"
+        elif stat == "SUCCESS":
+            stat_badge = "✅ SUCCESS"
+        else:
+            stat_badge = f"❌ {stat}"
+
+        rows.append({
+            "Time (IST)": item["time"],
+            "Job Name": f"{item['icon']} {item['name']}",
+            "Status": stat_badge,
+            "Duration": item["duration"],
+            "Trigger": item["triggered_by"]
+        })
+    return pd.DataFrame(rows)
+
+
+def get_recent_system_logs(max_lines: int = 50) -> str:
+    """Read recent lines from logs/capitalfund.log."""
+    log_file = os.path.join(LOGS_DIR, "capitalfund.log")
+    if not os.path.exists(log_file):
+        return "No system logs available yet."
+    try:
+        with open(log_file, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+            return "".join(lines[-max_lines:])
+    except Exception as e:
+        return f"Error reading logs: {e}"
 
 
 # ── Schedule Countdown & Next Job Calculation ────────────────────────────────
