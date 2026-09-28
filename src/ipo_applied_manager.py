@@ -50,29 +50,36 @@ def fetch_ipo_details_from_general(ipo_name: str, type_ipo: str = "mb") -> tuple
                 continue
 
             ws = wb[sheet_name]
+            # Discover header indices
+            col_price = 45  # Default Column AS (Issue price)
+            for c in range(1, min(ws.max_column + 1, 60)):
+                val_c = str(ws.cell(1, c).value or "").strip().lower()
+                if val_c == "issue price":
+                    col_price = c
+                    break
+
             for r in range(2, ws.max_row + 1):
                 name_val = str(ws.cell(r, 2).value or "").strip()
                 if not name_val:
                     continue
 
                 if ipo_name.lower() in name_val.lower() or name_val.lower() in ipo_name.lower():
-                    # Column 7 = Issue price, Column 8/9/10 = Min shares / Lot size
-                    p_val = ws.cell(r, 7).value or 0.0
-                    s_val = ws.cell(r, 8).value or ws.cell(r, 9).value or 1
-
+                    p_val = ws.cell(r, col_price).value or 0.0
                     try:
-                        issue_price = parse_float(str(p_val))
+                        issue_price = abs(parse_float(str(p_val)))
                     except Exception:
                         issue_price = 0.0
 
-                    try:
-                        shares_applied = int(parse_float(str(s_val)))
-                        if shares_applied <= 0:
-                            shares_applied = 1
-                    except Exception:
-                        shares_applied = 1
-
+                    # Calculate typical lot shares based on category
+                    if issue_price > 0:
+                        if type_ipo.lower() in ["sme", "iposme"]:
+                            # SME standard lot: ~Rs 1,00,000 - 1,40,000
+                            shares_applied = max(1, round(120000 / issue_price))
+                        else:
+                            # Mainboard standard retail lot: ~Rs 14,000 - 15,000
+                            shares_applied = max(1, round(14800 / issue_price))
                     break
+
             if issue_price > 0:
                 break
 
@@ -84,9 +91,16 @@ def fetch_ipo_details_from_general(ipo_name: str, type_ipo: str = "mb") -> tuple
     return shares_applied, issue_price, total_amount
 
 
-def record_ipo_application(uci: str, ipo_name: str, type_ipo: str = "mb") -> bool:
+def record_ipo_application(
+    uci: str,
+    ipo_name: str,
+    type_ipo: str = "mb",
+    status: str = "APPLIED",
+    failure_reason: str = None
+) -> bool:
     """
-    Records an IPO application entry into IPO-applied.xlsx under the specified user UCI sheet.
+    Records an IPO application entry into IPO-applied.xlsx under the specified user UCI sheet
+    and synchronizes with SQLite ipo_applied table.
     """
     path = get_ipo_applied_path()
     shares_applied, issue_price, total_amount = fetch_ipo_details_from_general(ipo_name, type_ipo)
@@ -96,30 +110,26 @@ def record_ipo_application(uci: str, ipo_name: str, type_ipo: str = "mb") -> boo
             wb = openpyxl.load_workbook(path)
         else:
             wb = openpyxl.Workbook()
-            # Remove default sheet
             if "Sheet" in wb.sheetnames:
                 wb.remove(wb["Sheet"])
 
         raw_uci = str(uci).strip()
-        # Truncate 'user' prefix if present (e.g. 'user1' -> '1', 'user2' -> '2')
         sheet_name = raw_uci.replace("user", "").replace("User", "").strip() if raw_uci.lower().startswith("user") else raw_uci
 
         if raw_uci in wb.sheetnames:
             sheet_name = raw_uci
 
-        header = ["IPO-Name", "Shares Applied", "Issue price", "Total Application amount"]
+        header = ["IPO-Name", "Shares Applied", "Issue price", "Total Application amount", "Status", "Failure Reason"]
 
         if sheet_name not in wb.sheetnames:
             ws = wb.create_sheet(title=sheet_name)
             ws.append(header)
         else:
             ws = wb[sheet_name]
-            # Verify header
+            # Verify / ensure header
             if ws.max_row == 0 or ws.cell(1, 1).value != "IPO-Name":
-                ws.cell(1, 1, header[0])
-                ws.cell(1, 2, header[1])
-                ws.cell(1, 3, header[2])
-                ws.cell(1, 4, header[3])
+                for col_idx, col_name in enumerate(header, start=1):
+                    ws.cell(1, col_idx, col_name)
 
         # Check if entry already exists
         entry_row = None
@@ -129,18 +139,25 @@ def record_ipo_application(uci: str, ipo_name: str, type_ipo: str = "mb") -> boo
                 entry_row = r
                 break
 
+        status_str = status or "APPLIED"
+        fail_str = str(failure_reason) if failure_reason else ""
+
         if entry_row:
             ws.cell(entry_row, 2, shares_applied)
             ws.cell(entry_row, 3, issue_price)
             ws.cell(entry_row, 4, total_amount)
-            log_info(f"Updated existing application entry for '{ipo_name}' in sheet '{sheet_name}' (Row {entry_row})", "record_ipo_application")
+            ws.cell(entry_row, 5, status_str)
+            ws.cell(entry_row, 6, fail_str)
+            log_info(f"Updated application entry for '{ipo_name}' in sheet '{sheet_name}' (Row {entry_row}, Status: {status_str})", "record_ipo_application")
         else:
             new_row = ws.max_row + 1
             ws.cell(new_row, 1, ipo_name.strip())
             ws.cell(new_row, 2, shares_applied)
             ws.cell(new_row, 3, issue_price)
             ws.cell(new_row, 4, total_amount)
-            log_info(f"Appended new application entry for '{ipo_name}' in sheet '{sheet_name}' (Row {new_row})", "record_ipo_application")
+            ws.cell(new_row, 5, status_str)
+            ws.cell(new_row, 6, fail_str)
+            log_info(f"Appended application entry for '{ipo_name}' in sheet '{sheet_name}' (Row {new_row}, Status: {status_str})", "record_ipo_application")
 
         wb.save(path)
         wb.close()
@@ -153,7 +170,9 @@ def record_ipo_application(uci: str, ipo_name: str, type_ipo: str = "mb") -> boo
                 ipo_name=ipo_name.strip(),
                 shares=shares_applied,
                 price=issue_price,
-                total_amount=total_amount
+                total_amount=total_amount,
+                status=status_str,
+                failure_reason=failure_reason
             )
         except Exception as db_err:
             log_error(f"Failed to record IPO application to SQLite: {db_err}", exc=db_err, function_name="record_ipo_application")

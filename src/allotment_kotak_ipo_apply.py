@@ -567,12 +567,22 @@ def apply_to_ipo_all_users(ipo_name="ipo hsgserratergadg", type_ipo="sme"):
         file_path = f"{uci}.txt"
         legacy_logger(file_path, ipo_name, result)
 
-        logger.audit(f"AUDIT: IPO applied | UCI: {uci} | IPO: {ipo_name} | Category: {type_ipo} | Result: {result or 'Applied Successfully'}")
-
         # Record application in IPO-applied.xlsx and SQLite
+        status_val = "APPLIED"
+        failure_msg = None
+        if result and any(err_word in str(result).lower() for err_word in ["error", "not applied", "otp", "failed"]):
+            status_val = "FAILED"
+            failure_msg = str(result)
+
         try:
             from ipo_applied_manager import record_ipo_application
-            record_ipo_application(uci=uci, ipo_name=ipo_name, type_ipo=type_ipo)
+            record_ipo_application(
+                uci=uci,
+                ipo_name=ipo_name,
+                type_ipo=type_ipo,
+                status=status_val,
+                failure_reason=failure_msg
+            )
         except Exception as err:
             logger.exception(f"Error recording IPO application in database/Excel: {err}")
 

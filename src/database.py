@@ -132,10 +132,15 @@ def init_db():
                 total_amount REAL DEFAULT 0.0,
                 applied_date TEXT,
                 status TEXT DEFAULT 'APPLIED',
+                failure_reason TEXT,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(uci, ipo_name)
             );
         """)
+        try:
+            cursor.execute("ALTER TABLE ipo_applied ADD COLUMN failure_reason TEXT;")
+        except Exception:
+            pass
 
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_holdings_uci ON allotted_holdings(uci);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_holdings_statuses ON allotted_holdings(special_session_status, regular_session_status);")
@@ -364,19 +369,23 @@ def import_applied_from_excel():
                     continue
                 ipo_name = str(name_val).strip()
                 shares = int(ws.cell(r, 2).value or 1)
-                price = parse_float(ws.cell(r, 3).value or 0.0)
-                amt = parse_float(ws.cell(r, 4).value or 0.0)
+                price = abs(parse_float(ws.cell(r, 3).value or 0.0))
+                amt = abs(parse_float(ws.cell(r, 4).value or 0.0))
+                status = str(ws.cell(r, 5).value or "APPLIED").strip()
+                failure_reason = str(ws.cell(r, 6).value or "").strip() or None
 
                 cursor.execute("""
                     INSERT INTO ipo_applied (
-                        uci, ipo_name, shares_applied, issue_price, total_amount, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                        uci, ipo_name, shares_applied, issue_price, total_amount, status, failure_reason, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON CONFLICT(uci, ipo_name) DO UPDATE SET
                         shares_applied=excluded.shares_applied,
                         issue_price=excluded.issue_price,
                         total_amount=excluded.total_amount,
+                        status=excluded.status,
+                        failure_reason=excluded.failure_reason,
                         updated_at=CURRENT_TIMESTAMP;
-                """, (clean_uci, ipo_name, shares, price, amt))
+                """, (clean_uci, ipo_name, shares, price, amt, status, failure_reason))
 
         conn.commit()
         wb.close()
@@ -591,6 +600,8 @@ def record_ipo_application(
     price: float,
     total_amount: float,
     applied_date: Optional[str] = None,
+    status: str = "APPLIED",
+    failure_reason: Optional[str] = None
 ):
     """
     Records an IPO application in SQLite and updates the dual-tier layer.
@@ -598,20 +609,41 @@ def record_ipo_application(
     conn = get_connection()
     clean_uci = str(uci).replace("user", "").strip()
     dt = applied_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    clean_price = abs(float(price))
+    clean_amount = abs(float(total_amount))
     try:
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO ipo_applied (
-                uci, ipo_name, shares_applied, issue_price, total_amount, applied_date, status, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'APPLIED', CURRENT_TIMESTAMP)
+                uci, ipo_name, shares_applied, issue_price, total_amount, applied_date, status, failure_reason, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(uci, ipo_name) DO UPDATE SET
                 shares_applied = excluded.shares_applied,
                 issue_price = excluded.issue_price,
                 total_amount = excluded.total_amount,
                 applied_date = excluded.applied_date,
+                status = excluded.status,
+                failure_reason = excluded.failure_reason,
                 updated_at = CURRENT_TIMESTAMP;
-        """, (clean_uci, ipo_name, shares, price, total_amount, dt))
+        """, (clean_uci, ipo_name, shares, clean_price, clean_amount, dt, status, failure_reason))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def get_applied_ipos(uci: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Retrieves applied IPO records from SQLite ipo_applied table.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        if uci:
+            clean_uci = str(uci).replace("user", "").strip()
+            cursor.execute("SELECT * FROM ipo_applied WHERE uci = ? ORDER BY id DESC;", (clean_uci,))
+        else:
+            cursor.execute("SELECT * FROM ipo_applied ORDER BY CAST(uci AS INTEGER), id DESC;")
+        return [dict(r) for r in cursor.fetchall()]
     finally:
         conn.close()
 

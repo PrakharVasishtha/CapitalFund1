@@ -2,6 +2,7 @@ import os
 import sys
 import re
 import time
+import glob
 
 import datetime
 import json
@@ -10,10 +11,16 @@ import openpyxl
 import streamlit as st
 
 # Ensure project root & src are in path
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_curr_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(_curr_dir).lower() == "src":
+    BASE_DIR = os.path.dirname(_curr_dir)
+else:
+    BASE_DIR = _curr_dir
 SRC_DIR = os.path.join(BASE_DIR, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
 import html
 import job_manager
@@ -338,6 +345,170 @@ def clean_ipo_dataframe(df, category_name="Mainboard"):
     clean = clean[clean['Company Name'].str.strip() != ""]
     return clean.sort_values(by="Listing Gain %", ascending=False)
 
+@st.cache_data(ttl=10)
+def load_userwise_applied_data():
+    """
+    Loads userwise applied IPO records, amounts, lots/shares, and live execution failure logs
+    from IPO-applied.xlsx, user text log files (1.txt, 2.txt), and SQLite WAL ipo_applied.
+    """
+    users = load_credentials()
+    uci_to_name = {str(u.get('uci')): u.get('name', f"User {u.get('uci')}") for u in users}
+
+    # 1. Parse user log text files for live execution status & failure reasons
+    user_logs = {}
+    for txt_file in glob.glob(os.path.join(BASE_DIR, "[0-9]*.txt")):
+        base_name = os.path.basename(txt_file)
+        clean_uci = base_name.replace(".txt", "").strip()
+        if clean_uci not in user_logs:
+            user_logs[clean_uci] = {}
+        try:
+            with open(txt_file, "r", encoding="utf-8", errors="ignore") as f:
+                for line in f:
+                    parts = line.strip().split(" at MM-DD HH:MM :")
+                    if len(parts) == 2:
+                        prefix, dt = parts[0], parts[1]
+                        if " : " in prefix:
+                            res, ipo = prefix.split(" : ", 1)
+                            clean_name = clean_company_name(ipo).lower()
+                            user_logs[clean_uci][clean_name] = {
+                                "result": res.strip(),
+                                "timestamp": dt.strip(),
+                                "raw_ipo": ipo.strip()
+                            }
+        except Exception:
+            pass
+
+    records = []
+    seen_keys = set()
+
+    # 2. Ingest from IPO-applied.xlsx
+    excel_path = os.path.join(BASE_DIR, "IPO-applied.xlsx")
+    if os.path.exists(excel_path):
+        try:
+            xls = pd.ExcelFile(excel_path)
+            for sheet_name in xls.sheet_names:
+                clean_uci = str(sheet_name).replace("user", "").replace("User", "").strip()
+                df_sheet = pd.read_excel(xls, sheet_name=sheet_name)
+                for _, row in df_sheet.iterrows():
+                    raw_name = str(row.get("IPO-Name", "")).strip()
+                    if not raw_name or raw_name.lower() == "nan":
+                        continue
+
+                    shares = int(parse_float(str(row.get("Shares Applied", 1))))
+                    price = abs(parse_float(str(row.get("Issue price", 0.0))))
+                    amount = abs(parse_float(str(row.get("Total Application amount", 0.0))))
+                    if amount == 0.0 and shares > 0 and price > 0:
+                        amount = round(shares * price, 2)
+
+                    status = str(row.get("Status", "APPLIED")).strip()
+                    failure_reason = str(row.get("Failure Reason", "")).strip()
+
+                    # Reconcile with user log files
+                    clean_key = clean_company_name(raw_name).lower()
+                    log_match = user_logs.get(clean_uci, {}).get(clean_key)
+                    if not log_match:
+                        for logged_name, logged_data in user_logs.get(clean_uci, {}).items():
+                            if logged_name in clean_key or clean_key in logged_name:
+                                log_match = logged_data
+                                break
+
+                    applied_dt = "N/A"
+                    if log_match:
+                        applied_dt = log_match.get("timestamp", "N/A")
+                        res_val = log_match.get("result", "")
+                        if res_val and any(err_word in res_val.lower() for err_word in ["error", "not applied", "otp", "failed", "fail"]):
+                            status = "FAILED"
+                            failure_reason = res_val
+                        elif res_val in ["None", "applied in retail", "applied in SNI", "OK"]:
+                            status = "APPLIED"
+                            failure_reason = ""
+
+                    user_name = uci_to_name.get(clean_uci, f"User {clean_uci}")
+                    category = "SME" if "sme" in raw_name.lower() else "Mainboard"
+                    lot_display = f"{shares:,} Shares" if shares > 1 else "1 Lot"
+
+                    records.append({
+                        "UCI": clean_uci,
+                        "User Name": user_name,
+                        "Account": f"{user_name} (UCI {clean_uci})",
+                        "IPO Name": clean_company_name(raw_name),
+                        "Raw IPO Name": raw_name,
+                        "Category": category,
+                        "Shares Applied": shares,
+                        "Lots / Quantity": lot_display,
+                        "Issue Price (₹)": price,
+                        "Total Amount (₹)": amount,
+                        "Status": status,
+                        "Failure Reason": failure_reason if failure_reason and failure_reason != "nan" else "None (Successful)",
+                        "Applied Date": applied_dt
+                    })
+                    seen_keys.add((clean_uci, clean_company_name(raw_name).lower()))
+        except Exception as e:
+            print(f"Error loading IPO-applied.xlsx: {e}")
+
+    # 3. Ingest from SQLite ipo_applied
+    try:
+        from database import get_applied_ipos
+        db_rows = get_applied_ipos()
+        for r in db_rows:
+            clean_uci = str(r.get("uci", "")).strip()
+            raw_name = str(r.get("ipo_name", "")).strip()
+            clean_name = clean_company_name(raw_name)
+            dedup_key = (clean_uci, clean_name.lower())
+            if dedup_key not in seen_keys:
+                user_name = uci_to_name.get(clean_uci, f"User {clean_uci}")
+                shares = int(r.get("shares_applied", 1))
+                price = abs(float(r.get("issue_price", 0.0)))
+                amt = abs(float(r.get("total_amount", 0.0)))
+                stat = r.get("status", "APPLIED")
+                fail = r.get("failure_reason") or "None (Successful)"
+                dt = r.get("applied_date", "N/A")
+
+                # Reconcile with live user logs
+                clean_key = clean_name.lower()
+                log_match = user_logs.get(clean_uci, {}).get(clean_key)
+                if not log_match:
+                    for logged_name, logged_data in user_logs.get(clean_uci, {}).items():
+                        if logged_name in clean_key or clean_key in logged_name:
+                            log_match = logged_data
+                            break
+                if log_match:
+                    dt = log_match.get("timestamp", dt)
+                    res_val = log_match.get("result", "")
+                    if res_val and any(err_word in res_val.lower() for err_word in ["error", "not applied", "otp", "failed", "fail"]):
+                        stat = "FAILED"
+                        fail = res_val
+                    elif res_val in ["None", "applied in retail", "applied in SNI", "OK"]:
+                        stat = "APPLIED"
+                        fail = "None (Successful)"
+
+                records.append({
+                    "UCI": clean_uci,
+                    "User Name": user_name,
+                    "Account": f"{user_name} (UCI {clean_uci})",
+                    "IPO Name": clean_name,
+                    "Raw IPO Name": raw_name,
+                    "Category": "SME" if "sme" in raw_name.lower() else "Mainboard",
+                    "Shares Applied": shares,
+                    "Lots / Quantity": f"{shares:,} Shares",
+                    "Issue Price (₹)": price,
+                    "Total Amount (₹)": amt,
+                    "Status": stat,
+                    "Failure Reason": fail,
+                    "Applied Date": dt
+                })
+                seen_keys.add(dedup_key)
+    except Exception as e:
+        print(f"Error reading SQLite ipo_applied: {e}")
+
+    df_applied = pd.DataFrame(records)
+    applied_lookup = {}
+    for r in records:
+        key = (str(r["UCI"]), r["IPO Name"].lower())
+        applied_lookup[key] = r
+
+    return df_applied, applied_lookup
+
 # Check internet connectivity
 def check_internet():
     import urllib.request
@@ -453,10 +624,12 @@ def load_all_dashboard_data():
     df_mb_last10 = clean_ipo_dataframe(df_mb_raw.tail(10), "Mainboard") if not df_mb_raw.empty else pd.DataFrame()
     df_recent_active = pd.concat([df_mb_last10, df_sme_last10], ignore_index=True) if (not df_sme_last10.empty or not df_mb_last10.empty) else df_all_ipos
 
-    return users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active
+    df_applied, applied_lookup = load_userwise_applied_data()
+
+    return users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active, df_applied, applied_lookup
 
 # Initial load for global context
-users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active = load_all_dashboard_data()
+users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active, df_applied, applied_lookup = load_all_dashboard_data()
 
 # -----------------------------------------------------------------------------
 # Real-Time Job Scheduler & On-Demand Controller Components
@@ -916,7 +1089,7 @@ else:
 with main_col:
     @st.fragment(run_every=auto_refresh_sec)
     def render_active_view():
-        users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active = load_all_dashboard_data()
+        users, df_sme_raw, df_mb_raw, df_sme_clean, df_mb_clean, df_all_ipos, df_allotments, df_master, df_recent_active, df_applied, applied_lookup = load_all_dashboard_data()
 
         # -----------------------------------------------------------------------------
         # TAB 1: Executive Dashboard
@@ -992,6 +1165,35 @@ with main_col:
                 df_closing_show = df_recent_active[df_recent_active['Close Day'] == target_day]
 
             if not df_closing_show.empty:
+                df_closing_show = df_closing_show.copy()
+
+                def _get_user_app_summary(row):
+                    comp_name = clean_company_name(str(row.get('Company Name', ''))).lower()
+                    status_parts = []
+                    for u in users:
+                        uci_str = str(u.get('uci'))
+                        u_name = u.get('name', f"User {uci_str}")
+                        rec = applied_lookup.get((uci_str, comp_name))
+                        if not rec:
+                            for (r_uci, r_ipo), r_data in applied_lookup.items():
+                                if r_uci == uci_str and (r_ipo in comp_name or comp_name in r_ipo):
+                                    rec = r_data
+                                    break
+                        if rec:
+                            if rec.get("Status") == "FAILED":
+                                fail_reason = rec.get("Failure Reason", "Failed")
+                                status_parts.append(f"{u_name}: ❌ ({fail_reason})")
+                            else:
+                                amt = rec.get("Total Amount (₹)", 0.0)
+                                amt_label = f"₹{amt/100000:.2f}L" if amt >= 100000 else f"₹{amt:,.0f}"
+                                lots_str = rec.get("Lots / Quantity", "1 Lot")
+                                status_parts.append(f"{u_name}: ✅ {lots_str} ({amt_label})")
+                        else:
+                            status_parts.append(f"{u_name}: ⏳ Pending")
+                    return "  |  ".join(status_parts)
+
+                df_closing_show['User Applications'] = df_closing_show.apply(_get_user_app_summary, axis=1)
+
                 c1, c2, c3 = st.columns(3)
                 with c1:
                     st.metric("Total IPOs Displayed", len(df_closing_show))
@@ -1003,12 +1205,94 @@ with main_col:
                     st.metric("Max GMP", f"₹{max_gmp:.2f}")
 
                 st.dataframe(
-                    df_closing_show[['Company Name', 'Category', 'Total Score', 'Apply Recommendation', 'GMP (₹)', 'Listing Gain %', 'Retail Sub (x)', 'Close Date']],
+                    df_closing_show[['Company Name', 'Category', 'Total Score', 'Apply Recommendation', 'User Applications', 'GMP (₹)', 'Listing Gain %', 'Retail Sub (x)', 'Close Date']],
                     use_container_width=True,
                     hide_index=True
                 )
             else:
                 st.info("No IPO records found matching the selected filter.")
+
+            # ── Sub-Section: User-Wise Applied IPOs & Execution Status ──
+            st.markdown("<br><div class='section-head'>👥 User-Wise Applied IPOs, Allocations & Execution Status</div>", unsafe_allow_html=True)
+            st.caption("Comprehensive user-by-user audit of all applied IPOs, applied amounts, lots/shares, and live execution status (including failure diagnosis).")
+
+            if not df_applied.empty:
+                col_filt1, col_filt2 = st.columns([1.5, 2])
+                with col_filt1:
+                    user_filter_options = ["All Users (Consolidated)"] + [f"User {u.get('uci')}: {u.get('name')}" for u in users] + ["⚠️ Failures Only"]
+                    selected_user_filter = st.selectbox("Filter Applications by User", user_filter_options, key="select_user_app_filter")
+                with col_filt2:
+                    filter_to_closing = st.checkbox("Focus only on displayed closing view IPOs", value=False, key="check_filter_closing_ipos")
+
+                df_app_display = df_applied.copy()
+
+                if filter_to_closing and not df_closing_show.empty:
+                    closing_ipo_names = [clean_company_name(str(n)).lower() for n in df_closing_show['Company Name']]
+                    df_app_display = df_app_display[df_app_display['IPO Name'].str.lower().apply(lambda x: any(c in x or x in c for c in closing_ipo_names))]
+
+                if selected_user_filter == "⚠️ Failures Only":
+                    df_app_display = df_app_display[df_app_display['Status'] == 'FAILED']
+                elif selected_user_filter != "All Users (Consolidated)":
+                    sel_uci = selected_user_filter.split(":")[0].replace("User", "").strip()
+                    df_app_display = df_app_display[df_app_display['UCI'] == sel_uci]
+
+                # Metric Cards
+                m1, m2, m3, m4 = st.columns(4)
+                with m1:
+                    st.metric("Total Bids / Applications", len(df_app_display))
+                with m2:
+                    tot_amt = df_app_display['Total Amount (₹)'].sum() if not df_app_display.empty else 0.0
+                    st.metric("Total Capital Applied", f"₹{tot_amt:,.2f}")
+                with m3:
+                    succ_bids = len(df_app_display[df_app_display['Status'] == 'APPLIED']) if not df_app_display.empty else 0
+                    st.metric("Successful Applications", f"{succ_bids} / {len(df_app_display)}")
+                with m4:
+                    fail_bids = len(df_app_display[df_app_display['Status'] == 'FAILED']) if not df_app_display.empty else 0
+                    if fail_bids > 0:
+                        st.markdown(f"""
+                        <div class="glass-card" style="padding:10px 14px; border-left:4px solid #ef4444; margin-top:2px;">
+                            <div style="font-size:0.75rem; color:#f87171; font-weight:700;">⚠️ ACTIVE FAILURES</div>
+                            <div style="font-size:1.25rem; font-weight:800; color:#ef4444;">{fail_bids} Failed</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                        <div class="glass-card" style="padding:10px 14px; border-left:4px solid #10b981; margin-top:2px;">
+                            <div style="font-size:0.75rem; color:#34d399; font-weight:700;">✅ ALL CLEAN</div>
+                            <div style="font-size:1.25rem; font-weight:800; color:#10b981;">0 Failures</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                # Active Failure Diagnosis Alerts
+                failures = df_app_display[df_app_display['Status'] == 'FAILED']
+                if not failures.empty:
+                    for _, f_row in failures.iterrows():
+                        st.error(
+                            f"🚨 **Application Failure Alert**: **{f_row['Account']}** failed applying to **{f_row['IPO Name']}** "
+                            f"(Lots: `{f_row['Lots / Quantity']}`, Amount: `₹{f_row['Total Amount (₹)']:,.2f}`).\n\n"
+                            f"**Failure Reason:** `{f_row['Failure Reason']}` | **Date:** `{f_row['Applied Date']}`"
+                        )
+                    if st.button("🔁 Trigger Re-Application for Closing IPOs", key="btn_retry_failed_ipos", help="Execute on-demand IPO application routine via Kotak NetBanking"):
+                        if job_manager.run_job("ipo_application", triggered_by="Dashboard (Retry Failures)"):
+                            st.toast("🚀 Started IPO Re-Application job in background!")
+                            st.rerun()
+
+                # User Applications Table
+                st.dataframe(
+                    df_app_display[[
+                        'Account', 'IPO Name', 'Category', 'Lots / Quantity',
+                        'Issue Price (₹)', 'Total Amount (₹)', 'Status',
+                        'Failure Reason', 'Applied Date'
+                    ]],
+                    column_config={
+                        "Issue Price (₹)": st.column_config.NumberColumn(format="₹%.2f"),
+                        "Total Amount (₹)": st.column_config.NumberColumn(format="₹%,.2f"),
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.info("No applied IPO records found yet in IPO-applied.xlsx or database.")
 
 
 

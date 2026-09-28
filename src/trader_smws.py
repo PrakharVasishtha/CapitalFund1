@@ -20,7 +20,7 @@ def smws_buyer():
     i = 0
     df = None
     while i < 3 and ("loading" in str(x).lower() or "nan" in str(x).lower()):
-        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?gid=614695683&single=true&output=csv"
+        url_csv = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSs2i_IJgQNpj8_gd4OMMQvvMh-G2iO15FPlMm-x3Z8lYTjX0-BePODzuXzTKq-bFZZHmyqCueCtx-5/pub?output=csv"
         try:
             df = pd.read_csv(url_csv)
             if len(df) > 23 and len(df.columns) > 4:
