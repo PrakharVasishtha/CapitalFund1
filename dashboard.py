@@ -15,6 +15,9 @@ SRC_DIR = os.path.join(BASE_DIR, "src")
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
+import html
+import job_manager
+
 # Import local utilities
 try:
     from Base import load_credentials, parse_float
@@ -119,6 +122,22 @@ CUSTOM_CSS = """
     .pill-amber { background: rgba(251, 191, 36, 0.16); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.35); }
     .pill-blue { background: rgba(56, 189, 248, 0.16); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
     .pill-purple { background: rgba(168, 85, 247, 0.16); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.35); }
+    .pill-red { background: rgba(244, 63, 94, 0.16); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.35); }
+
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.3; transform: scale(0.85); }
+    }
+    .pulse-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #10b981;
+        margin-right: 6px;
+        animation: pulse-dot 1.5s infinite ease-in-out;
+        vertical-align: middle;
+    }
 
     /* Custom Console Container */
     .console-box {
@@ -324,6 +343,7 @@ nav = st.sidebar.radio(
     "Navigation Menu",
     [
         "📊 Executive Dashboard",
+        "⚡ Job Scheduler & Live Controls",
         "💰 Balances & Account Manager",
         "🧮 IPO Funding & Margin Calculator",
         "🚀 IPO Analytics & Predictions",
@@ -386,6 +406,226 @@ df_mb_last10 = clean_ipo_dataframe(df_mb_raw.tail(10), "Mainboard") if not df_mb
 df_recent_active = pd.concat([df_mb_last10, df_sme_last10], ignore_index=True) if (not df_sme_last10.empty or not df_mb_last10.empty) else df_all_ipos
 
 # -----------------------------------------------------------------------------
+# Real-Time Job Scheduler & On-Demand Controller Components
+# -----------------------------------------------------------------------------
+
+def render_live_job_status_and_output(show_output_box: bool = True):
+    """
+    Renders timestamped current running jobs, next scheduled job, and live output stream.
+    Decorated with @st.fragment(run_every=3) for automatic live updates every 3 seconds.
+    """
+    @st.fragment(run_every=3)
+    def _fragment_view():
+        col1, col2 = st.columns(2)
+
+        # (1) Timestamped current jobs running
+        running_jobs = job_manager.get_currently_running_jobs()
+        state = job_manager.get_job_state()
+        last_comp = state.get("last_completed")
+
+        with col1:
+            if running_jobs:
+                for rj in running_jobs:
+                    st.markdown(f"""
+                    <div class="glass-card" style="border-left: 5px solid #10b981;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span class="pill pill-green"><span class="pulse-dot"></span>RUNNING NOW</span>
+                            <span style="font-size:0.8rem; color:#94a3b8;">Triggered by: <b>{html.escape(str(rj.get('triggered_by', 'Scheduler')))}</b></span>
+                        </div>
+                        <h3 style="margin:4px 0; color:#ffffff;">{html.escape(str(rj.get('name', rj.get('job_key', 'Job'))))}</h3>
+                        <div style="font-size:0.88rem; color:#cbd5e1; margin-top:8px;">
+                            <p style="margin:2px 0;">⏰ <b>Started At:</b> <code style="color:#38bdf8;">{rj.get('started_at', 'N/A')}</code></p>
+                            <p style="margin:2px 0;">⏳ <b>Elapsed Time:</b> <span class="pill pill-amber">{rj.get('elapsed_str', '0s')}</span></p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                last_comp_html = ""
+                if last_comp:
+                    status_badge = '<span class="pill pill-green">SUCCESS</span>' if last_comp.get("status") == "SUCCESS" else '<span class="pill pill-red">FAILED</span>'
+                    last_comp_html = f"""
+                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08); font-size:0.82rem; color:#94a3b8;">
+                        <b>Last Completed:</b> {html.escape(str(last_comp.get('name', 'N/A')))} &nbsp;|&nbsp; {status_badge}<br>
+                        Finished: <code>{last_comp.get('finished_at', 'N/A')}</code> ({last_comp.get('duration_seconds', 0)}s)
+                    </div>
+                    """
+                st.markdown(f"""
+                <div class="glass-card" style="border-left: 5px solid #64748b;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="pill pill-purple">⚪ IDLE</span>
+                        <span style="font-size:0.8rem; color:#64748b;">No active tasks</span>
+                    </div>
+                    <h3 style="margin:6px 0 2px 0; color:#94a3b8;">Scheduler Idle</h3>
+                    <p style="margin:0; font-size:0.86rem; color:#64748b;">Waiting for next scheduled tick or on-demand command.</p>
+                    {last_comp_html}
+                </div>
+                """, unsafe_allow_html=True)
+
+        # (1b) Next job to run
+        next_job = job_manager.get_next_scheduled_job()
+        with col2:
+            st.markdown(f"""
+            <div class="glass-card" style="border-left: 5px solid #38bdf8;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span class="pill pill-blue">⏰ NEXT SCHEDULED JOB</span>
+                    <span class="pill pill-amber">⏳ {next_job['countdown_str']}</span>
+                </div>
+                <h3 style="margin:4px 0; color:#ffffff;">{next_job['icon']} {html.escape(str(next_job['name']))}</h3>
+                <div style="font-size:0.88rem; color:#cbd5e1; margin-top:8px;">
+                    <p style="margin:2px 0;">📅 <b>Scheduled Time:</b> <code style="color:#38bdf8;">{next_job['scheduled_time']}</code></p>
+                    <p style="margin:2px 0; color:#94a3b8;">ℹ️ {html.escape(str(next_job['description']))}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # (2) Output of the current job running
+        if show_output_box:
+            hdr_col1, hdr_col2 = st.columns([3, 1])
+            with hdr_col1:
+                st.markdown("<b>💻 Current / Recent Job Output Stream</b> &nbsp;<span style='font-size:0.75rem; color:#94a3b8;'>(Live Auto-Refresh every 3s)</span>", unsafe_allow_html=True)
+            with hdr_col2:
+                if st.button("🗑️ Clear Output", key="btn_clear_job_out", help="Clear current job log file"):
+                    try:
+                        open(job_manager.CURRENT_JOB_LOG, "w").close()
+                    except Exception:
+                        pass
+                    st.rerun()
+
+            current_output = job_manager.get_current_job_output(max_lines=150)
+            st.markdown(f"<div class='console-box' style='max-height: 280px;'>{html.escape(current_output)}</div>", unsafe_allow_html=True)
+
+    _fragment_view()
+
+
+def render_on_demand_buttons():
+    """
+    Renders categorized buttons to run important jobs on demand.
+    """
+    st.markdown("<div class='section-head'>⚡ On-Demand Job Execution Controller</div>", unsafe_allow_html=True)
+    st.caption("Trigger any automated workflow on-demand. Execution runs in the background and output streams into the live console above.")
+
+    tab_ipo, tab_trading, tab_funds, tab_db = st.tabs([
+        "🚀 IPO & Research",
+        "⚡ Trading & Listing Day",
+        "💰 Funds & Banking",
+        "🗄️ Database & Sync"
+    ])
+
+    with tab_ipo:
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            if st.button("🚀 Scrape Latest IPOs", use_container_width=True, key="btn_ondemand_ipo_entry", help="Scrapes latest IPOs from Chittorgarh into General.xlsx"):
+                if job_manager.run_job("ipo_entry", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("🚀 Started 'Scrape Latest IPOs' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c2:
+            if st.button("📊 Update Dynamic Data", use_container_width=True, key="btn_ondemand_dyn_update", help="Refreshes GMP, subscriptions & formula scores"):
+                if job_manager.run_job("update_dynamic_data", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("📊 Started 'Update Dynamic Data' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c3:
+            if st.button("🏆 Check Listing Results", use_container_width=True, key="btn_ondemand_listing_res", help="Checks listing open prices vs issue price"):
+                if job_manager.run_job("listing_result", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("🏆 Started 'Check Listing Results' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c4:
+            if st.button("📝 Apply Closing IPOs", use_container_width=True, key="btn_ondemand_ipo_apply", help="Applies to IPOs closing today via Kotak NetBanking"):
+                if job_manager.run_job("ipo_application", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("📝 Started 'Apply Closing IPOs' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+
+    with tab_trading:
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            if st.button("⚡ Pre-Open LC Sell", use_container_width=True, key="btn_ondemand_lc_sell", help="Places Lower Circuit sell order on Zerodha Kite for newly allotted shares"):
+                if job_manager.run_job("ss_start_lc_sell", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("⚡ Started 'Pre-Open LC Sell' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c2:
+            if st.button("🔍 Cancel Pre-Open if Loss", use_container_width=True, key="btn_ondemand_cancel_loss", help="Checks IEP price and cancels LC order if loss limit exceeded"):
+                if job_manager.run_job("cancel_sale_order_if_loss", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("🔍 Started 'Cancel Pre-Open if Loss' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c3:
+            if st.button("📈 Regular Session Sell", use_container_width=True, key="btn_ondemand_reg_sell", help="Executes regular session sell strategy based on buyer/seller ratio"):
+                if job_manager.run_job("regular_session_ipo_sell", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("📈 Started 'Regular Session Sell' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c4:
+            if st.button("📋 Check Kite Allotments", use_container_width=True, key="btn_ondemand_allot_check", help="Scrapes Zerodha Kite portfolio holdings for newly discovered allotments"):
+                if job_manager.run_job("allotment_general", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("📋 Started 'Check Kite Allotments' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+
+    with tab_funds:
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("💸 Withdraw Funds to Bank", use_container_width=True, key="btn_ondemand_withdraw", help="Calculates IPO fund reserve requirements and withdraws to Kotak bank"):
+                if job_manager.run_job("money_withdraw", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("💸 Started 'Money Withdraw' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c2:
+            if st.button("🏦 Transfer Kotak to Kite", use_container_width=True, key="btn_ondemand_bank_kite", help="Transfers idle bank funds into Zerodha Kite for SMWS trading"):
+                if job_manager.run_job("bank_to_kite", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("🏦 Started 'Bank to Kite Transfer' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c3:
+            if st.button("⚠️ Priority SMWS Sell", use_container_width=True, key="btn_ondemand_prio_smws", help="Liquidates SMWS ETFs if required for today's IPO applications"):
+                if job_manager.run_job("priority_ipo_sell_smws", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("⚠️ Started 'Priority SMWS Sell' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+
+        c4, c5, _ = st.columns(3)
+        with c4:
+            if st.button("📉 SMWS ETF Sell", use_container_width=True, key="btn_ondemand_smws_sell", help="Sells SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on signal"):
+                if job_manager.run_job("smws_seller", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("📉 Started 'SMWS ETF Sell' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c5:
+            if st.button("📈 SMWS ETF Buy", use_container_width=True, key="btn_ondemand_smws_buy", help="Buys SMWS ETFs based on strategy signal"):
+                if job_manager.run_job("smws_buyer", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("📈 Started 'SMWS ETF Buy' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+
+    with tab_db:
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🗄️ Dual-Tier SQLite & Excel Sync", use_container_width=True, key="btn_ondemand_db_sync", help="Initializes SQLite WAL engine and synchronizes all tables with Excel"):
+                if job_manager.run_job("sync_database", triggered_by="Dashboard (On-Demand)"):
+                    st.toast("🗄️ Started 'Dual-Tier SQLite Sync' in background!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with c2:
+            st.info("💡 Synchronizes `master_users`, `allotted_holdings`, `ipo_research`, and `ipo_applied` between SQLite and Excel workbooks.")
+
+# -----------------------------------------------------------------------------
 # TAB 1: Executive Dashboard
 # -----------------------------------------------------------------------------
 if nav == "📊 Executive Dashboard":
@@ -422,6 +662,13 @@ if nav == "📊 Executive Dashboard":
             <div class="kpi-footer">{len(df_mb_clean)} MB / {len(df_sme_clean)} SME</div>
         </div>
         """, unsafe_allow_html=True)
+
+    # Section: Real-Time Job Scheduler & On-Demand Controller
+    st.markdown("<div class='section-head'>⚡ Real-Time Job Scheduler & On-Demand Controls</div>", unsafe_allow_html=True)
+    render_live_job_status_and_output(show_output_box=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    render_on_demand_buttons()
+    st.markdown("---")
 
     # Section: IPOs Closing Today & Schedule
     today_day = datetime.date.today().day
@@ -468,6 +715,52 @@ if nav == "📊 Executive Dashboard":
         )
     else:
         st.info("No IPO records found matching the selected filter.")
+
+
+
+# -----------------------------------------------------------------------------
+# TAB: Job Scheduler & Live Controls
+# -----------------------------------------------------------------------------
+elif nav == "⚡ Job Scheduler & Live Controls":
+    st.markdown("<div class='section-head'>⚡ Real-Time Job Scheduler & On-Demand Controller</div>", unsafe_allow_html=True)
+    st.markdown("""
+    Monitor live executing jobs with start timestamps and elapsed duration, track upcoming schedule countdowns,
+    inspect real-time job execution logs, and trigger automation workflows on-demand.
+    """)
+
+    # 1. Live Status & Output Stream (auto-refreshes every 3 seconds via @st.fragment)
+    render_live_job_status_and_output(show_output_box=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 2. On-Demand Job Execution Controller
+    render_on_demand_buttons()
+
+    st.markdown("---")
+
+    # 3. Daily Automation Schedule Reference
+    st.markdown("<div class='section-head'>📅 Complete Daily Automation Schedule (16 Tasks)</div>", unsafe_allow_html=True)
+
+    schedule_data = [
+        {"Time (IST)": "08:00", "Task": "Streamlit Dashboard", "Job Key": "launch_streamlit_dashboard", "Category": "System", "Description": "Initiate Streamlit control hub dashboard"},
+        {"Time (IST)": "08:30", "Task": "Scrape Latest IPOs", "Job Key": "ipo_entry", "Category": "IPO & Research", "Description": "Scrape latest Chittorgarh IPO listings into General.xlsx"},
+        {"Time (IST)": "08:35", "Task": "Update Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Morning refresh of subscription, GMP & formula scores"},
+        {"Time (IST)": "08:40", "Task": "Check IPO Allotments", "Job Key": "allotment_general", "Category": "Trading & Listing Day", "Description": "Check Zerodha holdings for newly discovered allotments"},
+        {"Time (IST)": "09:00", "Task": "Pre-Open LC Sell Order", "Job Key": "ss_start_lc_sell", "Category": "Trading & Listing Day", "Description": "Place Lower Circuit sell orders for newly allotted shares today"},
+        {"Time (IST)": "09:05", "Task": "Money Withdraw to Bank", "Job Key": "money_withdraw", "Category": "Funds & Banking", "Description": "Calculate IPO fund requirements and withdraw from Kite to Kotak bank"},
+        {"Time (IST)": "09:10", "Task": "Bank to Kite Transfer", "Job Key": "bank_to_kite", "Category": "Funds & Banking", "Description": "Transfer excess Kotak bank balance to Zerodha Kite for SMWS"},
+        {"Time (IST)": "09:15", "Task": "SMWS ETF Sell", "Job Key": "smws_seller", "Category": "Funds & Banking", "Description": "Sell SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on signal"},
+        {"Time (IST)": "09:20", "Task": "Priority IPO Sell SMWS", "Job Key": "priority_ipo_sell_smws", "Category": "Funds & Banking", "Description": "Liquidate SMWS ETFs when IPO application funds are required"},
+        {"Time (IST)": "09:25", "Task": "SMWS ETF Buy", "Job Key": "smws_buyer", "Category": "Funds & Banking", "Description": "Buy SMWS ETFs based on strategy sheet signal"},
+        {"Time (IST)": "09:32", "Task": "Pre-Open IEP Loss Check", "Job Key": "cancel_sale_order_if_loss", "Category": "Trading & Listing Day", "Description": "Cancel pre-open LC sell orders if IEP indicates discount/loss limit exceeded"},
+        {"Time (IST)": "10:01", "Task": "Regular Session Sell", "Job Key": "regular_session_ipo_sell", "Category": "Trading & Listing Day", "Description": "Execute regular session IPO selling (buyer/seller ratio & UC check)"},
+        {"Time (IST)": "10:05", "Task": "Check Listing Results", "Job Key": "listing_result", "Category": "IPO & Research", "Description": "Check listing prices vs issue prices and update column D in General.xlsx"},
+        {"Time (IST)": "12:05", "Task": "Mid-Day Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Mid-day refresh of GMP and subscription figures"},
+        {"Time (IST)": "14:52", "Task": "Pre-Close Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Final pre-close subscription refresh before 3:00 PM cutoff"},
+        {"Time (IST)": "14:55", "Task": "Apply Closing IPOs", "Job Key": "ipo_application", "Category": "IPO & Research", "Description": "Submit UPI IPO applications via Kotak for IPOs closing today"}
+    ]
+    df_sched = pd.DataFrame(schedule_data)
+    st.dataframe(df_sched, use_container_width=True, hide_index=True)
 
 
 

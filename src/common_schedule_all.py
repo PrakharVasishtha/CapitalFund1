@@ -45,6 +45,7 @@ import ss_Before_session_close_cancel_sale_or_not
 import ss_sale_order_on_lc_on_start_of_ss
 import regular_session_sell
 import ipo_listing_result
+import job_manager
 
 # ── Non-blocking Concurrency Controls ─────────────────────────────────────────
 _running_jobs = set()
@@ -57,9 +58,14 @@ def run_threaded(job_func):
     Prevents long-running network/scraping I/O from blocking the main scheduler
     event loop, ensuring critical listing-day tasks (09:00 LC Sell, 09:32 IEP check,
     10:01 Regular session) fire with second-level precision.
-    Includes duplicate re-entrancy protection.
+    Includes duplicate re-entrancy protection and job_manager state tracking.
     """
     job_name = job_func.__name__
+
+    if job_name in job_manager.JOB_REGISTRY:
+        job_manager.run_job(job_name, triggered_by="Daily Scheduler", run_in_background=True)
+        return
+
     with _job_lock:
         if job_name in _running_jobs:
             common_foundation.log_warning(
