@@ -123,8 +123,8 @@ CapitalFund1/
 | **10:01** | `regular_session_ipo_sell` | Regular session depth analysis (holds locked UC, or places stepped GTTs). |
 | **10:05** | `listing_result` | Verifies opening listing prices vs issue price on Chittorgarh; updates Col D. |
 | **12:05** | `update_dynamic_data` | Mid-day subscription and GMP refresh. |
-| **14:52** | `update_dynamic_data` | Pre-close subscription refresh. |
-| **14:55** | `ipo_application` | Submits Kotak ASBA applications for IPOs closing today. |
+| **14:47** | `update_dynamic_data` | Pre-close subscription refresh. |
+| **14:50** | `ipo_application` | Submits Kotak ASBA applications for IPOs closing today. |
 
 ---
 

@@ -12,7 +12,7 @@ This reference provides a complete technical catalog of all Python modules withi
   - `run_threaded(job_func)`: Non-blocking scheduler engine. Executes every scheduled task in a dedicated background daemon thread with re-entrancy locking, ensuring time-critical market events (09:00 LC Sell, 09:32 IEP check, 10:01 Regular session) fire without being delayed by heavy network I/O.
   - `launch_streamlit_dashboard()`: Verifies if port 8501 is open via socket check; launches `dashboard.py` via `subprocess.Popen` if offline.
   - `run_now()`: Sequentially executes startup initialization, primes the SQLite dual-tier storage engine, and synchronizes `Master.xlsx`.
-  - Daily schedules from `08:00` to `14:55` configured via the Python `schedule` module.
+  - Daily schedules from `08:00` to `14:50` configured via the Python `schedule` module.
 - **Dependencies**: `schedule`, `threading`, `database`, `common_foundation`, `common_master_functions`, `allotment_application_ipo`, `fund_manager`.
 
 ### [`src/database.py`](file:///d:/CapitalFund1/src/database.py)

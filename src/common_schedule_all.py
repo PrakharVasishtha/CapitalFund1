@@ -21,8 +21,8 @@ Scheduled Tasks:
   10:01 - regular_session_ipo_sell() : Regular session IPO selling
   10:05 - listing_result()           : Check listing prices vs issue prices, update Pos/Neg column D
   12:05 - update_dynamic_data()      : Mid-day data refresh
-  14:52 - update_dynamic_data()      : Pre-close data refresh
-  14:55 - ipo_application()          : Apply to IPOs closing today via Kotak UPI
+  14:47 - update_dynamic_data()      : Pre-close data refresh
+  14:50 - ipo_application()          : Apply to IPOs closing today via Kotak UPI
 
 Usage:
   python src/common_schedule_all.py
@@ -224,7 +224,7 @@ def update_dynamic_data():
         common_foundation.log_error("Problem in update_dynamic_data", exc=Argument, function_name="update_dynamic_data")
 
 def ipo_application():
-    """14:55 — Submit UPI IPO applications via Kotak for IPOs closing today."""
+    """14:50 — Submit UPI IPO applications via Kotak for IPOs closing today."""
     try:
         common_foundation.log_info("Executing IPO Application task...", "ipo_application")
         allotment_application_ipo.ipo_application()
@@ -271,8 +271,8 @@ schedule.every().day.at("09:32").do(run_threaded, cancel_sale_order_if_loss)
 schedule.every().day.at("10:01").do(run_threaded, regular_session_ipo_sell)
 schedule.every().day.at("10:05").do(run_threaded, listing_result)
 schedule.every().day.at("12:05").do(run_threaded, update_dynamic_data)
-schedule.every().day.at("14:52").do(run_threaded, update_dynamic_data)
-schedule.every().day.at("14:55").do(run_threaded, ipo_application)
+schedule.every().day.at("14:47").do(run_threaded, update_dynamic_data)
+schedule.every().day.at("14:50").do(run_threaded, ipo_application)
 
 if __name__ == "__main__":
     try:

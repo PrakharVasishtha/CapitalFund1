@@ -756,8 +756,8 @@ elif nav == "⚡ Job Scheduler & Live Controls":
         {"Time (IST)": "10:01", "Task": "Regular Session Sell", "Job Key": "regular_session_ipo_sell", "Category": "Trading & Listing Day", "Description": "Execute regular session IPO selling (buyer/seller ratio & UC check)"},
         {"Time (IST)": "10:05", "Task": "Check Listing Results", "Job Key": "listing_result", "Category": "IPO & Research", "Description": "Check listing prices vs issue prices and update column D in General.xlsx"},
         {"Time (IST)": "12:05", "Task": "Mid-Day Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Mid-day refresh of GMP and subscription figures"},
-        {"Time (IST)": "14:52", "Task": "Pre-Close Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Final pre-close subscription refresh before 3:00 PM cutoff"},
-        {"Time (IST)": "14:55", "Task": "Apply Closing IPOs", "Job Key": "ipo_application", "Category": "IPO & Research", "Description": "Submit UPI IPO applications via Kotak for IPOs closing today"}
+        {"Time (IST)": "14:47", "Task": "Pre-Close Dynamic Data", "Job Key": "update_dynamic_data", "Category": "IPO & Research", "Description": "Final pre-close subscription refresh before 3:00 PM cutoff"},
+        {"Time (IST)": "14:50", "Task": "Apply Closing IPOs", "Job Key": "ipo_application", "Category": "IPO & Research", "Description": "Submit UPI IPO applications via Kotak for IPOs closing today"}
     ]
     df_sched = pd.DataFrame(schedule_data)
     st.dataframe(df_sched, use_container_width=True, hide_index=True)

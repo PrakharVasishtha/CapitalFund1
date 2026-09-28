@@ -43,7 +43,7 @@ JOB_REGISTRY: Dict[str, Dict[str, Any]] = {
     },
     "update_dynamic_data": {
         "name": "Update Dynamic Data & GMP",
-        "schedule_time": ["08:35", "12:05", "14:52"],
+        "schedule_time": ["08:35", "12:05", "14:47"],
         "description": "Refresh subscription, GMP, and dynamic data in General.xlsx",
         "category": "IPO & Research",
         "icon": "📊",
@@ -120,7 +120,7 @@ JOB_REGISTRY: Dict[str, Dict[str, Any]] = {
     },
     "ipo_application": {
         "name": "Apply to Closing IPOs",
-        "schedule_time": ["14:55"],
+        "schedule_time": ["14:50"],
         "description": "Submit UPI IPO applications via Kotak for IPOs closing today",
         "category": "IPO & Research",
         "icon": "📝",

@@ -20,8 +20,8 @@ CapitalFund1 runs on a strict daily operational clock aligned with Indian equity
 | **10:01** | `regular_session_ipo_sell()`| `regular_session_sell.py` | Analyzes market depth, evaluates Upper Circuit for 30 min, or places stepped GTT sell orders (+2%/+5% or +0.5%/+1.0%). |
 | **10:05** | `listing_result()` | `ipo_listing_result.py` | Verifies opening listing price vs issue price on Chittorgarh; updates Column D (1 = Positive, 0 = Negative). |
 | **12:05** | `update_dynamic_data()` | `common_master_functions.py` | Mid-day refresh of GMP and live institutional/retail subscription metrics. |
-| **14:52** | `update_dynamic_data()` | `common_master_functions.py` | Final pre-close refresh of subscription metrics to finalize priority scoring. |
-| **14:55** | `ipo_application()` | `allotment_application_ipo.py` | Submits ASBA/UPI IPO applications via Kotak NetBanking for IPOs closing today; logs to `IPO-applied.xlsx`. |
+| **14:47** | `update_dynamic_data()` | `common_master_functions.py` | Final pre-close refresh of subscription metrics to finalize priority scoring. |
+| **14:50** | `ipo_application()` | `allotment_application_ipo.py` | Submits ASBA/UPI IPO applications via Kotak NetBanking for IPOs closing today; logs to `IPO-applied.xlsx`. |
 
 ---
 
@@ -47,8 +47,8 @@ flowchart TD
     subgraph RegularSession [10:00 - 15:30 Market Hours Execution]
         C1[10:01 Regular Session Sell: Depth & GTT Orders]
         C2[10:05 Record Opening Listing Results]
-        C3[12:05 & 14:52 Dynamic Data Refreshes]
-        C4[14:55 Submit Kotak NetBanking ASBA Applications]
+        C3[12:05 & 14:47 Dynamic Data Refreshes]
+        C4[14:50 Submit Kotak NetBanking ASBA Applications]
         C1 --> C2 --> C3 --> C4
     end
 
@@ -58,7 +58,7 @@ flowchart TD
 ---
 
 ### Workflow 1: IPO Research, Scoring & Database Synchronization
-1. **Scraping Trigger (`08:30`, `08:35`, `12:05`, `14:52`)**:
+1. **Scraping Trigger (`08:30`, `08:35`, `12:05`, `14:47`)**:
    - `ipo_scraper.py` queries Chittorgarh's live IPO pages.
    - Filters out infrastructure investment trusts (InvITs), REITs, and listings without defined issue prices (`page_contains_trust()`, `is_data_available()`).
 2. **Feature Extraction**:
@@ -145,7 +145,7 @@ flowchart TD
 
 ---
 
-### Workflow 6: Automated IPO Application (`14:55`)
+### Workflow 6: Automated IPO Application (`14:50`)
 1. **Closing IPO Identification**:
    - `allotment_application_ipo.py` queries `General.xlsx` for IPOs closing on `today().day`.
    - Categorizes by apply priority (`3`, `2`, `1`).
