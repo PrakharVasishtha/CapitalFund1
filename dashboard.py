@@ -625,31 +625,48 @@ def render_jobs_log_side_panel():
             sys_log_txt = job_manager.get_recent_system_logs(max_lines=40)
             st.markdown(f"<div class='console-box' style='max-height: 200px; font-size:0.78rem;'>{html.escape(sys_log_txt)}</div>", unsafe_allow_html=True)
 
-        # 4. Quick Action Triggers
-        st.markdown("<div style='font-size:0.9rem; font-weight:700; color:#cbd5e1; margin:12px 0 6px 0;'>⚡ Quick Actions</div>", unsafe_allow_html=True)
+        # 4. Quick Action Triggers & Universal Job Dispatcher
+        st.markdown("<div style='font-size:0.9rem; font-weight:700; color:#cbd5e1; margin:12px 0 6px 0;'>⚡ Universal Job Dispatcher</div>", unsafe_allow_html=True)
+        job_options = list(job_manager.JOB_REGISTRY.keys())
+        selected_side_job = st.selectbox(
+            "Select Workflow to Trigger",
+            options=job_options,
+            format_func=lambda k: f"{job_manager.JOB_REGISTRY[k]['icon']} {job_manager.JOB_REGISTRY[k]['name']}",
+            key="side_select_job",
+            label_visibility="collapsed"
+        )
+        if st.button("▶️ Execute Workflow Now", key="side_btn_exec_selected", use_container_width=True, help="Trigger selected job immediately in background"):
+            job_name = job_manager.JOB_REGISTRY[selected_side_job]["name"]
+            if job_manager.run_job(selected_side_job, triggered_by="Side Panel (Dropdown)"):
+                st.toast(f"▶️ Triggered '{job_name}'!")
+                st.rerun()
+            else:
+                st.warning("Job is already running. Please wait.")
+
+        st.markdown("<div style='font-size:0.82rem; font-weight:600; color:#94a3b8; margin:8px 0 4px 0;'>Quick Shortcuts:</div>", unsafe_allow_html=True)
         q1, q2 = st.columns(2)
         with q1:
             if st.button("🗄️ Sync DB", key="side_btn_sync_db", use_container_width=True, help="Synchronize SQLite WAL database & Excel sheets"):
-                if job_manager.run_job("sync_database", triggered_by="Side Panel (On-Demand)"):
+                if job_manager.run_job("sync_database", triggered_by="Side Panel (Quick)"):
                     st.toast("🗄️ Started Dual-Tier SQLite Sync!")
                     st.rerun()
                 else:
                     st.warning("Job already running")
             if st.button("🚀 Scrape IPOs", key="side_btn_scrape_ipo", use_container_width=True, help="Scrape latest IPOs from Chittorgarh"):
-                if job_manager.run_job("ipo_entry", triggered_by="Side Panel (On-Demand)"):
+                if job_manager.run_job("ipo_entry", triggered_by="Side Panel (Quick)"):
                     st.toast("🚀 Started IPO Scraper!")
                     st.rerun()
                 else:
                     st.warning("Job already running")
         with q2:
             if st.button("📊 Dynamic Data", key="side_btn_dyn_data", use_container_width=True, help="Refresh subscription & GMP"):
-                if job_manager.run_job("update_dynamic_data", triggered_by="Side Panel (On-Demand)"):
+                if job_manager.run_job("update_dynamic_data", triggered_by="Side Panel (Quick)"):
                     st.toast("📊 Started Dynamic Data Update!")
                     st.rerun()
                 else:
                     st.warning("Job already running")
             if st.button("📋 Allotments", key="side_btn_allotments", use_container_width=True, help="Check Zerodha holdings for allotments"):
-                if job_manager.run_job("allotment_general", triggered_by="Side Panel (On-Demand)"):
+                if job_manager.run_job("allotment_general", triggered_by="Side Panel (Quick)"):
                     st.toast("📋 Checking Allotments!")
                     st.rerun()
                 else:
@@ -660,131 +677,232 @@ def render_jobs_log_side_panel():
 
 def render_on_demand_buttons():
     """
-    Renders categorized buttons to run important jobs on demand.
+    Renders categorized buttons to perform all 19 system functions,
+    grouped according to the 6 operational flow stages.
     """
-    st.markdown("<div class='section-head'>⚡ On-Demand Job Execution Controller</div>", unsafe_allow_html=True)
-    st.caption("Trigger any automated workflow on-demand. Execution runs in the background and output streams into the live console above.")
+    st.markdown("<div class='section-head'>⚡ On-Demand Flow Execution Controller</div>", unsafe_allow_html=True)
+    st.caption("Trigger any of the 19 automated functions on-demand. Buttons are organized sequentially by operational flow stages (08:00 – 15:30 IST).")
 
-    tab_ipo, tab_trading, tab_funds, tab_db = st.tabs([
-        "🚀 IPO & Research",
-        "⚡ Trading & Listing Day",
-        "💰 Funds & Banking",
-        "🗄️ Database & Sync"
+    flow_tab1, flow_tab2, flow_tab3, flow_tab4, flow_tab5, flow_tab6 = st.tabs([
+        "🌅 1. Pre-Market (08:00)",
+        "💰 2. Funds Sweep (09:05)",
+        "📈 3. SMWS Trading (09:15)",
+        "⚡ 4. Pre-Open (09:00)",
+        "🎯 5. Market Execution (10:00)",
+        "🗄️ 6. System & Sync"
     ])
 
-    with tab_ipo:
+    # ── Flow 1: Pre-Market Intelligence (08:00 - 08:59) ──
+    with flow_tab1:
+        st.markdown("""
+        <div style="background:rgba(56, 189, 248, 0.08); border-left:4px solid #38bdf8; padding:8px 12px; border-radius:4px; margin-bottom:12px; font-size:0.84rem; color:#cbd5e1;">
+            <b>Flow Stage 1: Pre-Market Intelligence & Research (08:00 – 08:59 IST)</b><br>
+            Scrapes new issues, updates live GMP/subscriptions, scans portfolios for new allotments, and ensures dashboard uptime.
+        </div>
+        """, unsafe_allow_html=True)
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            if st.button("🚀 Scrape Latest IPOs", use_container_width=True, key="btn_ondemand_ipo_entry", help="Scrapes latest IPOs from Chittorgarh into General.xlsx"):
-                if job_manager.run_job("ipo_entry", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("🚀 Started 'Scrape Latest IPOs' in background!")
+            if st.button("🌐 Verify / Launch Hub", use_container_width=True, key="btn_flow_launch_streamlit_dashboard", help="Verify port 8501 and launch Streamlit Control Hub if offline"):
+                if job_manager.run_job("launch_streamlit_dashboard", triggered_by="Flow 1 (On-Demand)"):
+                    st.toast("🌐 Started 'Verify / Launch Dashboard'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 08:00 IST • Health Check")
         with c2:
-            if st.button("📊 Update Dynamic Data", use_container_width=True, key="btn_ondemand_dyn_update", help="Refreshes GMP, subscriptions & formula scores"):
-                if job_manager.run_job("update_dynamic_data", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("📊 Started 'Update Dynamic Data' in background!")
+            if st.button("🚀 Scrape Latest IPOs", use_container_width=True, key="btn_flow_ipo_entry", help="Scrapes latest IPOs from Chittorgarh into General.xlsx"):
+                if job_manager.run_job("ipo_entry", triggered_by="Flow 1 (On-Demand)"):
+                    st.toast("🚀 Started 'Scrape Latest IPOs'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 08:30 IST • Chittorgarh Scrape")
         with c3:
-            if st.button("🏆 Check Listing Results", use_container_width=True, key="btn_ondemand_listing_res", help="Checks listing open prices vs issue price"):
-                if job_manager.run_job("listing_result", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("🏆 Started 'Check Listing Results' in background!")
+            if st.button("📊 Dynamic Data & GMP", use_container_width=True, key="btn_flow_update_dynamic_data", help="Refreshes GMP, subscriptions & formula scores in General.xlsx"):
+                if job_manager.run_job("update_dynamic_data", triggered_by="Flow 1 (On-Demand)"):
+                    st.toast("📊 Started 'Update Dynamic Data & GMP'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 08:35, 12:05, 14:47 IST")
         with c4:
-            if st.button("📝 Apply Closing IPOs", use_container_width=True, key="btn_ondemand_ipo_apply", help="Applies to IPOs closing today via Kotak NetBanking"):
-                if job_manager.run_job("ipo_application", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("📝 Started 'Apply Closing IPOs' in background!")
+            if st.button("📋 Scan Allotments", use_container_width=True, key="btn_flow_allotment_general", help="Check Zerodha Kite holdings for new allotments & sync allotted_holdings.xlsx"):
+                if job_manager.run_job("allotment_general", triggered_by="Flow 1 (On-Demand)"):
+                    st.toast("📋 Started 'Scan Holdings for Allotments'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 08:40 IST • Kite Holdings")
 
-    with tab_trading:
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            if st.button("⚡ Pre-Open LC Sell", use_container_width=True, key="btn_ondemand_lc_sell", help="Places Lower Circuit sell order on Zerodha Kite for newly allotted shares"):
-                if job_manager.run_job("ss_start_lc_sell", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("⚡ Started 'Pre-Open LC Sell' in background!")
-                    st.rerun()
-                else:
-                    st.warning("Job is already running. Please wait.")
-        with c2:
-            if st.button("🔍 Cancel Pre-Open if Loss", use_container_width=True, key="btn_ondemand_cancel_loss", help="Checks IEP price and cancels LC order if loss limit exceeded"):
-                if job_manager.run_job("cancel_sale_order_if_loss", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("🔍 Started 'Cancel Pre-Open if Loss' in background!")
-                    st.rerun()
-                else:
-                    st.warning("Job is already running. Please wait.")
-        with c3:
-            if st.button("📈 Regular Session Sell", use_container_width=True, key="btn_ondemand_reg_sell", help="Executes regular session sell strategy based on buyer/seller ratio"):
-                if job_manager.run_job("regular_session_ipo_sell", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("📈 Started 'Regular Session Sell' in background!")
-                    st.rerun()
-                else:
-                    st.warning("Job is already running. Please wait.")
-        with c4:
-            if st.button("📋 Check Kite Allotments", use_container_width=True, key="btn_ondemand_allot_check", help="Scrapes Zerodha Kite portfolio holdings for newly discovered allotments"):
-                if job_manager.run_job("allotment_general", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("📋 Started 'Check Kite Allotments' in background!")
-                    st.rerun()
-                else:
-                    st.warning("Job is already running. Please wait.")
-
-    with tab_funds:
+    # ── Flow 2: Funds Management & Sweeping (09:05 - 09:10) ──
+    with flow_tab2:
+        st.markdown("""
+        <div style="background:rgba(16, 185, 129, 0.08); border-left:4px solid #10b981; padding:8px 12px; border-radius:4px; margin-bottom:12px; font-size:0.84rem; color:#cbd5e1;">
+            <b>Flow Stage 2: Funds Management & Capital Sweeping (09:05 – 09:10 IST)</b><br>
+            Inspects Kotak NetBanking balances, calculates IPO capital reserve requirements, and moves idle capital between Kite and Bank.
+        </div>
+        """, unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1:
-            if st.button("💸 Withdraw Funds to Bank", use_container_width=True, key="btn_ondemand_withdraw", help="Calculates IPO fund reserve requirements and withdraws to Kotak bank"):
-                if job_manager.run_job("money_withdraw", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("💸 Started 'Money Withdraw' in background!")
+            if st.button("🏦 Refresh Kotak Balances", use_container_width=True, key="btn_flow_refresh_kotak_balance", help="Inspect live available Kotak NetBanking balances across all user accounts"):
+                if job_manager.run_job("refresh_kotak_balance", triggered_by="Flow 2 (On-Demand)"):
+                    st.toast("🏦 Started 'Refresh Kotak Balances'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⚡ On-Demand • Kotak Playwright")
         with c2:
-            if st.button("🏦 Transfer Kotak to Kite", use_container_width=True, key="btn_ondemand_bank_kite", help="Transfers idle bank funds into Zerodha Kite for SMWS trading"):
-                if job_manager.run_job("bank_to_kite", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("🏦 Started 'Bank to Kite Transfer' in background!")
+            if st.button("💸 Calc Reserves & Withdraw", use_container_width=True, key="btn_flow_money_withdraw", help="Calculates IPO fund reserve requirements and withdraws surplus Kite funds to Kotak bank"):
+                if job_manager.run_job("money_withdraw", triggered_by="Flow 2 (On-Demand)"):
+                    st.toast("💸 Started 'Calculate Reserves & Withdraw'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:05 IST • Kite to Kotak")
         with c3:
-            if st.button("⚠️ Priority SMWS Sell", use_container_width=True, key="btn_ondemand_prio_smws", help="Liquidates SMWS ETFs if required for today's IPO applications"):
-                if job_manager.run_job("priority_ipo_sell_smws", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("⚠️ Started 'Priority SMWS Sell' in background!")
+            if st.button("🔄 Sweep Idle Cash to Kite", use_container_width=True, key="btn_flow_bank_to_kite", help="Transfers excess idle Kotak bank funds into Zerodha Kite for SMWS systematic trading"):
+                if job_manager.run_job("bank_to_kite", triggered_by="Flow 2 (On-Demand)"):
+                    st.toast("🔄 Started 'Sweep Idle Cash to Kite'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:10 IST • Kotak to Kite")
 
-        c4, c5, _ = st.columns(3)
-        with c4:
-            if st.button("📉 SMWS ETF Sell", use_container_width=True, key="btn_ondemand_smws_sell", help="Sells SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on signal"):
-                if job_manager.run_job("smws_seller", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("📉 Started 'SMWS ETF Sell' in background!")
-                    st.rerun()
-                else:
-                    st.warning("Job is already running. Please wait.")
-        with c5:
-            if st.button("📈 SMWS ETF Buy", use_container_width=True, key="btn_ondemand_smws_buy", help="Buys SMWS ETFs based on strategy signal"):
-                if job_manager.run_job("smws_buyer", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("📈 Started 'SMWS ETF Buy' in background!")
-                    st.rerun()
-                else:
-                    st.warning("Job is already running. Please wait.")
-
-    with tab_db:
-        c1, c2 = st.columns(2)
+    # ── Flow 3: SMWS Systematic ETF Trading (09:15 - 09:30) ──
+    with flow_tab3:
+        st.markdown("""
+        <div style="background:rgba(245, 158, 11, 0.08); border-left:4px solid #f59e0b; padding:8px 12px; border-radius:4px; margin-bottom:12px; font-size:0.84rem; color:#cbd5e1;">
+            <b>Flow Stage 3: SMWS Systematic ETF Trading (09:15 – 09:30 IST)</b><br>
+            Executes systematic ETF trades (NIFTYIETF, TATAGOLD, TATSILV) according to the live strategy sheet, and triggers priority liquidations if IPO funds are required.
+        </div>
+        """, unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
         with c1:
-            if st.button("🗄️ Dual-Tier SQLite & Excel Sync", use_container_width=True, key="btn_ondemand_db_sync", help="Initializes SQLite WAL engine and synchronizes all tables with Excel"):
-                if job_manager.run_job("sync_database", triggered_by="Dashboard (On-Demand)"):
-                    st.toast("🗄️ Started 'Dual-Tier SQLite Sync' in background!")
+            if st.button("📉 Execute SMWS ETF Sell", use_container_width=True, key="btn_flow_smws_seller", help="Sells SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on signal"):
+                if job_manager.run_job("smws_seller", triggered_by="Flow 3 (On-Demand)"):
+                    st.toast("📉 Started 'SMWS ETF Sell'!")
                     st.rerun()
                 else:
                     st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:15 IST • Systematic Sell")
         with c2:
-            st.info("💡 Synchronizes `master_users`, `allotted_holdings`, `ipo_research`, and `ipo_applied` between SQLite and Excel workbooks.")
+            if st.button("⚠️ Priority IPO Sell for Funds", use_container_width=True, key="btn_flow_priority_ipo_sell_smws", help="Liquidates SMWS ETFs when IPO application funds are required today"):
+                if job_manager.run_job("priority_ipo_sell_smws", triggered_by="Flow 3 (On-Demand)"):
+                    st.toast("⚠️ Started 'Priority IPO Sell for Funds'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:20 IST • Capital Liquidation")
+        with c3:
+            if st.button("📈 Execute SMWS ETF Buy", use_container_width=True, key="btn_flow_smws_buyer", help="Buys SMWS ETFs based on strategy sheet buy signal"):
+                if job_manager.run_job("smws_buyer", triggered_by="Flow 3 (On-Demand)"):
+                    st.toast("📈 Started 'SMWS ETF Buy'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:25 IST • Systematic Buy")
+
+    # ── Flow 4: Pre-Open Listing Day Trading (09:00 - 09:45) ──
+    with flow_tab4:
+        st.markdown("""
+        <div style="background:rgba(239, 68, 68, 0.08); border-left:4px solid #ef4444; padding:8px 12px; border-radius:4px; margin-bottom:12px; font-size:0.84rem; color:#cbd5e1;">
+            <b>Flow Stage 4: Pre-Open Listing Day Operations (09:00 – 09:45 IST)</b><br>
+            Places pre-open LC sell orders on Zerodha Kite for listing shares, monitors live indicative equilibrium prices (IEP), and cancels LC if discount limit is exceeded.
+        </div>
+        """, unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("⚡ Place Pre-Open LC Sell", use_container_width=True, key="btn_flow_ss_start_lc_sell", help="Places Lower Circuit sell order on Zerodha Kite for newly allotted shares"):
+                if job_manager.run_job("ss_start_lc_sell", triggered_by="Flow 4 (On-Demand)"):
+                    st.toast("⚡ Started 'Place Pre-Open LC Sell'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:00 IST • Pre-Open LC Order")
+        with c2:
+            if st.button("🔍 Query Pre-Open IEP Prices", use_container_width=True, key="btn_flow_fetch_indicative_prices", help="Query live NSE & BSE indicative pre-open prices & buyer/seller depth"):
+                if job_manager.run_job("fetch_indicative_prices", triggered_by="Flow 4 (On-Demand)"):
+                    st.toast("🔍 Started 'Query Pre-Open IEP Prices'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:30 IST • Indicative Price Depth")
+        with c3:
+            if st.button("🛑 IEP Loss Check & Cancel LC", use_container_width=True, key="btn_flow_cancel_sale_order_if_loss", help="Checks IEP price and cancels LC order if loss limit exceeded"):
+                if job_manager.run_job("cancel_sale_order_if_loss", triggered_by="Flow 4 (On-Demand)"):
+                    st.toast("🛑 Started 'IEP Loss Check & Cancel LC'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 09:32 IST • Risk Guard Cancellation")
+
+    # ── Flow 5: Market Hours & Afternoon Execution (10:00 - 15:30) ──
+    with flow_tab5:
+        st.markdown("""
+        <div style="background:rgba(168, 85, 247, 0.08); border-left:4px solid #a855f7; padding:8px 12px; border-radius:4px; margin-bottom:12px; font-size:0.84rem; color:#cbd5e1;">
+            <b>Flow Stage 5: Market Hours & Afternoon Execution (10:00 – 15:30 IST)</b><br>
+            Executes regular session sell strategies (UC hold, stepped GTT), records official listing gains into General.xlsx, and submits closing IPO bids.
+        </div>
+        """, unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("🎯 Regular Session Sell Strategy", use_container_width=True, key="btn_flow_regular_session_ipo_sell", help="Executes regular session IPO selling (buyer/seller ratio, UC hold & stepped GTT)"):
+                if job_manager.run_job("regular_session_ipo_sell", triggered_by="Flow 5 (On-Demand)"):
+                    st.toast("🎯 Started 'Regular Session Sell Strategy'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 10:01 IST • Live Session Seller")
+        with c2:
+            if st.button("🏆 Record Listing Results", use_container_width=True, key="btn_flow_listing_result", help="Checks official listing prices vs issue prices and updates column D in General.xlsx"):
+                if job_manager.run_job("listing_result", triggered_by="Flow 5 (On-Demand)"):
+                    st.toast("🏆 Started 'Record Listing Results'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 10:05 IST • Performance Audit")
+        with c3:
+            if st.button("📝 Submit Closing IPO Bids", use_container_width=True, key="btn_flow_ipo_application", help="Submits UPI/ASBA IPO applications via Kotak NetBanking for IPOs closing today"):
+                if job_manager.run_job("ipo_application", triggered_by="Flow 5 (On-Demand)"):
+                    st.toast("📝 Started 'Submit Closing IPO Bids'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⏰ 14:50 IST (Closing Day Window)")
+
+    # ── Flow 6: System, Database & Diagnostics ──
+    with flow_tab6:
+        st.markdown("""
+        <div style="background:rgba(203, 213, 225, 0.08); border-left:4px solid #94a3b8; padding:8px 12px; border-radius:4px; margin-bottom:12px; font-size:0.84rem; color:#cbd5e1;">
+            <b>Flow Stage 6: Database Synchronization, Accounts & System Diagnostics</b><br>
+            Maintains the dual-tier SQLite database engine, synchronizes user profiles with Master.xlsx, and sends diagnostic notification pings.
+        </div>
+        """, unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            if st.button("🗄️ Dual-Tier SQLite & Excel Sync", use_container_width=True, key="btn_flow_sync_database", help="Initializes SQLite WAL engine and synchronizes all tables with Excel"):
+                if job_manager.run_job("sync_database", triggered_by="Flow 6 (On-Demand)"):
+                    st.toast("🗄️ Started 'Dual-Tier SQLite Sync'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⚡ Database • SQLite WAL & Excel Sync")
+        with c2:
+            if st.button("👥 Sync Master User Profiles", use_container_width=True, key="btn_flow_sync_master", help="Sync Master.xlsx user profiles, client IDs & PANs with active credentials"):
+                if job_manager.run_job("sync_master", triggered_by="Flow 6 (On-Demand)"):
+                    st.toast("👥 Started 'Sync Master User Profiles'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⚡ Accounts • Master.xlsx Sync")
+        with c3:
+            if st.button("📲 Send Telegram Test Push", use_container_width=True, key="btn_flow_telegram_test_alert", help="Dispatch diagnostic test push notification to configured Telegram Chat ID"):
+                if job_manager.run_job("telegram_test_alert", triggered_by="Flow 6 (On-Demand)"):
+                    st.toast("📲 Sent Telegram Test Notification!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+            st.caption("⚡ Diagnostics • Telegram Alert Test")
 
 # -----------------------------------------------------------------------------
 # Main Application Layout: Split between Main Content & Right-Side Jobs Log Panel

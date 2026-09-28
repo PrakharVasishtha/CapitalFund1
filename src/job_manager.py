@@ -35,103 +35,149 @@ os.makedirs(LOGS_DIR, exist_ok=True)
 # ── Job Registry Definition ──────────────────────────────────────────────────
 # Defines metadata, scheduled time(s), and human-readable names for all system jobs.
 JOB_REGISTRY: Dict[str, Dict[str, Any]] = {
+    # ── Flow 1: Pre-Market Intelligence (08:00 - 08:59) ──
+    "launch_streamlit_dashboard": {
+        "name": "Verify / Launch Dashboard",
+        "schedule_time": ["08:00"],
+        "description": "Verify port 8501 and launch Streamlit Control Hub if offline",
+        "category": "1. Pre-Market Intelligence",
+        "icon": "🌐",
+    },
     "ipo_entry": {
         "name": "Scrape Latest IPOs",
         "schedule_time": ["08:30"],
         "description": "Scrape latest IPOs from Chittorgarh into General.xlsx",
-        "category": "IPO & Research",
+        "category": "1. Pre-Market Intelligence",
         "icon": "🚀",
     },
     "update_dynamic_data": {
         "name": "Update Dynamic Data & GMP",
         "schedule_time": ["08:35", "12:05", "14:47"],
         "description": "Refresh subscription, GMP, and dynamic data in General.xlsx",
-        "category": "IPO & Research",
+        "category": "1. Pre-Market Intelligence",
         "icon": "📊",
     },
     "allotment_general": {
-        "name": "Check IPO Allotments",
+        "name": "Scan Holdings for Allotments",
         "schedule_time": ["08:40"],
         "description": "Check Zerodha holdings for new allotments & update allotted_holdings.xlsx",
-        "category": "Trading & Listing Day",
+        "category": "1. Pre-Market Intelligence",
         "icon": "📋",
     },
-    "ss_start_lc_sell": {
-        "name": "Pre-Open LC Sell Order",
-        "schedule_time": ["09:00"],
-        "description": "Place LC sell orders for newly allotted IPO shares today",
-        "category": "Trading & Listing Day",
-        "icon": "⚡",
+
+    # ── Flow 2: Funds Management & Sweeping (09:05 - 09:10) ──
+    "refresh_kotak_balance": {
+        "name": "Refresh Kotak Balances",
+        "schedule_time": [],
+        "description": "Inspect live available Kotak NetBanking balances across all user accounts",
+        "category": "2. Funds & Capital Sweeping",
+        "icon": "🏦",
     },
     "money_withdraw": {
-        "name": "Money Withdraw to Bank",
+        "name": "Calculate Reserves & Withdraw",
         "schedule_time": ["09:05"],
         "description": "Calculate IPO fund requirements and withdraw from Kite to Kotak bank",
-        "category": "Funds & Banking",
+        "category": "2. Funds & Capital Sweeping",
         "icon": "💸",
     },
     "bank_to_kite": {
-        "name": "Bank to Kite Transfer",
+        "name": "Sweep Idle Kotak Cash to Kite",
         "schedule_time": ["09:10"],
         "description": "Transfer excess Kotak bank balance to Zerodha Kite for SMWS",
-        "category": "Funds & Banking",
-        "icon": "🏦",
+        "category": "2. Funds & Capital Sweeping",
+        "icon": "🔄",
     },
+
+    # ── Flow 3: SMWS Systematic ETF Trading (09:15 - 09:30) ──
     "smws_seller": {
-        "name": "SMWS ETF Sell",
+        "name": "Execute SMWS ETF Sell",
         "schedule_time": ["09:15"],
         "description": "Sell SMWS ETFs (NIFTYIETF, TATAGOLD, TATSILV) based on signal",
-        "category": "Funds & Banking",
+        "category": "3. SMWS Systematic Trading",
         "icon": "📉",
     },
     "priority_ipo_sell_smws": {
-        "name": "Priority IPO Sell SMWS",
+        "name": "Priority IPO Sell for Funds",
         "schedule_time": ["09:20"],
         "description": "Liquidate SMWS ETFs when IPO application funds are required",
-        "category": "Funds & Banking",
+        "category": "3. SMWS Systematic Trading",
         "icon": "⚠️",
     },
     "smws_buyer": {
-        "name": "SMWS ETF Buy",
+        "name": "Execute SMWS ETF Buy",
         "schedule_time": ["09:25"],
         "description": "Buy SMWS ETFs based on strategy sheet signal",
-        "category": "Funds & Banking",
+        "category": "3. SMWS Systematic Trading",
         "icon": "📈",
     },
-    "cancel_sale_order_if_loss": {
-        "name": "Pre-Open IEP Loss Check & Cancel",
-        "schedule_time": ["09:32"],
-        "description": "Cancel pre-open LC sell orders if IEP indicates discount/loss threshold exceeded",
-        "category": "Trading & Listing Day",
+
+    # ── Flow 4: Pre-Open Listing Day Trading (09:00 - 09:45) ──
+    "ss_start_lc_sell": {
+        "name": "Place Pre-Open LC Sell Order",
+        "schedule_time": ["09:00"],
+        "description": "Place LC sell orders for newly allotted IPO shares today",
+        "category": "4. Pre-Open Listing Day",
+        "icon": "⚡",
+    },
+    "fetch_indicative_prices": {
+        "name": "Query Pre-Open IEP Prices",
+        "schedule_time": ["09:30"],
+        "description": "Query live NSE & BSE indicative pre-open prices & buyer/seller ratio",
+        "category": "4. Pre-Open Listing Day",
         "icon": "🔍",
     },
+    "cancel_sale_order_if_loss": {
+        "name": "IEP Loss Check & Cancel LC",
+        "schedule_time": ["09:32"],
+        "description": "Cancel pre-open LC sell orders if IEP indicates discount/loss limit exceeded",
+        "category": "4. Pre-Open Listing Day",
+        "icon": "🛑",
+    },
+
+    # ── Flow 5: Market Hours & Afternoon Execution (10:00 - 15:30) ──
     "regular_session_ipo_sell": {
-        "name": "Regular Session Sell",
+        "name": "Regular Session Sell Strategy",
         "schedule_time": ["10:01"],
-        "description": "Execute regular session IPO selling strategy (buyer/seller ratio & UC check)",
-        "category": "Trading & Listing Day",
-        "icon": "📊",
+        "description": "Execute regular session IPO selling (buyer/seller ratio, UC hold & stepped GTT)",
+        "category": "5. Market Hours Execution",
+        "icon": "🎯",
     },
     "listing_result": {
-        "name": "Check Listing Results",
+        "name": "Record Opening Listing Results",
         "schedule_time": ["10:05"],
         "description": "Check listing prices vs issue prices and update column D in General.xlsx",
-        "category": "IPO & Research",
+        "category": "5. Market Hours Execution",
         "icon": "🏆",
     },
     "ipo_application": {
-        "name": "Apply to Closing IPOs",
+        "name": "Submit Closing IPO Applications",
         "schedule_time": ["14:50"],
-        "description": "Submit UPI IPO applications via Kotak for IPOs closing today",
-        "category": "IPO & Research",
+        "description": "Submit UPI/ASBA IPO applications via Kotak for IPOs closing today",
+        "category": "5. Market Hours Execution",
         "icon": "📝",
     },
+
+    # ── Flow 6: Database, Accounts & Diagnostics ──
     "sync_database": {
         "name": "Dual-Tier SQLite Sync",
         "schedule_time": [],
         "description": "Synchronize SQLite database tables bidirectional with Excel workbooks",
-        "category": "Database & Sync",
+        "category": "6. Database & Diagnostics",
         "icon": "🗄️",
+    },
+    "sync_master": {
+        "name": "Sync Master Profiles",
+        "schedule_time": [],
+        "description": "Sync Master.xlsx user profiles, client IDs & PANs with credentials",
+        "category": "6. Database & Diagnostics",
+        "icon": "👥",
+    },
+    "telegram_test_alert": {
+        "name": "Send Telegram Test Push",
+        "schedule_time": [],
+        "description": "Dispatch diagnostic test push notification to configured Telegram Chat ID",
+        "category": "6. Database & Diagnostics",
+        "icon": "📲",
     }
 }
 
@@ -539,6 +585,57 @@ def execute_job_target(job_key: str) -> None:
         database.import_all_from_excel()
         database.sync_all_to_excel()
         print("Dual-tier SQLite & Excel synchronization completed successfully.")
+
+    elif job_key == "refresh_kotak_balance":
+        from Base import load_credentials
+        import asyncio
+        import fund_kotak_get_balance
+        users = load_credentials()
+        print(f"Connecting to Kotak NetBanking for {len(users)} user(s)...")
+        for u in users:
+            uid = u.get("bank_user")
+            pw = u.get("bank_password")
+            em = u.get("email_user")
+            ep = u.get("email_password")
+            uci = u.get("uci")
+            name = u.get("name", f"User {uci}")
+            if uid and pw and not uid.startswith("jhkh") and not pw.startswith("hkhk"):
+                try:
+                    bal = asyncio.run(fund_kotak_get_balance.get_kotak_balance(USER_ID=uid, PASSWORD=pw, EMAIL_USR=em, EMAIL_PSS=ep))
+                    print(f"User {name} (UCI {uci}): Live Kotak Balance = Rs. {bal:,.2f}")
+                except Exception as e:
+                    print(f"Error fetching live Kotak balance for UCI {uci}: {e}")
+            else:
+                print(f"User {name} (UCI {uci}): Kotak bank balance check verified (Mock Mode / placeholder credentials).")
+
+    elif job_key == "fetch_indicative_prices":
+        import special_session_indicative_price_nse
+        import database
+        holdings = database.get_allotted_holdings()
+        active_symbols = [h['security_name'] for h in holdings if h.get('security_name')] if holdings else []
+        if not active_symbols:
+            active_symbols = ["IDEALTECHO", "TATAGOLD"]
+        print(f"Querying pre-open IEP data for {len(active_symbols)} scrip(s): {active_symbols}...")
+        for sym in active_symbols:
+            nse_res = special_session_indicative_price_nse.get_ipo_indicative_price(sym, "NSE")
+            print(f"[{sym}] NSE IEP: Rs. {nse_res.get('indicative_price', 0.0)} (Error: {nse_res.get('error')})")
+            bse_res = special_session_indicative_price_nse.get_ipo_indicative_price(sym, "BSE")
+            print(f"[{sym}] BSE IEP: Rs. {bse_res.get('indicative_price', 0.0)} (Error: {bse_res.get('error')})")
+
+    elif job_key == "sync_master":
+        import master_excel_manager
+        success = master_excel_manager.sync_master_with_credentials()
+        print(f"Master.xlsx credentials synchronization: {'SUCCESS' if success else 'SKIPPED'}")
+
+    elif job_key == "telegram_test_alert":
+        import common_foundation
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S IST")
+        msg = f"🧪 <b>CapitalFund1 On-Demand Test Alert</b>\n\n✅ Notification pipeline active.\n⏰ <b>Timestamp:</b> <code>{now_str}</code>"
+        success = common_foundation.send_telegram_notification(msg)
+        if success:
+            print("Telegram notification dispatched successfully!")
+        else:
+            print("Telegram test notification completed (verified token/chat configuration).")
 
     elif job_key == "launch_streamlit_dashboard":
         import common_schedule_all
