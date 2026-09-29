@@ -7,3 +7,9 @@
 [2026-09-27 11:44:49] [INFO] [common_foundation.py:63:log_info] [init_db] SQLite database schema initialized successfully (WAL mode enabled).
 [2026-09-27 11:44:49] [INFO] [common_foundation.py:63:log_info] [import_all_from_excel] Completed full Excel -> SQLite synchronization.
 2026-09-27 13:00:30 | ERROR    | test | Test Error Message
+2026-09-29 12:27:56 | ERROR    | common_master_functions | Error syncing IPO entries to SQLite: module 'database' has no attribute 'import_ipo_research_from_excel'
+Traceback (most recent call last):
+  File "D:\CapitalFund1\src\common_master_functions.py", line 80, in latest_ipo_entry
+    logger.warning(f"Could not send General.xlsx email: {e}")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'database' has no attribute 'import_ipo_research_from_excel'. Did you mean: 'import_general_from_excel'?

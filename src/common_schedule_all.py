@@ -277,9 +277,41 @@ schedule.every().day.at("14:50").do(run_threaded, ipo_application)
 if __name__ == "__main__":
     try:
         run_now()
-        common_foundation.log_info("Scheduler loop started (tick interval: 1s, non-blocking threaded execution active).", "__main__")
+        common_foundation.log_info(
+            "Scheduler loop started (tick interval: 1s, non-blocking threaded execution active, "
+            "crash-recovery enabled).",
+            "__main__"
+        )
+        _consecutive_errors = 0
         while True:
-            schedule.run_pending()
+            try:
+                schedule.run_pending()
+                _consecutive_errors = 0          # Reset counter on clean tick
+            except KeyboardInterrupt:
+                raise                            # Let outer except catch this
+            except Exception as _loop_exc:       # P2-1: Crash recovery — never let scheduler die
+                _consecutive_errors += 1
+                common_foundation.log_error(
+                    f"Unhandled exception in scheduler loop (consecutive #{_consecutive_errors}): {_loop_exc}",
+                    exc=_loop_exc,
+                    function_name="__main__"
+                )
+                if _consecutive_errors >= 10:
+                    # Too many consecutive errors — something is very wrong; alert and wait longer
+                    try:
+                        from common_foundation import send_telegram_notification
+                        send_telegram_notification(
+                            f"⚠️ <b>CapitalFund1 Scheduler Warning</b>\n\n"
+                            f"{_consecutive_errors} consecutive scheduler loop errors.\n"
+                            f"Last error: <code>{str(_loop_exc)[:300]}</code>"
+                        )
+                    except Exception:
+                        pass
+                    time.sleep(60)
+                    _consecutive_errors = 0
+                else:
+                    time.sleep(5)
+                continue
             time.sleep(1)
     except KeyboardInterrupt:
-        common_foundation.log_info("Scheduler stopped by user (KeyboardInterrupt).", "__main__")
+        common_foundation.log_info("Scheduler stopped by user (KeyboardInterrupt).", "__main__")

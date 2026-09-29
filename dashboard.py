@@ -634,6 +634,114 @@ def check_internet():
     except Exception:
         return False
 
+
+# -----------------------------------------------------------------------------
+# P1-3: Market Hours Guard
+# -----------------------------------------------------------------------------
+_MARKET_OPEN_H, _MARKET_OPEN_M = 9, 0
+_MARKET_CLOSE_H, _MARKET_CLOSE_M = 15, 30
+
+# Trading-time buttons and their allowed window (override for special jobs)
+_TRADING_JOB_WINDOWS: dict = {
+    # job_key: (allowed_start_HHMM, allowed_end_HHMM, friendly_label)
+    "smws_seller":            (905,  935,  "09:05–09:35 IST"),
+    "smws_buyer":             (920,  950,  "09:20–09:50 IST"),
+    "priority_ipo_sell_smws": (915,  945,  "09:15–09:45 IST"),
+    "bank_to_kite":           (905,  935,  "09:05–09:35 IST"),
+    "money_withdraw":         (900,  935,  "09:00–09:35 IST"),
+    "ss_start_lc_sell":       (855,  910,  "08:55–09:10 IST"),
+    "cancel_sale_order_if_loss": (925, 940, "09:25–09:40 IST"),
+    "regular_session_ipo_sell": (1000, 1530, "10:00–15:30 IST"),
+    "listing_result":         (1000, 1100, "10:00–11:00 IST"),
+    "ipo_application":        (1440, 1510, "14:40–15:10 IST"),
+    "fetch_indicative_prices":(920,  935,  "09:20–09:35 IST"),
+}
+
+
+def is_market_job_safe(job_key: str) -> tuple[bool, str]:
+    """
+    Return (is_safe, warning_message) for a trading job at the current time.
+    Jobs not in _TRADING_JOB_WINDOWS are always considered safe.
+    """
+    if job_key not in _TRADING_JOB_WINDOWS:
+        return True, ""
+    start_hhmm, end_hhmm, label = _TRADING_JOB_WINDOWS[job_key]
+    now = datetime.datetime.now()
+    now_hhmm = now.hour * 100 + now.minute
+    if start_hhmm <= now_hhmm <= end_hhmm:
+        return True, ""
+    return False, f"⚠️ Outside recommended window ({label}). Current time: {now.strftime('%H:%M')} IST."
+
+
+# -----------------------------------------------------------------------------
+# P1-4: Non-blocking SMWS background refresh via session_state
+# -----------------------------------------------------------------------------
+def _trigger_smws_background_refresh() -> None:
+    """Fire-and-forget: refresh SMWS signals in a daemon thread, store in session_state."""
+    import threading as _thr
+
+    def _worker():
+        try:
+            signals = fetch_smws_signals()
+            st.session_state["_smws_signals"] = signals
+            st.session_state["_smws_refresh_ts"] = time.time()
+        except Exception:
+            pass
+
+    t = _thr.Thread(target=_worker, daemon=True)
+    t.start()
+
+
+def get_smws_signals_cached() -> dict:
+    """
+    Return the latest SMWS signals from session_state cache, triggering a
+    background refresh if the data is stale (>15s) or absent.  Never blocks.
+    """
+    now_ts = time.time()
+    last_ts = st.session_state.get("_smws_refresh_ts", 0)
+    cached = st.session_state.get("_smws_signals", {})
+
+    if now_ts - last_ts > 15 or not cached:
+        _trigger_smws_background_refresh()
+
+    return cached
+
+
+# -----------------------------------------------------------------------------
+# P1-5: Color-coded job console output
+# -----------------------------------------------------------------------------
+_CONSOLE_LINE_RULES = [
+    # (regex_pattern, background_color, text_color)
+    (re.compile(r'\[JOB (STARTED|FINISHED)', re.I), "#1e3a5f", "#93c5fd"),
+    (re.compile(r'(error|exception|failed|traceback|critical)', re.I), "#3b0a0a", "#fca5a5"),
+    (re.compile(r'(warning|warn)', re.I), "#3b2a00", "#fde68a"),
+    (re.compile(r'(success|done|completed|ok\b|✅)', re.I), "#052e16", "#86efac"),
+    (re.compile(r'(queued|skip|skipped|pending)', re.I), "#1e1b4b", "#c4b5fd"),
+]
+
+
+def colorize_console_output(raw_text: str) -> str:
+    """
+    P1-5: Convert plain job output text to HTML with color-coded lines.
+    Returns an HTML string suitable for rendering inside a .console-box div.
+    """
+    lines = raw_text.splitlines()
+    html_parts = []
+    for line in lines:
+        escaped = html.escape(line)
+        matched = False
+        for pattern, bg, fg in _CONSOLE_LINE_RULES:
+            if pattern.search(line):
+                html_parts.append(
+                    f'<span style="display:block; background:{bg}; color:{fg}; '
+                    f'padding:1px 4px; border-radius:3px; margin:1px 0;">{escaped}</span>'
+                )
+                matched = True
+                break
+        if not matched:
+            html_parts.append(f'<span style="display:block;">{escaped}</span>')
+    return "\n".join(html_parts)
+
 # -----------------------------------------------------------------------------
 # Sidebar Configuration & Navigation
 # -----------------------------------------------------------------------------
@@ -834,7 +942,8 @@ def render_live_job_status_and_output(show_output_box: bool = True):
                     st.rerun()
 
             current_output = job_manager.get_current_job_output(max_lines=150)
-            st.markdown(f"<div class='console-box' style='max-height: 280px;'>{html.escape(current_output)}</div>", unsafe_allow_html=True)
+            colored_main = colorize_console_output(current_output)
+            st.markdown(f"<div class='console-box' style='max-height: 280px;'>{colored_main}</div>", unsafe_allow_html=True)
 
     _fragment_view()
 
@@ -857,22 +966,38 @@ def render_jobs_log_side_panel():
         </div>
         """, unsafe_allow_html=True)
 
-        # 1. Active Running Job or Next Scheduled Job Card
+        # 1. Active Running Job or Next Scheduled Job Card — with P1-7 Kill button
         running_jobs = job_manager.get_currently_running_jobs()
         if running_jobs:
             for rj in running_jobs:
-                st.markdown(f"""
-                <div class="glass-card" style="border-left: 4px solid #10b981; padding: 14px; margin-bottom: 12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="pill pill-green"><span class="pulse-dot"></span>RUNNING NOW</span>
-                        <span class="pill pill-amber">⏳ {rj.get('elapsed_str', '0s')}</span>
+                rj_key = rj.get("job_key", "")
+                kill_col, info_col = st.columns([1, 3])
+                with info_col:
+                    st.markdown(f"""
+                    <div class="glass-card" style="border-left: 4px solid #10b981; padding: 14px; margin-bottom: 4px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="pill pill-green"><span class="pulse-dot"></span>RUNNING NOW</span>
+                            <span class="pill pill-amber">⏳ {rj.get('elapsed_str', '0s')}</span>
+                        </div>
+                        <div style="font-weight:700; color:#ffffff; margin:6px 0 2px 0; font-size:0.95rem;">{html.escape(str(rj.get('name', rj_key)))}</div>
+                        <div style="font-size:0.78rem; color:#94a3b8;">
+                            Started: <code style="color:#38bdf8;">{rj.get('started_at', 'N/A')}</code> &bull; By: <b>{html.escape(str(rj.get('triggered_by', 'Scheduler')))}</b>
+                        </div>
                     </div>
-                    <div style="font-weight:700; color:#ffffff; margin:6px 0 2px 0; font-size:0.95rem;">{html.escape(str(rj.get('name', rj.get('job_key', 'Job'))))}</div>
-                    <div style="font-size:0.78rem; color:#94a3b8;">
-                        Started: <code style="color:#38bdf8;">{rj.get('started_at', 'N/A')}</code> &bull; By: <b>{html.escape(str(rj.get('triggered_by', 'Scheduler')))}</b>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                with kill_col:
+                    st.markdown("<div style='margin-top:18px;'></div>", unsafe_allow_html=True)
+                    if st.button(
+                        "🛑 Kill",
+                        key=f"kill_btn_{rj_key}",
+                        use_container_width=True,
+                        help=f"Request graceful stop of '{rj.get('name', rj_key)}'"
+                    ):
+                        if job_manager.request_job_stop(rj_key):
+                            st.toast(f"🛑 Stop signal sent to '{rj.get('name', rj_key)}'")
+                        else:
+                            st.warning("Job not found (may have already finished).")
+                        st.rerun()
         else:
             next_job = job_manager.get_next_scheduled_job()
             st.markdown(f"""
@@ -893,12 +1018,12 @@ def render_jobs_log_side_panel():
         df_history = job_manager.get_job_history_df(limit=25)
         st.dataframe(df_history, use_container_width=True, hide_index=True, height=220)
 
-        # 3. Live Console Stream & System Logs Tabs
+        # 3. Live Console Stream & System Logs Tabs (P1-5: color-coded output)
         panel_tabs = st.tabs(["💻 Job Output", "📜 System Logs"])
         with panel_tabs[0]:
             h_c1, h_c2 = st.columns([2.5, 1])
             with h_c1:
-                st.caption("Logs from `current_job.log`")
+                st.caption("Logs from `current_job.log` — color-coded by severity")
             with h_c2:
                 if st.button("🗑️ Clear", key="btn_side_clear_out", use_container_width=True):
                     try:
@@ -907,12 +1032,14 @@ def render_jobs_log_side_panel():
                         pass
                     st.rerun()
             out_txt = job_manager.get_current_job_output(max_lines=80)
-            st.markdown(f"<div class='console-box' style='max-height: 200px; font-size:0.78rem;'>{html.escape(out_txt)}</div>", unsafe_allow_html=True)
+            colored_out = colorize_console_output(out_txt)
+            st.markdown(f"<div class='console-box' style='max-height: 200px; font-size:0.78rem;'>{colored_out}</div>", unsafe_allow_html=True)
 
         with panel_tabs[1]:
             st.caption("Logs from `capitalfund.log`")
             sys_log_txt = job_manager.get_recent_system_logs(max_lines=40)
-            st.markdown(f"<div class='console-box' style='max-height: 200px; font-size:0.78rem;'>{html.escape(sys_log_txt)}</div>", unsafe_allow_html=True)
+            colored_sys = colorize_console_output(sys_log_txt)
+            st.markdown(f"<div class='console-box' style='max-height: 200px; font-size:0.78rem;'>{colored_sys}</div>", unsafe_allow_html=True)
 
         # 4. Quick Action Triggers & Universal Job Dispatcher
         st.markdown("<div style='font-size:0.9rem; font-weight:700; color:#cbd5e1; margin:12px 0 6px 0;'>⚡ Universal Job Dispatcher</div>", unsafe_allow_html=True)
@@ -924,13 +1051,29 @@ def render_jobs_log_side_panel():
             key="side_select_job",
             label_visibility="collapsed"
         )
-        if st.button("▶️ Execute Workflow Now", key="side_btn_exec_selected", use_container_width=True, help="Trigger selected job immediately in background"):
-            job_name = job_manager.JOB_REGISTRY[selected_side_job]["name"]
-            if job_manager.run_job(selected_side_job, triggered_by="Side Panel (Dropdown)"):
-                st.toast(f"▶️ Triggered '{job_name}'!")
+
+        # P1-3: Market hours warning for trading jobs
+        _safe, _warn = is_market_job_safe(selected_side_job)
+        if not _safe:
+            st.caption(_warn)
+
+        exec_c1, exec_c2 = st.columns(2)
+        with exec_c1:
+            if st.button("▶️ Execute Now", key="side_btn_exec_selected", use_container_width=True, help="Trigger selected job immediately in background"):
+                job_name = job_manager.JOB_REGISTRY[selected_side_job]["name"]
+                if job_manager.run_job(selected_side_job, triggered_by="Side Panel (Dropdown)"):
+                    st.toast(f"▶️ Triggered '{job_name}'!")
+                    st.rerun()
+                else:
+                    st.warning("Job is already running. Please wait.")
+        with exec_c2:
+            # P1-7: Kill Selected
+            if st.button("🛑 Kill Selected", key="side_btn_kill_selected", use_container_width=True, help="Send stop signal to the selected job if running"):
+                if job_manager.request_job_stop(selected_side_job):
+                    st.toast(f"🛑 Stop signal sent to '{job_manager.JOB_REGISTRY[selected_side_job]['name']}'")
+                else:
+                    st.info("Job is not currently running.")
                 st.rerun()
-            else:
-                st.warning("Job is already running. Please wait.")
 
         st.markdown("<div style='font-size:0.82rem; font-weight:600; color:#94a3b8; margin:8px 0 4px 0;'>Quick Shortcuts:</div>", unsafe_allow_html=True)
         q1, q2 = st.columns(2)
@@ -1239,7 +1382,7 @@ with main_col:
                 total_ipos = len(df_all_ipos)
                 st.markdown(f"""
                 <div class="glass-card">
-                    <div class="kpi-title">IPOs Tracked in DB</div>
+                    <div class="kpi-title">IPOs in General.xlsx</div>
                     <div class="kpi-value text-cyan">{total_ipos}</div>
                     <div class="kpi-footer">{len(df_mb_clean)} MB / {len(df_sme_clean)} SME</div>
                 </div>
@@ -1545,8 +1688,13 @@ with main_col:
                 custom_kotak_bal = st.number_input("Estimated Current Kotak Bank Balance per Account (₹)", value=50000, step=10000)
 
             with calc_col2:
-                mb_cost_per_app = 209000
-                sme_cost_per_app = 280000
+                try:
+                    import config as _cfg
+                    mb_cost_per_app = int(_cfg.MB_IPO_FUND_RESERVE)
+                    sme_cost_per_app = int(_cfg.SME_IPO_FUND_RESERVE)
+                except Exception:
+                    mb_cost_per_app = 209000   # fallback defaults
+                    sme_cost_per_app = 280000
 
                 req_per_account = (mb_count * mb_cost_per_app) + (sme_count * sme_cost_per_app)
                 total_req_all_accounts = req_per_account * num_accounts
@@ -1620,7 +1768,12 @@ with main_col:
         elif nav == "📈 Live SMWS Strategy Monitor":
             st.markdown("<div class='section-head'>📈 Systematic Market & Withdrawal Strategy (SMWS) Monitor</div>", unsafe_allow_html=True)
 
-            signals = fetch_smws_signals()
+            # P1-4: Non-blocking — returns cached signals immediately, refreshes in background
+            signals = get_smws_signals_cached()
+
+            if not signals:
+                st.info("⏳ Loading SMWS signals in background… Page will update on next auto-refresh (15s).")
+                st.stop()
 
             if "error" in signals:
                 st.error(f"❌ Error fetching Google Sheet: {signals['error']}")
@@ -1703,30 +1856,111 @@ with main_col:
         elif nav == "📜 System Health & Activity Logs":
             st.markdown("<div class='section-head'>📜 System Health Diagnostics & Real-time Logs</div>", unsafe_allow_html=True)
 
-            st.markdown("#### System Component Health Checks")
-            h1, h2, h3, h4 = st.columns(4)
+            # ── Row 1: File Health ────────────────────────────────────────────
+            st.markdown("#### 🗂️ Critical File Status")
+            fh1, fh2, fh3, fh4, fh5 = st.columns(5)
 
-            env_exists = os.path.exists(os.path.join(BASE_DIR, ".env"))
-            gen_exists = os.path.exists(os.path.join(BASE_DIR, "General.xlsx"))
-            master_exists = os.path.exists(os.path.join(BASE_DIR, "Master.xlsx"))
-            allot_exists = os.path.exists(os.path.join(BASE_DIR, "allotted_holdings.xlsx"))
+            def _file_badge(path: str, label: str) -> str:
+                exists = os.path.exists(path)
+                size_kb = round(os.path.getsize(path) / 1024, 1) if exists else 0
+                if exists:
+                    return f'<span class="pill pill-green">✅ {label}</span><br><span style="font-size:0.72rem; color:#64748b;">{size_kb} KB</span>'
+                return f'<span class="pill pill-amber">⚠️ {label}</span><br><span style="font-size:0.72rem; color:#f87171;">Missing</span>'
 
-            env_badge = '<span class="pill pill-green">Found</span>' if env_exists else '<span class="pill pill-amber">Missing</span>'
-            gen_badge = '<span class="pill pill-green">Found</span>' if gen_exists else '<span class="pill pill-amber">Missing</span>'
-            master_badge = '<span class="pill pill-green">Found</span>' if master_exists else '<span class="pill pill-amber">Missing</span>'
-            allot_badge = '<span class="pill pill-green">Found</span>' if allot_exists else '<span class="pill pill-amber">Missing</span>'
-            net_badge = '<span class="pill pill-green">Online</span>' if internet_ok else '<span class="pill pill-amber">Offline</span>'
+            with fh1:
+                st.markdown(_file_badge(os.path.join(BASE_DIR, ".env"), ".env"), unsafe_allow_html=True)
+            with fh2:
+                st.markdown(_file_badge(os.path.join(BASE_DIR, "General.xlsx"), "General.xlsx"), unsafe_allow_html=True)
+            with fh3:
+                st.markdown(_file_badge(os.path.join(BASE_DIR, "Master.xlsx"), "Master.xlsx"), unsafe_allow_html=True)
+            with fh4:
+                st.markdown(_file_badge(os.path.join(BASE_DIR, "allotted_holdings.xlsx"), "Holdings.xlsx"), unsafe_allow_html=True)
+            with fh5:
+                st.markdown(_file_badge(os.path.join(BASE_DIR, "capitalfund.db"), "capitalfund.db"), unsafe_allow_html=True)
 
-            with h1:
-                st.markdown(f"<b>.env Credentials File</b>: {env_badge}", unsafe_allow_html=True)
-            with h2:
-                st.markdown(f"<b>General.xlsx Database</b>: {gen_badge}<br><b>Master.xlsx Database</b>: {master_badge}", unsafe_allow_html=True)
-            with h3:
-                st.markdown(f"<b>Allotted Holdings File</b>: {allot_badge}", unsafe_allow_html=True)
-            with h4:
-                st.markdown(f"<b>Internet Connection</b>: {net_badge}", unsafe_allow_html=True)
+            # ── Row 2: DB & Scheduler ─────────────────────────────────────────
+            st.markdown("#### 🗄️ Database & Scheduler Status")
+            db1, db2, db3, db4 = st.columns(4)
 
-            # ── Telegram Push Notification Health & Tester ──
+            # DB table row counts (P2-6)
+            def _db_table_rows(table: str) -> str:
+                try:
+                    from database import get_connection, init_db
+                    init_db()
+                    conn = get_connection()
+                    row = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                    conn.close()
+                    return str(row[0]) if row else "0"
+                except Exception:
+                    return "N/A"
+
+            with db1:
+                rows_users = _db_table_rows("master_users")
+                st.markdown(f"""<div class="glass-card" style="padding:12px;">
+                    <div class="kpi-title">master_users</div>
+                    <div style="font-size:1.5rem; font-weight:800; color:#38bdf8;">{rows_users}</div>
+                    <div style="font-size:0.72rem; color:#64748b;">rows in SQLite</div>
+                </div>""", unsafe_allow_html=True)
+
+            with db2:
+                rows_applied = _db_table_rows("ipo_applied")
+                st.markdown(f"""<div class="glass-card" style="padding:12px;">
+                    <div class="kpi-title">ipo_applied</div>
+                    <div style="font-size:1.5rem; font-weight:800; color:#fbbf24;">{rows_applied}</div>
+                    <div style="font-size:0.72rem; color:#64748b;">rows in SQLite</div>
+                </div>""", unsafe_allow_html=True)
+
+            with db3:
+                rows_holdings = _db_table_rows("allotted_holdings")
+                st.markdown(f"""<div class="glass-card" style="padding:12px;">
+                    <div class="kpi-title">allotted_holdings</div>
+                    <div style="font-size:1.5rem; font-weight:800; color:#34d399;">{rows_holdings}</div>
+                    <div style="font-size:0.72rem; color:#64748b;">rows in SQLite</div>
+                </div>""", unsafe_allow_html=True)
+
+            with db4:
+                # Last completed job info
+                _state = job_manager.get_job_state()
+                _last = _state.get("last_completed")
+                if _last:
+                    _lj_name = _last.get("name", "N/A")
+                    _lj_time = _last.get("finished_at", "N/A").split(" ")[1] if " " in str(_last.get("finished_at", "")) else "N/A"
+                    _lj_status = _last.get("status", "N/A")
+                    _lj_color = "#34d399" if _lj_status == "SUCCESS" else "#f87171"
+                    st.markdown(f"""<div class="glass-card" style="padding:12px;">
+                        <div class="kpi-title">Last Completed Job</div>
+                        <div style="font-size:0.9rem; font-weight:700; color:#ffffff;">{html.escape(_lj_name)}</div>
+                        <div style="font-size:0.72rem; color:{_lj_color};">{_lj_status} at {_lj_time}</div>
+                    </div>""", unsafe_allow_html=True)
+                else:
+                    st.markdown("""<div class="glass-card" style="padding:12px;">
+                        <div class="kpi-title">Last Completed Job</div>
+                        <div style="font-size:0.9rem; color:#64748b;">No jobs run yet</div>
+                    </div>""", unsafe_allow_html=True)
+
+            # ── Row 3: Log File Health ────────────────────────────────────────
+            st.markdown("#### 📋 Log Files")
+            logs_dir = os.path.join(BASE_DIR, "logs")
+            log_files = ["capitalfund.log", "error.log", "errors.log", "audit.log", "current_job.log"]
+            log_cols = st.columns(len(log_files))
+            for i, lf in enumerate(log_files):
+                lf_path = os.path.join(logs_dir, lf)
+                with log_cols[i]:
+                    if os.path.exists(lf_path):
+                        size_bytes = os.path.getsize(lf_path)
+                        size_str = f"{size_bytes/1024:.1f} KB" if size_bytes < 1_048_576 else f"{size_bytes/1_048_576:.2f} MB"
+                        color = "#f87171" if size_bytes > 4_000_000 else "#34d399"
+                        st.markdown(f"""<div style="background:rgba(30,41,59,0.6); border-radius:8px; padding:10px; text-align:center;">
+                            <div style="font-size:0.7rem; color:#94a3b8; font-weight:700;">{lf}</div>
+                            <div style="font-size:1.1rem; font-weight:800; color:{color};">{size_str}</div>
+                        </div>""", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""<div style="background:rgba(30,41,59,0.4); border-radius:8px; padding:10px; text-align:center;">
+                            <div style="font-size:0.7rem; color:#94a3b8;">{lf}</div>
+                            <div style="font-size:0.85rem; color:#64748b;">Not created</div>
+                        </div>""", unsafe_allow_html=True)
+
+            # ── Telegram Section ──────────────────────────────────────────────
             st.markdown("---")
             st.markdown("#### 📲 Telegram Push Notification Control & Diagnostics")
 
@@ -1742,6 +1976,7 @@ with main_col:
                 if tg_configured:
                     masked_token = tg_token[:6] + "..." + tg_token[-4:] if len(tg_token) > 10 else "***"
                     st.caption(f"Bot Token: `{masked_token}` | Chat ID: `{tg_chat}`")
+                    st.caption("✅ Job failure alerts are automatically pushed to this chat.")
                 else:
                     st.info("💡 To enable push notifications on your phone, add `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` to your `.env` file.")
 
@@ -1759,6 +1994,7 @@ with main_col:
                     else:
                         st.error("❌ Failed to send. Please check TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env.")
 
+            # ── Log Viewer ────────────────────────────────────────────────────
             st.markdown("---")
             st.markdown("#### Live Console Output Viewer")
 
@@ -1772,7 +2008,8 @@ with main_col:
                 lines = [line for line in lines if filter_txt.lower() in line.lower()]
 
             log_body = "".join(lines)
-            st.markdown(f"<div class='console-box'>{log_body}</div>", unsafe_allow_html=True)
+            colored_log = colorize_console_output(log_body)
+            st.markdown(f"<div class='console-box'>{colored_log}</div>", unsafe_allow_html=True)
 
             st.download_button(
                 label="📥 Download Current Log File",

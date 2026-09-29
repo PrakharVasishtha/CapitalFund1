@@ -10,6 +10,10 @@ Provides:
   - Calculation and countdown of the next upcoming scheduled job.
   - Live execution output capture into logs/current_job.log.
   - On-demand execution helpers with thread safety and duplicate-run protection.
+  - Stale RUNNING job cleanup on startup (crash recovery).
+  - Telegram push alert when any job ends with FAILED status.
+  - Kill-job support: each running job gets a threading.Event; callers can set it to
+    request graceful termination (jobs must cooperate by checking the event).
 """
 
 import os
@@ -23,6 +27,36 @@ import io
 import contextlib
 import pandas as pd
 
+# ── Per-job stop events (job_key -> threading.Event) ──────────────────────────
+# Set the event to request that the running job terminate early.
+_stop_events: Dict[str, threading.Event] = {}
+_stop_events_lock = threading.Lock()
+
+
+def get_stop_event(job_key: str) -> threading.Event:
+    """Return (or create) the stop event for a job key."""
+    with _stop_events_lock:
+        if job_key not in _stop_events:
+            _stop_events[job_key] = threading.Event()
+        return _stop_events[job_key]
+
+
+def request_job_stop(job_key: str) -> bool:
+    """Signal a running job to stop. Returns True if the job was running."""
+    with _stop_events_lock:
+        ev = _stop_events.get(job_key)
+    if ev:
+        ev.set()
+        return True
+    return False
+
+
+def _clear_stop_event(job_key: str) -> None:
+    """Reset the stop event after a job finishes (ready for next run)."""
+    with _stop_events_lock:
+        if job_key in _stop_events:
+            _stop_events[job_key].clear()
+
 # Ensure src in sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.join(BASE_DIR, "src")
@@ -32,6 +66,48 @@ CURRENT_JOB_LOG = os.path.join(LOGS_DIR, "current_job.log")
 
 os.makedirs(LOGS_DIR, exist_ok=True)
 
+
+def _clear_stale_running_jobs() -> None:
+    """
+    P1-1: Clear any RUNNING jobs left over from a previous process crash.
+    Called once at module import time. Stale 'RUNNING' entries in job_state.json
+    are moved to FAILED so the dashboard shows the correct state on restart.
+    """
+    if not os.path.exists(STATE_FILE):
+        return
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as fh:
+            state = json.load(fh)
+        stale = state.get("running_jobs", {})
+        if not stale:
+            return
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S IST")
+        if "history" not in state or not isinstance(state["history"], list):
+            state["history"] = []
+        for key, rj in stale.items():
+            stale_record = {
+                "job_key": key,
+                "name": rj.get("name", key),
+                "started_at": rj.get("started_at", "N/A"),
+                "finished_at": now_str,
+                "duration_seconds": 0,
+                "status": "FAILED",
+                "error_message": "Process restarted — job was interrupted (stale RUNNING cleared on startup)",
+                "triggered_by": rj.get("triggered_by", "Scheduler"),
+            }
+            state["history"].insert(0, stale_record)
+        state["history"] = state["history"][:50]
+        state["running_jobs"] = {}
+        state["last_updated"] = now_str
+        tmp = f"{STATE_FILE}.tmp_{os.getpid()}"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(state, fh, indent=2)
+        os.replace(tmp, STATE_FILE)
+    except Exception:
+        pass  # Non-fatal — worst case is a stale display; no exception should block import
+
+
+_clear_stale_running_jobs()
 # ── Job Registry Definition ──────────────────────────────────────────────────
 # Defines metadata, scheduled time(s), and human-readable names for all system jobs.
 JOB_REGISTRY: Dict[str, Dict[str, Any]] = {
@@ -281,6 +357,37 @@ def record_job_finish(job_key: str, status: str = "SUCCESS", error_msg: Optional
     state["history"].insert(0, completed_record)
     state["history"] = state["history"][:50]
     save_job_state(state)
+
+    # P1-6: Telegram alert on failure (fire-and-forget in a daemon thread)
+    if status == "FAILED":
+        def _send_tg_alert() -> None:
+            try:
+                import sys as _sys
+                if SRC_DIR not in _sys.path:
+                    _sys.path.insert(0, SRC_DIR)
+                from common_foundation import send_telegram_notification
+                icon = JOB_REGISTRY.get(job_key, {}).get("icon", "⚡")
+                triggered_by = job_record.get("triggered_by", "Scheduler") if job_record else "Scheduler"
+                msg = (
+                    f"🚨 <b>Job FAILED — CapitalFund1</b>\n\n"
+                    f"{icon} <b>Job:</b> <code>{name}</code>\n"
+                    f"🔑 <b>Key:</b> <code>{job_key}</code>\n"
+                    f"⏰ <b>Time:</b> <code>{now_str}</code>\n"
+                    f"⏳ <b>Duration:</b> {duration_sec}s\n"
+                    f"👤 <b>Triggered by:</b> {triggered_by}\n"
+                )
+                if error_msg:
+                    # Truncate long errors for Telegram
+                    short_err = error_msg[:400] + "…" if len(error_msg) > 400 else error_msg
+                    msg += f"\n❌ <b>Error:</b>\n<code>{short_err}</code>"
+                send_telegram_notification(msg)
+            except Exception:
+                pass  # Never let Telegram alert crash the job finish logic
+
+        threading.Thread(target=_send_tg_alert, daemon=True).start()
+
+    # Reset stop event for this job (ready for next run)
+    _clear_stop_event(job_key)
 
     # Append job finish footer to current_job.log
     try:
