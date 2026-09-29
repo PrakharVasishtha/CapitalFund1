@@ -74,14 +74,6 @@ def latest_ipo_entry():
             except Exception as item_err:
                 logger.error(f"Error processing IPO {name1}: {item_err}", exc_info=True)
 
-    if new_entries_count > 0:
-        try:
-            import database
-            database.import_ipo_research_from_excel()
-            logger.info("Successfully synced new IPO entries to SQLite")
-        except Exception as dberr:
-            logger.error(f"Error syncing IPO entries to SQLite: {dberr}", exc_info=True)
-
     try:
         send_email_with_excel(mail_subject="latest_ipo_entry", mail_content="latest_ipo_entry", path_of_file='General.xlsx')
     except Exception as e:
@@ -111,13 +103,6 @@ def dynamic_data_update():
             update_row_3pm(k, "MB")
         except Exception as e:
             logger.error(f"Error updating row {k} MB: {e}", exc_info=True)
-
-    try:
-        import database
-        database.import_ipo_research_from_excel()
-        logger.info("Successfully synced updated dynamic IPO data to SQLite")
-    except Exception as dberr:
-        logger.error(f"Error syncing dynamic IPO data to SQLite: {dberr}", exc_info=True)
 
     try:
         send_email_with_excel(mail_subject="IPO Data Updated", mail_content="IPO Data Updated", path_of_file='General.xlsx')

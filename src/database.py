@@ -5,11 +5,13 @@ Dual-Tier Data Storage Engine for CapitalFund1.
 
 Provides a robust, non-blocking SQLite database backend (capitalfund.db) with
 Write-Ahead Logging (WAL) mode for concurrency, paired with automatic bidirectional
-synchronization to the existing Excel spreadsheets:
-  - Master.xlsx         <--> master_users table
+synchronization to operational Excel spreadsheets:
+  - Master.xlsx            <--> master_users table
   - allotted_holdings.xlsx <--> allotted_holdings table
-  - General.xlsx        <--> ipo_research table
-  - IPO-applied.xlsx    <--> ipo_applied table
+  - IPO-applied.xlsx       <--> ipo_applied table
+
+Note: General.xlsx (IPO research, scoring formulas, GMP, apply priority) is
+maintained strictly in Excel and is NOT stored in the database.
 
 This eliminates file-locking errors (PermissionError when Excel is open in MS Excel/viewers),
 speeds up transactional queries across the automation loop, and preserves full Excel
@@ -99,29 +101,11 @@ def init_db():
             );
         """)
 
-        # 3. ipo_research table (syncs with General.xlsx 'IPOMB' and 'IPOSME')
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS ipo_research (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                url TEXT UNIQUE,
-                company_name TEXT NOT NULL,
-                category TEXT NOT NULL,  -- 'MB' or 'SME'
-                listing_result INTEGER DEFAULT 0,
-                total_score REAL DEFAULT 0.0,
-                gmp REAL DEFAULT 0.0,
-                gmp_percent REAL DEFAULT 0.0,
-                retail_subscription REAL DEFAULT 0.0,
-                qib_subscription REAL DEFAULT 0.0,
-                nii_subscription REAL DEFAULT 0.0,
-                pe_ratio REAL DEFAULT 0.0,
-                closing_date INTEGER,
-                apply_priority INTEGER DEFAULT 0,
-                issue_price REAL DEFAULT 0.0,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
+        # Note: General.xlsx (IPOMB/IPOSME) is kept strictly in Excel and not in SQLite.
+        # Ensure any legacy ipo_research table is dropped.
+        cursor.execute("DROP TABLE IF EXISTS ipo_research;")
 
-        # 4. ipo_applied table (syncs with IPO-applied.xlsx)
+        # 3. ipo_applied table (syncs with IPO-applied.xlsx)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS ipo_applied (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,7 +142,6 @@ def init_db():
 
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_holdings_uci ON allotted_holdings(uci);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_holdings_statuses ON allotted_holdings(special_session_status, regular_session_status);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_research_category ON ipo_research(category);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_applied_uci ON ipo_applied(uci);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_smws_time ON smws_signals(updated_at);")
 
@@ -297,70 +280,13 @@ def import_allotted_holdings_from_excel():
 
 
 def import_general_from_excel():
-    """Imports General.xlsx ('IPOMB' and 'IPOSME') into SQLite ipo_research table."""
-    path = get_excel_path("General.xlsx")
-    if not os.path.exists(path):
-        return
+    """No-op: General.xlsx (IPOMB/IPOSME) is maintained strictly in Excel and not in SQLite."""
+    pass
 
-    conn = get_connection()
-    try:
-        wb = safe_load_workbook(path, data_only=True)
-        cursor = conn.cursor()
 
-        for sheet_name, cat in [("IPOMB", "MB"), ("IPOSME", "SME")]:
-            if sheet_name not in wb.sheetnames:
-                continue
-            ws = wb[sheet_name]
-            for r in range(2, ws.max_row + 1):
-                url = str(ws.cell(r, 1).value or "").strip()
-                name = str(ws.cell(r, 2).value or "").strip()
-                if not name and not url:
-                    continue
-                if not url:
-                    url = f"local://{cat}/{name}"
-
-                res_val = int(ws.cell(r, 4).value or 0) if isinstance(ws.cell(r, 4).value, (int, float)) else 0
-                score = parse_float(ws.cell(r, 5).value or 0.0)
-                gmp = parse_float(ws.cell(r, 7).value or 0.0)
-                gmp_pct = parse_float(ws.cell(r, 8).value or 0.0)
-                retail_sub = parse_float(ws.cell(r, 11).value or 0.0)
-                qib_sub = parse_float(ws.cell(r, 12).value or 0.0)
-                nii_sub = parse_float(ws.cell(r, 13).value or 0.0)
-                pe = parse_float(ws.cell(r, 20).value or 0.0)
-                close_dt = int(ws.cell(r, 40).value or 0) if isinstance(ws.cell(r, 40).value, (int, float)) else None
-                priority = int(ws.cell(r, 42).value or 0) if isinstance(ws.cell(r, 42).value, (int, float)) else 0
-                price = parse_float(ws.cell(r, 45).value or 0.0)
-
-                cursor.execute("""
-                    INSERT INTO ipo_research (
-                        url, company_name, category, listing_result, total_score,
-                        gmp, gmp_percent, retail_subscription, qib_subscription,
-                        nii_subscription, pe_ratio, closing_date, apply_priority,
-                        issue_price, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    ON CONFLICT(url) DO UPDATE SET
-                        company_name=excluded.company_name,
-                        category=excluded.category,
-                        listing_result=excluded.listing_result,
-                        total_score=excluded.total_score,
-                        gmp=excluded.gmp,
-                        gmp_percent=excluded.gmp_percent,
-                        retail_subscription=excluded.retail_subscription,
-                        qib_subscription=excluded.qib_subscription,
-                        nii_subscription=excluded.nii_subscription,
-                        pe_ratio=excluded.pe_ratio,
-                        closing_date=excluded.closing_date,
-                        apply_priority=excluded.apply_priority,
-                        issue_price=excluded.issue_price,
-                        updated_at=CURRENT_TIMESTAMP;
-                """, (url, name, cat, res_val, score, gmp, gmp_pct, retail_sub, qib_sub, nii_sub, pe, close_dt, priority, price))
-
-        conn.commit()
-        wb.close()
-    except Exception as e:
-        log_error(f"Error importing General.xlsx into SQLite: {e}", exc=e, function_name="import_general_from_excel")
-    finally:
-        conn.close()
+def import_ipo_research_from_excel():
+    """No-op backward-compatibility alias."""
+    pass
 
 
 def import_applied_from_excel():
@@ -411,13 +337,12 @@ def import_applied_from_excel():
 
 
 def import_all_from_excel():
-    """Imports data from all 4 primary Excel files into SQLite."""
+    """Imports operational data from Master.xlsx, allotted_holdings.xlsx, and IPO-applied.xlsx into SQLite."""
     init_db()
     import_master_from_excel()
     import_allotted_holdings_from_excel()
-    import_general_from_excel()
     import_applied_from_excel()
-    log_info("Completed full Excel -> SQLite synchronization.", "import_all_from_excel")
+    log_info("Completed Excel -> SQLite synchronization (General.xlsx remains Excel-only).", "import_all_from_excel")
 
 
 # ==============================================================================

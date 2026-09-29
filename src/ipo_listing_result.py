@@ -144,15 +144,6 @@ def update_listing_results():
         total_updated += updated
         logger.info(f"Sheet {sheet_name}: {updated} rows updated")
 
-    # Dual-Tier SQLite synchronization
-    if total_updated > 0:
-        try:
-            import database
-            database.import_ipo_research_from_excel()
-            logger.info("Successfully synced IPO research results to SQLite")
-        except Exception as dberr:
-            logger.error(f"Error syncing IPO research to SQLite: {dberr}", exc_info=True)
-
     logger.info(f"update_listing_results complete. Total rows updated: {total_updated}, Skipped: {total_skipped}")
 
 
